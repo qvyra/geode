@@ -1,0 +1,17 @@
+# Dependencies and caches
+node_modules/
+Packages/
+ServerPackages/
+DevPackages/
+.cache/
+
+# Build output
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+sourcemap.json
+
+# Editor and OS
+.DS_Store
+Thumbs.db
