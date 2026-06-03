@@ -1,0 +1,12 @@
+[package]
+name = "qvyra/geode"
+description = "Layered data framework for Roblox: DataStore, MemoryStore and MessagingService behind one API"
+version = "0.0.0"
+license = "MIT"
+authors = ["Quivery"]
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+exclude = ["**"]
+include = ["src", "src/**", "default.project.json", "wally.toml", "LICENSE", "README.md"]
+
+[dependencies]
