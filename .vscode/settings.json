@@ -1,0 +1,11 @@
+{
+	"editor.formatOnSave": true,
+	"[luau]": {
+		"editor.defaultFormatter": "JohnnyMorganz.stylua"
+	},
+	"[typescript][json][jsonc][markdown][yaml]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"luau-lsp.platform.type": "roblox",
+	"luau-lsp.sourcemap.rojoProjectFile": "default.project.json"
+}
