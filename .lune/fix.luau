@@ -4,9 +4,17 @@
 
 local process = require("@lune/process")
 
+local Files = require("./lib/Files")
+
+local prettier =
+	{ "node", "node_modules/prettier/bin/prettier.cjs", "--write", "--log-level=warn", "." }
+for _, arg in Files.prettierIgnoreArgs() do
+	table.insert(prettier, arg)
+end
+
 local STEPS: { { string } } = {
 	{ "stylua", "src", "tests", ".lune" },
-	{ "node", "node_modules/prettier/bin/prettier.cjs", "--write", "--log-level=warn", "." },
+	prettier,
 }
 
 for _, step in STEPS do

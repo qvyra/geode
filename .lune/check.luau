@@ -8,14 +8,21 @@ local net = require("@lune/net")
 local process = require("@lune/process")
 local stdio = require("@lune/stdio")
 
+local Files = require("./lib/Files")
+
 -- Pinned to the luau-lsp release in rokit.toml so the API surface only moves on purpose
 local LUAU_LSP_VERSION = "1.68.0"
 local ROBLOX_TYPES_URL =
 	`https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/{LUAU_LSP_VERSION}/scripts/globalTypes.None.d.luau`
 local ROBLOX_TYPES_PATH = `.cache/globalTypes-{LUAU_LSP_VERSION}.d.luau`
+local CSPELL_LIST_PATH = ".cache/cspell-files.txt"
 
 -- These folders alias @lune to the typedefs for one Lune version
 local LUNE_LUAURC_PATHS = { "tests/.luaurc", ".lune/.luaurc" }
+
+if not fs.isDir(".cache") then
+	fs.writeDir(".cache")
+end
 
 type Step = {
 	name: string,
@@ -58,6 +65,26 @@ local function node(name: string, script: string, args: { string }): Step
 	return { name = name, program = "node", args = fullArgs }
 end
 
+-- cspell only reads .gitignore. Piping the list through stdin sometimes exits 1 with no output,
+-- so it goes through a file. Entries are absolute since cspell resolves them against the list
+-- file's folder
+local function cspell(): Step
+	local paths = {}
+	for index, path in Files.list() do
+		paths[index] = `{process.cwd}/{path}`
+	end
+	fs.writeFile(CSPELL_LIST_PATH, table.concat(paths, "\n") .. "\n")
+	return node("cspell", "cspell/bin.mjs", { "--no-progress", "--file-list", CSPELL_LIST_PATH })
+end
+
+local function prettier(): Step
+	local args = { "--check", "." }
+	for _, arg in Files.prettierIgnoreArgs() do
+		table.insert(args, arg)
+	end
+	return node("prettier", "prettier/bin/prettier.cjs", args)
+end
+
 local STEPS: { Step } = {
 	{ name = "stylua", program = "stylua", args = { "--check", "src", "tests", ".lune" } },
 	{ name = "selene src", program = "selene", args = { "src" } },
@@ -79,10 +106,10 @@ local STEPS: { Step } = {
 		args = { "analyze", "--platform=standard", "tests", ".lune" },
 	},
 	{ name = "tests", program = "lune", args = { "run", "test" } },
-	node("prettier", "prettier/bin/prettier.cjs", { "--check", "." }),
+	prettier(),
 	node("eslint", "eslint/bin/eslint.js", {}),
 	node("tsc", "typescript/bin/tsc", { "--noEmit", "-p", "." }),
-	node("cspell", "cspell/bin.mjs", { "--no-progress", "--gitignore", "**" }),
+	cspell(),
 }
 
 local BOLD = stdio.style("bold")
@@ -97,9 +124,6 @@ local function finish(color: stdio.Color, text: string)
 end
 
 header("setup")
-if not fs.isDir(".cache") then
-	fs.writeDir(".cache")
-end
 -- lune setup also rewrites the .luaurc in its working directory, so it runs where that's harmless
 local luneSetup = process.exec("lune", { "setup" }, { cwd = ".cache" })
 if not luneSetup.ok then

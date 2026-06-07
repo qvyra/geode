@@ -1,9 +1,13 @@
 {
 	"version": "0.2",
 	"language": "en",
-	"useGitignore": true,
 	"ignorePaths": ["package-lock.json", "node_modules/**", ".cache/**", "rokit.toml"],
-	"overrides": [{ "filename": "**/*.luau", "languageId": "lua" }],
+	"overrides": [
+		{
+			"filename": "**/*.luau",
+			"languageId": "lua"
+		}
+	],
 	"words": [
 		"Geode",
 		"Quartz",
@@ -40,6 +44,15 @@
 		"tseslint",
 		"pcall",
 		"isfrozen",
-		"stdio"
+		"stdio",
+		"pathspecs",
+		"serde",
+		"ignorecase",
+		"nonword",
+		"Compey",
+		"Morganz",
+		"Kampfkarren",
+		"esbenp",
+		"dbaeumer"
 	]
 }

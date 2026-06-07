@@ -19,13 +19,6 @@
 		"README.md"
 	],
 	"private": true,
-	"scripts": {
-		"format": "prettier --write .",
-		"format:check": "prettier --check .",
-		"lint": "eslint",
-		"typecheck": "tsc --noEmit",
-		"spell": "cspell --no-progress --gitignore \"**\""
-	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
 		"cspell": "10.0.1",
