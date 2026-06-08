@@ -100,10 +100,21 @@ local STEPS: { Step } = {
 			"src",
 		},
 	},
+	-- tests require src, so they need the same Roblox definitions
 	{
-		name = "luau-lsp tests and scripts",
+		name = "luau-lsp tests",
 		program = "luau-lsp",
-		args = { "analyze", "--platform=standard", "tests", ".lune" },
+		args = {
+			"analyze",
+			"--platform=roblox",
+			`--definitions=@roblox={ROBLOX_TYPES_PATH}`,
+			"tests",
+		},
+	},
+	{
+		name = "luau-lsp scripts",
+		program = "luau-lsp",
+		args = { "analyze", "--platform=standard", ".lune" },
 	},
 	{ name = "tests", program = "lune", args = { "run", "test" } },
 	prettier(),
