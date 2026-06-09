@@ -1,0 +1,278 @@
+--!strict
+
+-- Shared shapes for every adapter. Real adapters and mocks implement the same types, and the
+-- contract suites are written against these alone
+
+--// results and errors
+
+export type ErrorKind =
+	"throttled"
+	| "notFound"
+	| "tooLarge"
+	| "invalidKey"
+	| "invalidValue"
+	| "noAccess"
+	| "internal"
+	| "unknown"
+
+export type AdapterError = {
+	kind: ErrorKind,
+	code: number?,
+	message: string,
+}
+
+export type Result<T> = { ok: true, value: T } | { ok: false, error: AdapterError }
+
+--// clock
+
+export type Clock = {
+	-- wall clock seconds, comparable across servers
+	now: (self: Clock) -> number,
+	wait: (self: Clock, seconds: number) -> (),
+	spawn: (self: Clock, fn: () -> ()) -> (),
+	delay: (self: Clock, seconds: number, fn: () -> ()) -> (),
+}
+
+--// DataStore
+
+export type KeyInfo = {
+	version: string,
+	-- ms since the Unix epoch, like DataStoreKeyInfo
+	createdTime: number,
+	updatedTime: number,
+	userIds: { number },
+	metadata: { [string]: unknown },
+}
+
+export type WriteOptions = {
+	userIds: { number }?,
+	metadata: { [string]: unknown }?,
+}
+
+export type Read = {
+	value: unknown,
+	info: KeyInfo?,
+}
+
+export type Update = {
+	value: unknown,
+	info: KeyInfo?,
+	-- The transform returned nil, so nothing was written and `value` is what it last saw
+	cancelled: boolean,
+}
+
+-- nil cancels the write. May run more than once, so keep it pure
+export type Transform = (current: unknown, info: KeyInfo?) -> (unknown, WriteOptions?)
+
+export type VersionInfo = {
+	version: string,
+	createdTime: number,
+	deleted: boolean,
+}
+
+export type VersionQuery = {
+	ascending: boolean?,
+	minDate: number?,
+	maxDate: number?,
+	limit: number?,
+}
+
+export type DataStore = {
+	name: string,
+	scope: string,
+	get: (self: DataStore, key: string) -> Result<Read>,
+	set: (self: DataStore, key: string, value: unknown, options: WriteOptions?) -> Result<string>,
+	update: (self: DataStore, key: string, transform: Transform) -> Result<Update>,
+	remove: (self: DataStore, key: string) -> Result<Read>,
+	increment: (
+		self: DataStore,
+		key: string,
+		delta: number,
+		options: WriteOptions?
+	) -> Result<number>,
+	listVersions: (self: DataStore, key: string, query: VersionQuery?) -> Result<{ VersionInfo }>,
+	getVersion: (self: DataStore, key: string, version: string) -> Result<Read>,
+}
+
+--// OrderedDataStore
+
+export type OrderedEntry = {
+	key: string,
+	value: number,
+}
+
+export type OrderedQuery = {
+	ascending: boolean?,
+	limit: number?,
+	min: number?,
+	max: number?,
+}
+
+export type OrderedUpdate = {
+	value: number?,
+	cancelled: boolean,
+}
+
+export type OrderedDataStore = {
+	name: string,
+	scope: string,
+	get: (self: OrderedDataStore, key: string) -> Result<number?>,
+	set: (self: OrderedDataStore, key: string, value: number) -> Result<nil>,
+	update: (
+		self: OrderedDataStore,
+		key: string,
+		transform: (current: number?) -> number?
+	) -> Result<OrderedUpdate>,
+	remove: (self: OrderedDataStore, key: string) -> Result<number?>,
+	increment: (self: OrderedDataStore, key: string, delta: number) -> Result<number>,
+	getSorted: (self: OrderedDataStore, query: OrderedQuery?) -> Result<{ OrderedEntry }>,
+}
+
+--// MemoryStore
+
+export type MemoryUpdate = {
+	value: unknown,
+	cancelled: boolean,
+}
+
+export type HashMapEntry = {
+	key: string,
+	value: unknown,
+}
+
+export type HashMap = {
+	name: string,
+	get: (self: HashMap, key: string) -> Result<unknown>,
+	set: (self: HashMap, key: string, value: unknown, ttl: number) -> Result<nil>,
+	update: (
+		self: HashMap,
+		key: string,
+		transform: (current: unknown) -> unknown,
+		ttl: number
+	) -> Result<MemoryUpdate>,
+	remove: (self: HashMap, key: string) -> Result<nil>,
+	list: (self: HashMap, limit: number?) -> Result<{ HashMapEntry }>,
+}
+
+export type SortKey = string | number
+
+export type SortedEntry = {
+	key: string,
+	value: unknown,
+	sortKey: SortKey?,
+}
+
+-- Bounds are exclusive and absolute, whatever the direction
+export type SortedBound = {
+	key: string?,
+	sortKey: SortKey?,
+}
+
+export type SortedRange = {
+	descending: boolean?,
+	count: number,
+	lower: SortedBound?,
+	upper: SortedBound?,
+}
+
+export type SortedUpdate = {
+	value: unknown,
+	sortKey: SortKey?,
+	cancelled: boolean,
+}
+
+export type SortedTransform = (current: unknown, sortKey: SortKey?) -> (unknown, SortKey?)
+
+export type SortedMap = {
+	name: string,
+	get: (self: SortedMap, key: string) -> Result<SortedEntry?>,
+	set: (
+		self: SortedMap,
+		key: string,
+		value: unknown,
+		ttl: number,
+		sortKey: SortKey?
+	) -> Result<nil>,
+	update: (
+		self: SortedMap,
+		key: string,
+		transform: SortedTransform,
+		ttl: number
+	) -> Result<SortedUpdate>,
+	remove: (self: SortedMap, key: string) -> Result<nil>,
+	getRange: (self: SortedMap, range: SortedRange) -> Result<{ SortedEntry }>,
+}
+
+export type QueueReadOptions = {
+	count: number,
+	allOrNothing: boolean?,
+	-- 0 or nil returns immediately
+	waitTimeout: number?,
+}
+
+export type QueueRead = {
+	items: { unknown },
+	-- Pass to remove once the items are handled. Nil when nothing was read
+	id: string?,
+}
+
+export type Queue = {
+	name: string,
+	invisibilityTimeout: number,
+	add: (self: Queue, value: unknown, ttl: number, priority: number?) -> Result<nil>,
+	read: (self: Queue, options: QueueReadOptions) -> Result<QueueRead>,
+	remove: (self: Queue, id: string) -> Result<nil>,
+}
+
+--// messaging and teleport
+
+export type Connection = {
+	disconnect: (self: Connection) -> (),
+}
+
+export type MessageHandler = (data: unknown, sentAt: number) -> ()
+
+export type Messaging = {
+	publish: (self: Messaging, topic: string, data: unknown) -> Result<nil>,
+	subscribe: (self: Messaging, topic: string, handler: MessageHandler) -> Result<Connection>,
+}
+
+export type ReservedServer = {
+	code: string,
+	serverId: string,
+}
+
+export type TeleportOptions = {
+	reservedServerCode: string?,
+	data: unknown?,
+}
+
+export type Teleport = {
+	reserveServer: (self: Teleport, placeId: number) -> Result<ReservedServer>,
+	-- Players are Player instances in Roblox and plain values in mocks
+	teleport: (
+		self: Teleport,
+		placeId: number,
+		players: { unknown },
+		options: TeleportOptions?
+	) -> Result<nil>,
+}
+
+--// services
+
+-- Everything a server needs from Roblox. Stores take one, so the same code runs on
+-- `Geode.Raw.services()` in a game and on a mock server in tests
+export type Services = {
+	jobId: string,
+	placeId: number,
+	clock: Clock,
+	dataStore: (name: string, scope: string?) -> DataStore,
+	orderedDataStore: (name: string, scope: string?) -> OrderedDataStore,
+	hashMap: (name: string) -> HashMap,
+	sortedMap: (name: string) -> SortedMap,
+	queue: (name: string, invisibilityTimeout: number?) -> Queue,
+	messaging: Messaging,
+	teleport: Teleport,
+}
+
+return nil
