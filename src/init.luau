@@ -1,5 +1,13 @@
 --!strict
 
+local Quartz = require("@self/Quartz")
+local QuartzTypes = require("@self/Quartz/Types")
+
+export type Services = QuartzTypes.Services
+export type Clock = QuartzTypes.Clock
+export type Result<T> = QuartzTypes.Result<T>
+export type AdapterError = QuartzTypes.AdapterError
+
 --[=[
 	@class Geode
 
@@ -15,5 +23,19 @@ local Geode = {}
 	Semantic version of the running Geode build
 ]=]
 Geode.version = "0.0.0"
+
+--[=[
+	@prop Raw Raw
+	@within Geode
+	@readonly
+]=]
+Geode.Raw = Quartz.Raw
+
+--[=[
+	@prop Testing Testing
+	@within Geode
+	@readonly
+]=]
+Geode.Testing = Quartz.Testing
 
 return table.freeze(Geode)

@@ -1,6 +1,7 @@
 --!strict
 
 local Fixture = require("./Contracts/Fixture")
+local Geode = require("../../src")
 local Spec = require("../_lib/Spec")
 local Universe = require("../../src/Quartz/Mock/Universe")
 
@@ -114,6 +115,22 @@ return function(spec: Spec.Api)
 				universe.clock:wait(1)
 			end)
 			expect(heard).toBe(0)
+		end)
+	end)
+
+	describe("Geode entry points", function()
+		it("exposes the real and mock constructors", function()
+			expect(type(Geode.Raw.services)).toBe("function")
+			expect(type(Geode.Raw.fromRoblox)).toBe("function")
+			expect(Geode.Raw.classifyError("301: x").kind).toBe("throttled")
+			expect(type(Geode.Raw.clock)).toBe("function")
+			expect(Geode.Testing.clock(5):now()).toBe(5)
+			expect(type(Geode.Testing.universe():server().jobId)).toBe("string")
+		end)
+
+		it("freezes both tables", function()
+			expect(table.isfrozen(Geode.Raw)).toBe(true)
+			expect(table.isfrozen(Geode.Testing)).toBe(true)
 		end)
 	end)
 end
