@@ -31,6 +31,8 @@ export type Clock = {
 	wait: (self: Clock, seconds: number) -> (),
 	spawn: (self: Clock, fn: () -> ()) -> (),
 	delay: (self: Clock, seconds: number, fn: () -> ()) -> (),
+	-- Resumes a thread parked with coroutine.yield, on the next scheduler step rather than inline
+	resume: (self: Clock, thread: thread) -> (),
 }
 
 --// DataStore

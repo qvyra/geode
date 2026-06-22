@@ -84,6 +84,15 @@ function MockClock.delay(self: MockClock, seconds: number, fn: () -> ())
 	self:_schedule(seconds, nil, fn)
 end
 
+--[=[
+	Resumes a thread parked with coroutine.yield on the next step, the way task.defer does.
+	From then on it counts as a clock thread and may wait
+]=]
+function MockClock.resume(self: MockClock, thread: thread)
+	self._owned[thread] = true
+	self:_schedule(0, thread, nil)
+end
+
 function MockClock._popDue(self: MockClock, target: number): Sleeper?
 	local bestIndex: number? = nil
 	for index, sleeper in self._sleepers do

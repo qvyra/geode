@@ -27,6 +27,10 @@ function RealClock.new(): Types.Clock
 		task.delay(seconds, fn)
 	end
 
+	function clock.resume(_self: Types.Clock, thread: thread)
+		task.defer(thread)
+	end
+
 	return clock :: Types.Clock
 end
 
