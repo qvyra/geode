@@ -266,6 +266,9 @@ end
 function FakeRoblox.services(server: Universe.MockServer): Types.Services
 	local roblox: any = {
 		dataStoreService = {
+			GetRequestBudgetForRequestType = function(_self: any, requestType: string)
+				return server.budget:get(requestType :: any)
+			end,
 			GetDataStore = function(_self: any, name: string, scope: string)
 				return dataStore(server.dataStore(name, scope))
 			end,
@@ -320,6 +323,14 @@ function FakeRoblox.services(server: Universe.MockServer): Types.Services
 		placeId = server.placeId,
 		clock = server.clock,
 		api = {
+			budgetTypes = {
+				get = "get",
+				setIncrement = "setIncrement",
+				update = "update",
+				getSorted = "getSorted",
+				setIncrementSorted = "setIncrementSorted",
+				list = "list",
+			},
 			sortAscending = "Ascending",
 			sortDescending = "Descending",
 			newSetOptions = function(metadata)

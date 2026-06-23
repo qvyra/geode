@@ -35,6 +35,23 @@ export type Clock = {
 	resume: (self: Clock, thread: thread) -> (),
 }
 
+--// request budget
+
+-- Mirrors Enum.DataStoreRequestType. Which calls draw from which budget is a guess, see
+-- Mock/Context.luau
+export type BudgetType =
+	"get"
+	| "setIncrement"
+	| "update"
+	| "getSorted"
+	| "setIncrementSorted"
+	| "list"
+
+export type Budget = {
+	-- how many of this type can go out right now without a throttle
+	get: (self: Budget, budgetType: BudgetType) -> number,
+}
+
 --// DataStore
 
 export type KeyInfo = {
@@ -268,6 +285,7 @@ export type Services = {
 	jobId: string,
 	placeId: number,
 	clock: Clock,
+	budget: Budget,
 	dataStore: (name: string, scope: string?) -> DataStore,
 	orderedDataStore: (name: string, scope: string?) -> OrderedDataStore,
 	hashMap: (name: string) -> HashMap,

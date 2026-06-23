@@ -45,6 +45,15 @@ local PHRASE_KINDS: { { pattern: string, kind: ErrorKind } } = {
 	{ pattern = "internal", kind = "internal" },
 }
 
+Errors.THROTTLE_CODES = table.freeze({
+	get = 301,
+	set = 302,
+	increment = 303,
+	update = 304,
+	getSorted = 305,
+	remove = 306,
+} :: { [string]: number })
+
 --[=[
 	Turns whatever a Roblox service threw into an `AdapterError`
 

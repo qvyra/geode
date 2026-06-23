@@ -73,15 +73,73 @@ export type Shared = {
 	sequence: number,
 }
 
+export type BudgetState = {
+	amount: number,
+	refillPerSecond: number,
+	updatedAt: number,
+}
+
 export type Context = {
 	shared: Shared,
 	faults: Faults.Faults,
+	budgets: { [Types.BudgetType]: BudgetState },
 	jobId: string,
 	placeId: number,
 	alive: boolean,
 }
 
 local Context = {}
+
+-- Which budget each call draws from.
+-- TODO(verify): best guess at how Roblox charges calls, esp. RemoveAsync, GetVersionAsync
+-- and the ordered store writes
+local BUDGET_TYPES: { [string]: { [string]: Types.BudgetType } } = {
+	dataStore = {
+		get = "get",
+		set = "setIncrement",
+		increment = "setIncrement",
+		remove = "setIncrement",
+		update = "update",
+		listVersions = "list",
+		getVersion = "get",
+	},
+	orderedDataStore = {
+		get = "get",
+		set = "setIncrementSorted",
+		increment = "setIncrementSorted",
+		remove = "setIncrementSorted",
+		update = "update",
+		getSorted = "getSorted",
+	},
+}
+
+--[=[
+	The current budget, refilled for the time since it was last read
+]=]
+function Context.budget(context: Context, budgetType: Types.BudgetType): number
+	local state = context.budgets[budgetType]
+	if state == nil then
+		return math.huge
+	end
+	local now = context.shared.clock:now()
+	state.amount += (now - state.updatedAt) * state.refillPerSecond
+	state.updatedAt = now
+	return state.amount
+end
+
+local function consume(context: Context, service: string, method: string): Types.AdapterError?
+	local byMethod = BUDGET_TYPES[service]
+	local budgetType: Types.BudgetType? = if byMethod then byMethod[method] else nil
+	if budgetType == nil or context.budgets[budgetType] == nil then
+		return nil
+	end
+	if Context.budget(context, budgetType) < 1 then
+		local code = Errors.THROTTLE_CODES[method] or 304
+		return Errors.classify(`{code}: {method} request dropped, {budgetType} budget exhausted`)
+	end
+	context.budgets[budgetType].amount -= 1
+	return nil
+end
 
 function Context.nextId(shared: Shared): string
 	shared.sequence += 1
@@ -109,7 +167,15 @@ function Context.enter(
 	end
 	-- MockClock is a Clock at runtime, but Luau won't accept its method types as Clock's
 	local clock = context.shared.clock :: any
-	return context.faults:apply(clock, service, store, method, key)
+	local err, foreign = context.faults:apply(clock, service, store, method, key)
+	if err then
+		return err, nil
+	end
+	local budgetError = consume(context, service, method)
+	if budgetError then
+		return budgetError, nil
+	end
+	return nil, foreign
 end
 
 function Context.checkKey(shared: Shared, key: string): Types.AdapterError?

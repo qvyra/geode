@@ -3,7 +3,10 @@
 -- The few Roblox globals the real adapters need besides service objects. Passed in so the
 -- adapters stay free of globals and their wrapping code runs in Lune against fake services
 
+local Types = require("../Types")
+
 export type RobloxApi = {
+	budgetTypes: { [Types.BudgetType]: Enum.DataStoreRequestType },
 	sortAscending: Enum.SortDirection,
 	sortDescending: Enum.SortDirection,
 	newSetOptions: (metadata: { [string]: unknown }) -> DataStoreSetOptions,
@@ -18,6 +21,14 @@ local RobloxApi = {}
 ]=]
 function RobloxApi.live(): RobloxApi
 	return {
+		budgetTypes = {
+			get = Enum.DataStoreRequestType.GetAsync,
+			setIncrement = Enum.DataStoreRequestType.SetIncrementAsync,
+			update = Enum.DataStoreRequestType.UpdateAsync,
+			getSorted = Enum.DataStoreRequestType.GetSortedAsync,
+			setIncrementSorted = Enum.DataStoreRequestType.SetIncrementSortedAsync,
+			list = Enum.DataStoreRequestType.ListAsync,
+		},
 		sortAscending = Enum.SortDirection.Ascending,
 		sortDescending = Enum.SortDirection.Descending,
 		newSetOptions = function(metadata: { [string]: unknown }): DataStoreSetOptions

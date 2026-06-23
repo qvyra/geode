@@ -34,6 +34,7 @@ export type MockServer = {
 	jobId: string,
 	placeId: number,
 	clock: Types.Clock,
+	budget: Types.Budget,
 	dataStore: (name: string, scope: string?) -> Types.DataStore,
 	orderedDataStore: (name: string, scope: string?) -> Types.OrderedDataStore,
 	hashMap: (name: string) -> Types.HashMap,
@@ -46,6 +47,16 @@ export type MockServer = {
 		Adds a fault rule for calls made from this server
 	]=]
 	inject: (self: MockServer, rule: Faults.FaultRule) -> (),
+	--[=[
+		Caps a request budget for this server. Every matching call uses one, and the budget
+		refills at `refillPerSecond`. Budgets that were never set are unlimited
+	]=]
+	setBudget: (
+		self: MockServer,
+		budgetType: Types.BudgetType,
+		amount: number,
+		refillPerSecond: number?
+	) -> (),
 	clearFaults: (self: MockServer) -> (),
 	--[=[
 		Kills the server. Its pending calls never return and its subscribers stop hearing
@@ -120,6 +131,7 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 	local context: Context.Context = {
 		shared = self._shared,
 		faults = Faults.new(),
+		budgets = {},
 		jobId = options and options.jobId or `job-{self._servers}`,
 		placeId = options and options.placeId or 1,
 		alive = true,
@@ -137,6 +149,11 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 		jobId = context.jobId,
 		placeId = context.placeId,
 		clock = asAdapter(self.clock),
+		budget = {
+			get = function(_self: Types.Budget, budgetType: Types.BudgetType): number
+				return math.floor(Context.budget(context, budgetType))
+			end,
+		},
 		dataStore = function(name: string, scope: string?): Types.DataStore
 			local resolved = scope or "global"
 			return memo(`dataStore\0{name}\0{resolved}`, function()
@@ -169,6 +186,18 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 
 		inject = function(_self: MockServer, rule: Faults.FaultRule)
 			context.faults:add(rule)
+		end,
+		setBudget = function(
+			_self: MockServer,
+			budgetType: Types.BudgetType,
+			amount: number,
+			refillPerSecond: number?
+		)
+			context.budgets[budgetType] = {
+				amount = amount,
+				refillPerSecond = refillPerSecond or 0,
+				updatedAt = self.clock:now(),
+			}
 		end,
 		clearFaults = function(_self: MockServer)
 			context.faults:clear()

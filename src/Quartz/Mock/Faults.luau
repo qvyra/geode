@@ -49,15 +49,6 @@ Faults.__index = Faults
 export type Faults = typeof(setmetatable({} :: Fields, Faults))
 
 -- Real throttle message wording is unverified. `classify` only reads the code prefix
-local THROTTLE_CODES: { [string]: number } = {
-	get = 301,
-	set = 302,
-	increment = 303,
-	update = 304,
-	getSorted = 305,
-	remove = 306,
-}
-
 function Faults.new(): Faults
 	return setmetatable({ _rules = {} } :: Fields, Faults)
 end
@@ -95,7 +86,7 @@ end
 
 local function throttleError(service: string, method: string): Types.AdapterError
 	local code = if service == "dataStore" or service == "orderedDataStore"
-		then THROTTLE_CODES[method]
+		then Errors.THROTTLE_CODES[method]
 		else nil
 	if code then
 		return Errors.classify(`{code}: {method} request was throttled (injected)`)
