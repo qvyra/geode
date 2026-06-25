@@ -2,11 +2,14 @@
 
 local Quartz = require("@self/Quartz")
 local QuartzTypes = require("@self/Quartz/Types")
+local Scheduler = require("@self/Quartz/Scheduler")
 
 export type Services = QuartzTypes.Services
 export type Clock = QuartzTypes.Clock
 export type Result<T> = QuartzTypes.Result<T>
 export type AdapterError = QuartzTypes.AdapterError
+export type Scheduler = Scheduler.Scheduler
+export type Priority = Scheduler.Priority
 
 --[=[
 	@class Geode

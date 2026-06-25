@@ -7,6 +7,7 @@ local Errors = require("@self/Errors")
 local MockClock = require("@self/Mock/Clock")
 local RealClock = require("@self/Real/Clock")
 local RealServices = require("@self/Real/Services")
+local Scheduler = require("@self/Scheduler")
 local Universe = require("@self/Mock/Universe")
 
 --[=[
@@ -47,6 +48,13 @@ local Raw = {
 		@return Clock -- a clock on wall time and the task library
 	]=]
 	clock = RealClock.new,
+	--[=[
+		@function scheduler
+		@within Raw
+		@param options SchedulerOptions
+		@return Scheduler -- see Scheduler.new
+	]=]
+	scheduler = Scheduler.new,
 }
 
 --[=[
