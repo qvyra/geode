@@ -35,11 +35,34 @@ local Spec = {}
 
 --// helpers
 
-local function show(value: unknown): string
+local function show(value: unknown, depth: number?): string
 	if type(value) == "string" then
 		return string.format("%q", value)
 	end
-	return tostring(value)
+	if type(value) ~= "table" then
+		return tostring(value)
+	end
+	local level = depth or 0
+	if level >= 3 then
+		return "{...}"
+	end
+	local source = value :: { [unknown]: unknown }
+	local parts = {}
+	for _, item in ipairs(source :: { unknown }) do
+		table.insert(parts, show(item, level + 1))
+		if #parts >= 20 then
+			break
+		end
+	end
+	local named = {}
+	for key, item in source do
+		if type(key) ~= "number" or key > #source or key % 1 ~= 0 then
+			table.insert(named, `{tostring(key)} = {show(item, level + 1)}`)
+		end
+	end
+	table.sort(named)
+	table.move(named, 1, #named, #parts + 1, parts)
+	return `\{ {table.concat(parts, ", ")} \}`
 end
 
 local function deepEqual(a: unknown, b: unknown): boolean
