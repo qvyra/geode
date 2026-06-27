@@ -4,6 +4,7 @@
 -- services do, so the real adapters' wrapping code (argument order, pcall, key info conversion,
 -- paging) runs in Lune. They impersonate classes this runtime doesn't have, hence `any`
 
+local Json = require("../../src/Quartz/Json")
 local RealServices = require("../../src/Quartz/Real/Services")
 local Types = require("../../src/Quartz/Types")
 local Universe = require("../../src/Quartz/Mock/Universe")
@@ -317,6 +318,11 @@ function FakeRoblox.services(server: Universe.MockServer): Types.Services
 					reservedServerCode = options and options.code,
 					data = options and options.data,
 				}))
+			end,
+		},
+		httpService = {
+			JSONEncode = function(_self: any, value: unknown)
+				return Json.encode(value)
 			end,
 		},
 		jobId = server.jobId,

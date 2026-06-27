@@ -277,6 +277,13 @@ export type Teleport = {
 	) -> Result<nil>,
 }
 
+--// JSON
+
+-- encode only, for size estimates
+export type Json = {
+	encode: (self: Json, value: unknown) -> string,
+}
+
 --// services
 
 -- Everything a server needs from Roblox. Stores take one, so the same code runs on
@@ -286,6 +293,7 @@ export type Services = {
 	placeId: number,
 	clock: Clock,
 	budget: Budget,
+	json: Json,
 	dataStore: (name: string, scope: string?) -> DataStore,
 	orderedDataStore: (name: string, scope: string?) -> OrderedDataStore,
 	hashMap: (name: string) -> HashMap,

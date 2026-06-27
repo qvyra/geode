@@ -19,6 +19,7 @@ export type Roblox = {
 	memoryStoreService: MemoryStoreService,
 	messagingService: MessagingService,
 	teleportService: TeleportService,
+	httpService: HttpService,
 	jobId: string,
 	placeId: number,
 	api: RobloxApi.RobloxApi,
@@ -57,6 +58,11 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 			get = function(_self: Types.Budget, budgetType: Types.BudgetType): number
 				local requestType = roblox.api.budgetTypes[budgetType]
 				return roblox.dataStoreService:GetRequestBudgetForRequestType(requestType)
+			end,
+		},
+		json = {
+			encode = function(_self: Types.Json, value: unknown): string
+				return roblox.httpService:JSONEncode(value)
 			end,
 		},
 		dataStore = function(name: string, scope: string?): Types.DataStore
@@ -113,6 +119,7 @@ function RealServices.live(): Types.Services
 			memoryStoreService = game:GetService("MemoryStoreService"),
 			messagingService = game:GetService("MessagingService"),
 			teleportService = game:GetService("TeleportService"),
+			httpService = game:GetService("HttpService"),
 			jobId = game.JobId,
 			placeId = game.PlaceId,
 			api = RobloxApi.live(),

@@ -5,6 +5,7 @@
 
 local Context = require("./Context")
 local Faults = require("./Faults")
+local Json = require("../Json")
 local MockClock = require("./Clock")
 local MockDataStore = require("./DataStore")
 local MockHashMap = require("./HashMap")
@@ -35,6 +36,7 @@ export type MockServer = {
 	placeId: number,
 	clock: Types.Clock,
 	budget: Types.Budget,
+	json: Types.Json,
 	dataStore: (name: string, scope: string?) -> Types.DataStore,
 	orderedDataStore: (name: string, scope: string?) -> Types.OrderedDataStore,
 	hashMap: (name: string) -> Types.HashMap,
@@ -154,6 +156,7 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 				return math.floor(Context.budget(context, budgetType))
 			end,
 		},
+		json = Json.adapter(),
 		dataStore = function(name: string, scope: string?): Types.DataStore
 			local resolved = scope or "global"
 			return memo(`dataStore\0{name}\0{resolved}`, function()
