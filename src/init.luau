@@ -1,5 +1,8 @@
 --!strict
 
+local Obsidian = require("@self/Obsidian")
+local ObsidianIssues = require("@self/Obsidian/Issues")
+local ObsidianSchema = require("@self/Obsidian/Schema")
 local Quartz = require("@self/Quartz")
 local QuartzTypes = require("@self/Quartz/Types")
 local Scheduler = require("@self/Quartz/Scheduler")
@@ -10,6 +13,10 @@ export type Result<T> = QuartzTypes.Result<T>
 export type AdapterError = QuartzTypes.AdapterError
 export type Scheduler = Scheduler.Scheduler
 export type Priority = Scheduler.Priority
+export type Schema = ObsidianSchema.Schema
+export type Codec = ObsidianSchema.Codec
+export type ValidationResult = ObsidianIssues.Result
+export type Issue = ObsidianIssues.Issue
 
 --[=[
 	@class Geode
@@ -40,5 +47,30 @@ Geode.Raw = Quartz.Raw
 	@readonly
 ]=]
 Geode.Testing = Quartz.Testing
+
+--[=[
+	@prop t t
+	@within Geode
+	@readonly
+
+	Schema builders: `Geode.t.number({ min = 0 })`, `Geode.t.struct({ ... })` and the rest
+]=]
+Geode.t = Obsidian.t
+
+--[=[
+	@prop codec CodecSet
+	@within Geode
+	@readonly
+
+	Codecs for Roblox datatypes, usable anywhere a schema is
+]=]
+Geode.codec = Obsidian.codec
+
+--[=[
+	@prop schema Schema
+	@within Geode
+	@readonly
+]=]
+Geode.schema = Obsidian.schema
 
 return table.freeze(Geode)
