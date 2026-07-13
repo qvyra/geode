@@ -1,11 +1,14 @@
 --!strict
 
+local Document = require("@self/Matrix/Document")
+local Matrix = require("@self/Matrix")
 local Obsidian = require("@self/Obsidian")
 local ObsidianIssues = require("@self/Obsidian/Issues")
 local ObsidianSchema = require("@self/Obsidian/Schema")
 local Quartz = require("@self/Quartz")
 local QuartzTypes = require("@self/Quartz/Types")
 local Scheduler = require("@self/Quartz/Scheduler")
+local Transaction = require("@self/Matrix/Transaction")
 
 export type Services = QuartzTypes.Services
 export type Clock = QuartzTypes.Clock
@@ -17,6 +20,11 @@ export type Schema = ObsidianSchema.Schema
 export type Codec = ObsidianSchema.Codec
 export type ValidationResult = ObsidianIssues.Result
 export type Issue = ObsidianIssues.Issue
+export type Document = Document.Document
+export type CommitRecord = Document.CommitRecord
+export type TxResult = Document.TxResult
+export type Transaction = Transaction.Transaction
+export type Source = Transaction.Source
 
 --[=[
 	@class Geode
@@ -34,12 +42,29 @@ local Geode = {}
 ]=]
 Geode.version = "0.0.0"
 
+-- Raw gathers the low level pieces of every layer. Quartz can't see the layers above it, so
+-- the table gets built here
+local QuartzRaw = Quartz.Raw
+
 --[=[
 	@prop Raw Raw
 	@within Geode
 	@readonly
 ]=]
-Geode.Raw = Quartz.Raw
+Geode.Raw = table.freeze({
+	services = QuartzRaw.services,
+	fromRoblox = QuartzRaw.fromRoblox,
+	classifyError = QuartzRaw.classifyError,
+	clock = QuartzRaw.clock,
+	scheduler = QuartzRaw.scheduler,
+	--[=[
+		@function document
+		@within Raw
+		@param options DocumentOptions?
+		@return Document -- in-memory state with the full transaction pipeline
+	]=]
+	document = Matrix.Document.new,
+})
 
 --[=[
 	@prop Testing Testing
@@ -72,5 +97,15 @@ Geode.codec = Obsidian.codec
 	@readonly
 ]=]
 Geode.schema = Obsidian.schema
+
+--[=[
+	@function op
+	@within Geode
+	@param name string
+	@param handler OpHandler
+
+	Registers a custom op for the whole game. See Transaction.register
+]=]
+Geode.op = Matrix.Transaction.register
 
 return table.freeze(Geode)
