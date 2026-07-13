@@ -96,3 +96,29 @@ Went with a priority queue where waiting requests gain priority over time, one c
 The scheduler is event driven. It reacts to submits and completions and sets one timer for the next moment a blocked request could start. There is no polling loop.
 
 **Commits:** 5142ce4, 968ce27
+
+## 10. Codecs are chosen by the schema, not tagged in the data
+
+**Date:** 2026-07-13
+
+Datatypes like Vector3 and CFrame can't be stored as they are. They become plain values on save and turn back on load. One way is to tag each value, like `{ __type = "Vector3", x, y, z }`, and decode anything tagged. I store the bare form, `{ x, y, z }`, and let the schema say which codec applies.
+
+That keeps stored data small, which matters against the DataStore size limit, and a tag can't be spoofed or collide with real data. The cost is that data saved without a schema can't hold datatypes at all. The storable check reports that instead of letting JSON mangle them. Each codec has a version so its stored form can change later through a migration.
+
+**Commits:** 71c9b19, 5704530
+
+## 11. State is an immutable tree with structural sharing
+
+**Date:** 2026-07-13
+
+**Context:** Reads have to return values nobody can mutate. Every write needs an exact diff for guards, replication and history. A failed transaction has to leave no trace.
+
+**Options:**
+
+- Mutable state, deep copied on every read and snapshotted before every transaction
+- Proxy tables that record writes
+- An immutable tree where a write clones only the path it touches
+
+**Chosen:** the immutable tree. Reads hand out the frozen tree directly, with no copy. A transaction is just a draft root, so rolling back means dropping it. Diffs walk the old and new roots and skip every subtree they share, so their cost follows the size of the change. Proxies were out because tables behind proxies break `#`, `ipairs` and `table.*` for callers.
+
+**Commits:** 69d8bba, 3fb1eea
