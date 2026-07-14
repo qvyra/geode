@@ -59,6 +59,7 @@
 		"Datatypes",
 		"cframe",
 		"udim",
+		"ipairs",
 		"millis"
 	]
 }
