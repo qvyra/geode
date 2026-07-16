@@ -277,6 +277,13 @@ export type Teleport = {
 	) -> Result<nil>,
 }
 
+--// players
+
+export type Players = {
+	-- not an error if they already left
+	kick: (self: Players, userId: number, reason: string) -> Result<nil>,
+}
+
 --// JSON
 
 -- encode only, for size estimates
@@ -294,6 +301,7 @@ export type Services = {
 	clock: Clock,
 	budget: Budget,
 	json: Json,
+	players: Players,
 	dataStore: (name: string, scope: string?) -> DataStore,
 	orderedDataStore: (name: string, scope: string?) -> OrderedDataStore,
 	hashMap: (name: string) -> HashMap,

@@ -320,6 +320,15 @@ function FakeRoblox.services(server: Universe.MockServer): Types.Services
 				}))
 			end,
 		},
+		playersService = {
+			GetPlayerByUserId = function(_self: any, userId: number)
+				return {
+					Kick = function(_player: any, reason: string)
+						unwrap(server.players:kick(userId, reason))
+					end,
+				}
+			end,
+		},
 		httpService = {
 			JSONEncode = function(_self: any, value: unknown)
 				return Json.encode(value)

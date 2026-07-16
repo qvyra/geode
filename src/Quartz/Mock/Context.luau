@@ -59,6 +59,12 @@ export type TeleportRecord = {
 	options: Types.TeleportOptions?,
 }
 
+export type KickRecord = {
+	jobId: string,
+	userId: number,
+	reason: string,
+}
+
 export type Shared = {
 	clock: MockClock.MockClock,
 	limits: Limits,
@@ -70,6 +76,7 @@ export type Shared = {
 	queues: { [string]: { QueueItem } },
 	topics: { [string]: { Subscription } },
 	teleports: { TeleportRecord },
+	kicks: { KickRecord },
 	sequence: number,
 }
 

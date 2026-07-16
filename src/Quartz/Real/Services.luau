@@ -3,6 +3,7 @@
 -- The one place in the core that touches Roblox services. Everything above Quartz gets a
 -- `Services` value instead, which is how the same code runs on mocks in Lune
 
+local Errors = require("../Errors")
 local RealClock = require("./Clock")
 local RealDataStore = require("./DataStore")
 local RealHashMap = require("./HashMap")
@@ -20,6 +21,7 @@ export type Roblox = {
 	messagingService: MessagingService,
 	teleportService: TeleportService,
 	httpService: HttpService,
+	playersService: Players,
 	jobId: string,
 	placeId: number,
 	api: RobloxApi.RobloxApi,
@@ -63,6 +65,24 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 		json = {
 			encode = function(_self: Types.Json, value: unknown): string
 				return roblox.httpService:JSONEncode(value)
+			end,
+		},
+		players = {
+			kick = function(
+				_self: Types.Players,
+				userId: number,
+				reason: string
+			): Types.Result<nil>
+				local ok, err = pcall(function()
+					local player = roblox.playersService:GetPlayerByUserId(userId)
+					if player then
+						player:Kick(reason)
+					end
+				end)
+				if not ok then
+					return Errors.failWith(Errors.classify(err))
+				end
+				return Errors.ok(nil)
 			end,
 		},
 		dataStore = function(name: string, scope: string?): Types.DataStore
@@ -120,6 +140,7 @@ function RealServices.live(): Types.Services
 			messagingService = game:GetService("MessagingService"),
 			teleportService = game:GetService("TeleportService"),
 			httpService = game:GetService("HttpService"),
+			playersService = game:GetService("Players"),
 			jobId = game.JobId,
 			placeId = game.PlaceId,
 			api = RobloxApi.live(),

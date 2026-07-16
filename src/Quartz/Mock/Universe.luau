@@ -37,6 +37,7 @@ export type MockServer = {
 	clock: Types.Clock,
 	budget: Types.Budget,
 	json: Types.Json,
+	players: Types.Players,
 	dataStore: (name: string, scope: string?) -> Types.DataStore,
 	orderedDataStore: (name: string, scope: string?) -> Types.OrderedDataStore,
 	hashMap: (name: string) -> Types.HashMap,
@@ -71,6 +72,7 @@ export type MockServer = {
 type Fields = {
 	clock: MockClock.MockClock,
 	teleports: { Context.TeleportRecord },
+	kicks: { Context.KickRecord },
 	_shared: Context.Shared,
 	_servers: number,
 }
@@ -107,11 +109,13 @@ function Universe.new(options: UniverseOptions?): Universe
 		queues = {},
 		topics = {},
 		teleports = {},
+		kicks = {},
 		sequence = 0,
 	}
 	local self: Fields = {
 		clock = clock,
 		teleports = shared.teleports,
+		kicks = shared.kicks,
 		_shared = shared,
 		_servers = 0,
 	}
@@ -157,6 +161,19 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 			end,
 		},
 		json = Json.adapter(),
+		players = {
+			kick = function(
+				_self: Types.Players,
+				userId: number,
+				reason: string
+			): Types.Result<nil>
+				table.insert(
+					self._shared.kicks,
+					{ jobId = context.jobId, userId = userId, reason = reason }
+				)
+				return { ok = true, value = nil }
+			end,
+		},
 		dataStore = function(name: string, scope: string?): Types.DataStore
 			local resolved = scope or "global"
 			return memo(`dataStore\0{name}\0{resolved}`, function()
