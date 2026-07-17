@@ -189,11 +189,14 @@ function Document.transact(
 	self._busy = false
 	tx:_close()
 	if not ok then
-		return { ok = false, error = Transaction.toError(thrown) }
+		local err = Transaction.toError(thrown)
+		self:_settle(tx, { committed = false, record = nil, error = err })
+		return { ok = false, error = err }
 	end
 
 	local entries = Tree.diff(self._root, tx._root)
 	if #entries == 0 then
+		self:_settle(tx, { committed = false, record = nil, error = nil })
 		return { ok = true, record = nil }
 	end
 
@@ -218,7 +221,20 @@ function Document.transact(
 		note = options and options.note,
 	})
 	self:_notify(previous, entries, record)
+	self:_settle(tx, { committed = true, record = record, error = nil })
 	return { ok = true, record = record }
+end
+
+-- Runs what stages deferred. After listeners, so a deferred write sees committed state
+function Document._settle(self: Document, tx: Transaction, outcome: Transaction.Outcome)
+	for _, callback in tx._deferred do
+		local ok, err = pcall(function()
+			callback(outcome)
+		end)
+		if not ok then
+			self._reportError(`deferred callback error: {tostring(err)}`)
+		end
+	end
 end
 
 function Document.set(self: Document, path: PathLike, value: unknown): TxResult

@@ -37,6 +37,14 @@ export type TxError = {
 	message: string,
 }
 
+-- What a deferred callback learns about how the transaction ended. `record` is set only when it
+-- committed a change
+export type Outcome = {
+	committed: boolean,
+	record: unknown,
+	error: TxError?,
+}
+
 export type OpHandler = (tx: Transaction, ...any) -> ()
 
 type Fields = {
@@ -47,6 +55,7 @@ type Fields = {
 	_depth: number,
 	_allowed: { [string]: boolean },
 	_open: boolean,
+	_deferred: { (outcome: Outcome) -> () },
 }
 
 local Transaction = {}
@@ -167,6 +176,7 @@ function Transaction.new(
 		_depth = 0,
 		_allowed = allowedOps,
 		_open = true,
+		_deferred = {},
 	}
 	return setmetatable(self, Transaction)
 end
@@ -231,6 +241,13 @@ end
 ]=]
 function Transaction.get(self: Transaction, path: PathLike?): unknown
 	return Tree.get(self._root, parse(path))
+end
+
+--[=[
+	Reads the state as it was when the transaction began, ignoring its own writes
+]=]
+function Transaction.getBefore(self: Transaction, path: PathLike?): unknown
+	return Tree.get(self._base, parse(path))
 end
 
 function Transaction.set(self: Transaction, path: PathLike, value: unknown)
@@ -400,6 +417,16 @@ end
 ]=]
 function Transaction.diff(self: Transaction): { Tree.DiffEntry }
 	return Tree.diff(self._base, self._root)
+end
+
+--[=[
+	Runs `callback` once the transaction has settled, whether it committed, changed nothing or
+	failed. Stages use it for work that must not happen inside the transaction, like firing events
+	whose handlers may write to the same store
+]=]
+function Transaction.defer(self: Transaction, callback: (outcome: Outcome) -> ())
+	self:_ensureOpen()
+	table.insert(self._deferred, callback)
 end
 
 function Transaction._close(self: Transaction)
