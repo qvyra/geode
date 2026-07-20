@@ -1,8 +1,9 @@
 --!strict
 
--- L1. Schemas, codecs and validation
+-- L1. Schemas, codecs, validation and guards
 
 local Codecs = require("@self/Codecs")
+local Guards = require("@self/Guards")
 local Schema = require("@self/Schema")
 local Size = require("@self/Size")
 local Storable = require("@self/Storable")
@@ -69,8 +70,27 @@ local schema = {
 -- Codecs read the datatype globals only when a value is decoded, so this loads fine outside Roblox
 local codec = Codecs.build(Codecs.liveDatatypes)
 
+--[=[
+	@class guard
+
+	Rules every transaction has to pass before it commits. Build them here and hand them to a
+	store, or to a guard set from `Geode.Raw.guards`
+]=]
+local guard = {
+	range = Guards.range,
+	delta = Guards.delta,
+	rate = Guards.rate,
+	rateValue = Guards.rateValue,
+	requires = Guards.requires,
+	subset = Guards.subset,
+	schema = Guards.schema,
+	custom = Guards.custom,
+}
+
 return {
 	t = table.freeze(Schema),
 	codec = codec,
 	schema = table.freeze(schema),
+	guard = table.freeze(guard),
+	guardSet = Guards.set,
 }

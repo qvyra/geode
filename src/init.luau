@@ -2,6 +2,7 @@
 
 local Document = require("@self/Matrix/Document")
 local Matrix = require("@self/Matrix")
+local Guards = require("@self/Obsidian/Guards")
 local Obsidian = require("@self/Obsidian")
 local ObsidianIssues = require("@self/Obsidian/Issues")
 local ObsidianSchema = require("@self/Obsidian/Schema")
@@ -25,6 +26,9 @@ export type CommitRecord = Document.CommitRecord
 export type TxResult = Document.TxResult
 export type Transaction = Transaction.Transaction
 export type Source = Transaction.Source
+export type Guard = Guards.Guard
+export type GuardSet = Guards.GuardSet
+export type Violation = Guards.Violation
 
 --[=[
 	@class Geode
@@ -64,6 +68,13 @@ Geode.Raw = table.freeze({
 		@return Document -- in-memory state with the full transaction pipeline
 	]=]
 	document = Matrix.Document.new,
+	--[=[
+		@function guards
+		@within Raw
+		@param options GuardSetOptions?
+		@return GuardSet -- attach it to a document as its last stage
+	]=]
+	guards = Obsidian.guardSet,
 })
 
 --[=[
@@ -97,6 +108,15 @@ Geode.codec = Obsidian.codec
 	@readonly
 ]=]
 Geode.schema = Obsidian.schema
+
+--[=[
+	@prop guard guard
+	@within Geode
+	@readonly
+
+	Guard builders: `Geode.guard.range("coins", { min = 0 })` and the rest
+]=]
+Geode.guard = Obsidian.guard
 
 --[=[
 	@function op
