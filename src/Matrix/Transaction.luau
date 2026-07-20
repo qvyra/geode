@@ -56,6 +56,7 @@ type Fields = {
 	_allowed: { [string]: boolean },
 	_open: boolean,
 	_deferred: { (outcome: Outcome) -> () },
+	_provenance: { [string]: SourceKind },
 }
 
 local Transaction = {}
@@ -177,6 +178,7 @@ function Transaction.new(
 		_allowed = allowedOps,
 		_open = true,
 		_deferred = {},
+		_provenance = {},
 	}
 	return setmetatable(self, Transaction)
 end
@@ -427,6 +429,23 @@ end
 function Transaction.defer(self: Transaction, callback: (outcome: Outcome) -> ())
 	self:_ensureOpen()
 	table.insert(self._deferred, callback)
+end
+
+--[=[
+	Records who wrote a path, keyed by its formatted form. First writer wins, so a player's own
+	write never gets relabeled as a reaction's
+]=]
+function Transaction.markWriter(self: Transaction, pathKey: string, kind: SourceKind)
+	if self._provenance[pathKey] == nil then
+		self._provenance[pathKey] = kind
+	end
+end
+
+--[=[
+	Who wrote a path in this transaction. Paths nobody claimed belong to the transaction's source
+]=]
+function Transaction.writerOf(self: Transaction, pathKey: string): SourceKind
+	return self._provenance[pathKey] or self.source.kind
 end
 
 function Transaction._close(self: Transaction)

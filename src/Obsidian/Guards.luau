@@ -665,10 +665,25 @@ function GuardSet._context(self: GuardSet, tx: Transaction.Transaction): Context
 	}
 end
 
-local function applies(guard: Guard, ctx: Context): boolean
-	if guard.skipSources[ctx.source.kind] then
-		return false
+-- A guard only sees changes from sources it doesn't skip. So when a player's transaction also
+-- set off reactions, rate limits count the player's own changes and let the reaction writes
+-- through
+local function filtered(guard: Guard, ctx: Context, tx: Transaction.Transaction): Context
+	if next(guard.skipSources) == nil then
+		return ctx
 	end
+	local kept = {}
+	for _, entry in ctx.diff do
+		if not guard.skipSources[tx:writerOf(Path.format(entry.path))] then
+			table.insert(kept, entry)
+		end
+	end
+	local view = table.clone(ctx)
+	view.diff = kept
+	return view
+end
+
+local function applies(guard: Guard, ctx: Context): boolean
 	if guard.ops then
 		for name in ctx.opNames do
 			if guard.ops[name] then
@@ -705,14 +720,15 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 		table.sort(opNames)
 
 		local violations: { Violation } = {}
-		local checked: { Guard } = {}
+		local checked: { { guard: Guard, ctx: Context } } = {}
 		local strongest = 0
 		for _, guard in self._guards do
 			if not applies(guard, ctx) then
 				continue
 			end
-			table.insert(checked, guard)
-			for _, finding in guard.check(ctx, self._state[guard]) do
+			local view = filtered(guard, ctx, tx)
+			table.insert(checked, { guard = guard, ctx = view })
+			for _, finding in guard.check(view, self._state[guard]) do
 				local violation: Violation = {
 					guard = guard.name,
 					kind = guard.kind,
@@ -742,9 +758,10 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 				self._players:kick(ctx.userId, violations[1].reason)
 			end
 			if outcome.committed then
-				for _, guard in checked do
-					if guard.committed then
-						guard.committed(ctx, self._state[guard])
+				for _, entry in checked do
+					local committed = entry.guard.committed
+					if committed then
+						committed(entry.ctx, self._state[entry.guard])
 					end
 				end
 			end
