@@ -114,6 +114,15 @@ local function collect(old: unknown, new: unknown, path: Path, into: { DiffEntry
 end
 
 --[=[
+	Deep equality, short cutting on shared subtrees
+]=]
+function Tree.equal(a: unknown, b: unknown): boolean
+	local entries = {}
+	collect(a, b, {}, entries)
+	return #entries == 0
+end
+
+--[=[
 	Every leaf that differs between two roots. Shared subtrees are skipped without walking them,
 	so cost scales with the change, not the data
 ]=]

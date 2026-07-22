@@ -48,6 +48,13 @@ export type Options = {
 
 export type Observer = (new: unknown, old: unknown, record: CommitRecord) -> ()
 
+-- Computed from stored state. Reads like data, but is never written or saved
+type Derived = {
+	name: string,
+	deps: { Path },
+	read: (root: unknown) -> unknown,
+}
+
 type Listener = {
 	path: Path?,
 	callback: (...any) -> (),
@@ -65,6 +72,7 @@ type Fields = {
 	_commitListeners: { Listener },
 	_busy: boolean,
 	_readOnly: string?,
+	_derived: { [string]: Derived },
 }
 
 local Document = {}
@@ -98,6 +106,7 @@ function Document.new(options: Options?): Document
 		_commitListeners = {},
 		_busy = false,
 		_readOnly = nil,
+		_derived = {},
 	}
 	return setmetatable(self, Document)
 end
@@ -108,7 +117,41 @@ end
 	The frozen value at a path, or the whole state with no path
 ]=]
 function Document.get(self: Document, path: PathLike?): unknown
-	return Tree.get(self._root, Path.parse(path))
+	local parsed = Path.parse(path)
+	local derived = self:_derivedAt(parsed)
+	if derived then
+		return Tree.get(derived.read(self._root), table.move(parsed, 2, #parsed, 1, {}))
+	end
+	return Tree.get(self._root, parsed)
+end
+
+function Document._derivedAt(self: Document, path: Path): Derived?
+	local first = path[1]
+	return if type(first) == "string" then self._derived[first] else nil
+end
+
+--[=[
+	Adds a top level field computed from `deps`. Reads like any other field through `get` and
+	`observe`, but it can't be written and isn't in the snapshot. The name can't clash with a
+	stored field
+]=]
+function Document.addDerived(
+	self: Document,
+	name: string,
+	deps: { PathLike },
+	read: (root: unknown) -> unknown
+)
+	assert(type(name) == "string" and name ~= "", "a derived field needs a name")
+	assert(self._derived[name] == nil, `a derived field named {name} already exists`)
+	assert(
+		Tree.get(self._root, { name }) == nil,
+		`derived field {name} clashes with a stored field of the same name`
+	)
+	local parsed = {}
+	for _, dep in deps do
+		table.insert(parsed, Path.parse(dep))
+	end
+	self._derived[name] = { name = name, deps = parsed, read = read }
 end
 
 --[=[
@@ -195,6 +238,17 @@ function Document.transact(
 	end
 
 	local entries = Tree.diff(self._root, tx._root)
+	for _, entry in entries do
+		local derived = self:_derivedAt(entry.path)
+		if derived then
+			local err: Transaction.TxError = {
+				kind = "rejected",
+				message = `{derived.name} is a derived field and can't be written`,
+			}
+			self:_settle(tx, { committed = false, record = nil, error = err })
+			return { ok = false, error = err }
+		end
+	end
 	if #entries == 0 then
 		self:_settle(tx, { committed = false, record = nil, error = nil })
 		return { ok = true, record = nil }
@@ -365,14 +419,31 @@ function Document._notify(
 			continue
 		end
 		local path = observer.path :: Path
+		local derived = self:_derivedAt(path)
+		local watched: { Path } = if derived then derived.deps else { path }
 		local touched = false
 		for _, entry in entries do
-			if Path.related(entry.path, path) then
-				touched = true
+			for _, watchedPath in watched do
+				if Path.related(entry.path, watchedPath) then
+					touched = true
+					break
+				end
+			end
+			if touched then
 				break
 			end
 		end
-		if touched then
+		if not touched then
+			continue
+		end
+		if derived then
+			local rest = table.move(path, 2, #path, 1, {})
+			local old = Tree.get(derived.read(previous), rest)
+			local new = Tree.get(derived.read(self._root), rest)
+			if not Tree.equal(old, new) then
+				self:_call(observer, new, old, record)
+			end
+		else
 			local old = Tree.get(previous, path)
 			local new = Tree.get(self._root, path)
 			if old ~= new then
