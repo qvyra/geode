@@ -2,6 +2,8 @@
 
 local Document = require("@self/Matrix/Document")
 local Matrix = require("@self/Matrix")
+local Facet = require("@self/Facet")
+local FacetTypes = require("@self/Facet/Facet")
 local Guards = require("@self/Obsidian/Guards")
 local Obsidian = require("@self/Obsidian")
 local ObsidianIssues = require("@self/Obsidian/Issues")
@@ -29,6 +31,10 @@ export type Source = Transaction.Source
 export type Guard = Guards.Guard
 export type GuardSet = Guards.GuardSet
 export type Violation = Guards.Violation
+export type Bundle = FacetTypes.Bundle
+export type Reaction = FacetTypes.Reaction
+export type Derived = FacetTypes.Derived
+export type FacetSet = FacetTypes.FacetSet
 
 --[=[
 	@class Geode
@@ -75,6 +81,13 @@ Geode.Raw = table.freeze({
 		@return GuardSet -- attach it to a document as its last stage
 	]=]
 	guards = Obsidian.guardSet,
+	--[=[
+		@function facets
+		@within Raw
+		@param options FacetSetOptions
+		@return FacetSet -- attach it to a document before any guard set
+	]=]
+	facets = Facet.set,
 })
 
 --[=[
@@ -117,6 +130,36 @@ Geode.schema = Obsidian.schema
 	Guard builders: `Geode.guard.range("coins", { min = 0 })` and the rest
 ]=]
 Geode.guard = Obsidian.guard
+
+--[=[
+	@function bundle
+	@within Geode
+	@param fields { PathLike }
+	@param normalize (tx: Transaction) -> ()
+	@param options BundleOptions?
+	@return Bundle
+]=]
+Geode.bundle = Facet.bundle
+
+--[=[
+	@function react
+	@within Geode
+	@param deps { PathLike }
+	@param run (tx: Transaction) -> ()
+	@param options ReactionOptions
+	@return Reaction
+]=]
+Geode.react = Facet.react
+
+--[=[
+	@function derive
+	@within Geode
+	@param name string
+	@param deps { PathLike }
+	@param compute (state: unknown) -> unknown
+	@return Derived
+]=]
+Geode.derive = Facet.derive
 
 --[=[
 	@function op
