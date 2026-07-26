@@ -122,3 +122,27 @@ That keeps stored data small, which matters against the DataStore size limit, an
 **Chosen:** the immutable tree. Reads hand out the frozen tree directly, with no copy. A transaction is just a draft root, so rolling back means dropping it. Diffs walk the old and new roots and skip every subtree they share, so their cost follows the size of the change. Proxies were out because tables behind proxies break `#`, `ipairs` and `table.*` for callers.
 
 **Commits:** 69d8bba, 3fb1eea
+
+## 12. Guards run last and resolve to one action
+
+**Date:** 2026-07-26
+
+Several guards can object to the same transaction with different actions, and some reactions write on behalf of a change a player already made. The alternative to what I picked was running guards per op, as each op lands.
+
+Went with running them once, on the final diff, as the last stage of the pipeline after bundles and reactions. A guard then sees what would really be written, and a rejection rolls back reaction writes too.
+
+Every violation is reported and the strongest action wins: kick, then reject, then flag, then warn. A custom action that returns nothing rejects, so a broken handler fails closed. Rate guards count only committed changes, so a rejected attempt never uses up a player's budget. Reaction and bundle writes skip rate guards by default but still face every other kind.
+
+**Commits:** 5b75df1, 70ac40d
+
+## 13. Reactions declare what they write
+
+**Date:** 2026-07-26
+
+Reaction cycles should be caught when reactions are defined, not when they loop in a live server. A dependency graph for that needs to know what each reaction reads and also what it writes, so declaring dependencies alone and detecting loops at runtime with a depth limit wasn't enough.
+
+`Geode.react(deps, run, { writes = { ... } })` refuses to build without writes. Cycles, including loops through a bundle, fail when the facet set is created, and reactions run in a fixed topological order. A reaction or bundle that writes outside its declaration fails the transaction, which keeps the up front check honest. The depth limit stays as a backstop for long chains through bundles.
+
+Bundle and reaction writes are labeled with their writer. Rate guards skip them by default while every other guard still sees them, so a level up reward doesn't use up the player's coin rate limit but still can't push coins past a range guard.
+
+**Commits:** 5d7e925, 1582005
