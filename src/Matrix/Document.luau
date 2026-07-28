@@ -39,6 +39,7 @@ export type Stage = (tx: Transaction) -> ()
 
 export type Options = {
 	data: unknown?,
+	revision: number?,
 	ops: { string }?,
 	stages: { Stage }?,
 	clock: Types.Clock?,
@@ -95,7 +96,7 @@ function Document.new(options: Options?): Document
 	end
 	local self: Fields = {
 		_root = Tree.adopt(if options and options.data ~= nil then options.data else {}),
-		_revision = 0,
+		_revision = options and options.revision or 0,
 		_allowed = allowed,
 		_stages = if options and options.stages then table.clone(options.stages) else {},
 		_clock = options and options.clock,
@@ -176,6 +177,13 @@ end
 ]=]
 function Document.setReadOnly(self: Document, reason: string)
 	self._readOnly = reason
+end
+
+--[=[
+	Accepts transactions again after setReadOnly
+]=]
+function Document.clearReadOnly(self: Document)
+	self._readOnly = nil
 end
 
 function Document.isReadOnly(self: Document): boolean
