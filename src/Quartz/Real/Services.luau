@@ -22,6 +22,8 @@ export type Roblox = {
 	teleportService: TeleportService,
 	httpService: HttpService,
 	playersService: Players,
+	runService: RunService,
+	bindToClose: (callback: () -> ()) -> (),
 	jobId: string,
 	placeId: number,
 	api: RobloxApi.RobloxApi,
@@ -85,6 +87,14 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 				return Errors.ok(nil)
 			end,
 		},
+		lifecycle = {
+			bindToClose = function(_self: Types.Lifecycle, callback: () -> ())
+				roblox.bindToClose(callback)
+			end,
+			isStudio = function(_self: Types.Lifecycle): boolean
+				return roblox.runService:IsStudio()
+			end,
+		},
 		dataStore = function(name: string, scope: string?): Types.DataStore
 			local resolved = scope or "global"
 			return memo(`dataStore\0{name}\0{resolved}`, function()
@@ -141,6 +151,10 @@ function RealServices.live(): Types.Services
 			teleportService = game:GetService("TeleportService"),
 			httpService = game:GetService("HttpService"),
 			playersService = game:GetService("Players"),
+			runService = game:GetService("RunService"),
+			bindToClose = function(callback: () -> ())
+				game:BindToClose(callback)
+			end,
 			jobId = game.JobId,
 			placeId = game.PlaceId,
 			api = RobloxApi.live(),

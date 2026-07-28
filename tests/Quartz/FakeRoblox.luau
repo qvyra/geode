@@ -320,6 +320,14 @@ function FakeRoblox.services(server: Universe.MockServer): Types.Services
 				}))
 			end,
 		},
+		runService = {
+			IsStudio = function()
+				return server.lifecycle:isStudio()
+			end,
+		},
+		bindToClose = function(callback: () -> ())
+			server.lifecycle:bindToClose(callback)
+		end,
 		playersService = {
 			GetPlayerByUserId = function(_self: any, userId: number)
 				return {

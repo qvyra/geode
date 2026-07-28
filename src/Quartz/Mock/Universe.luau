@@ -29,6 +29,7 @@ export type UniverseOptions = {
 export type ServerOptions = {
 	jobId: string?,
 	placeId: number?,
+	studio: boolean?,
 }
 
 export type MockServer = {
@@ -38,6 +39,7 @@ export type MockServer = {
 	budget: Types.Budget,
 	json: Types.Json,
 	players: Types.Players,
+	lifecycle: Types.Lifecycle,
 	dataStore: (name: string, scope: string?) -> Types.DataStore,
 	orderedDataStore: (name: string, scope: string?) -> Types.OrderedDataStore,
 	hashMap: (name: string) -> Types.HashMap,
@@ -67,6 +69,11 @@ export type MockServer = {
 	]=]
 	crash: (self: MockServer) -> (),
 	isAlive: (self: MockServer) -> boolean,
+	--[=[
+		Starts a shutdown: every bindToClose callback runs in its own clock thread. Advance the
+		clock to let them finish
+	]=]
+	shutdown: (self: MockServer) -> (),
 }
 
 type Fields = {
@@ -143,6 +150,9 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 		alive = true,
 	}
 
+	local closeCallbacks: { () -> () } = {}
+	local studio: boolean = if options and options.studio then true else false
+
 	local cache: { [string]: unknown } = {}
 	local function memo<T>(id: string, make: () -> T): T
 		if cache[id] == nil then
@@ -172,6 +182,14 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 					{ jobId = context.jobId, userId = userId, reason = reason }
 				)
 				return { ok = true, value = nil }
+			end,
+		},
+		lifecycle = {
+			bindToClose = function(_self: Types.Lifecycle, callback: () -> ())
+				table.insert(closeCallbacks, callback)
+			end,
+			isStudio = function(_self: Types.Lifecycle): boolean
+				return studio
 			end,
 		},
 		dataStore = function(name: string, scope: string?): Types.DataStore
@@ -227,6 +245,11 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 		end,
 		isAlive = function(_self: MockServer)
 			return context.alive
+		end,
+		shutdown = function(_self: MockServer)
+			for _, callback in closeCallbacks do
+				self.clock:spawn(callback)
+			end
 		end,
 	}
 	return server

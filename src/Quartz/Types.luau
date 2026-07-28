@@ -284,6 +284,14 @@ export type Players = {
 	kick: (self: Players, userId: number, reason: string) -> Result<nil>,
 }
 
+--// lifecycle
+
+export type Lifecycle = {
+	-- Runs on shutdown. Roblox only gives these callbacks a limited window
+	bindToClose: (self: Lifecycle, callback: () -> ()) -> (),
+	isStudio: (self: Lifecycle) -> boolean,
+}
+
 --// JSON
 
 -- encode only, for size estimates
@@ -302,6 +310,7 @@ export type Services = {
 	budget: Budget,
 	json: Json,
 	players: Players,
+	lifecycle: Lifecycle,
 	dataStore: (name: string, scope: string?) -> DataStore,
 	orderedDataStore: (name: string, scope: string?) -> OrderedDataStore,
 	hashMap: (name: string) -> HashMap,
