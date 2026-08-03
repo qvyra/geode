@@ -10,6 +10,9 @@ local ObsidianIssues = require("@self/Obsidian/Issues")
 local ObsidianSchema = require("@self/Obsidian/Schema")
 local Quartz = require("@self/Quartz")
 local QuartzTypes = require("@self/Quartz/Types")
+local ProfileModule = require("@self/Sapphire/Profile")
+local ProfileStore = require("@self/Sapphire/ProfileStore")
+local Sapphire = require("@self/Sapphire")
 local Scheduler = require("@self/Quartz/Scheduler")
 local Transaction = require("@self/Matrix/Transaction")
 
@@ -35,6 +38,8 @@ export type Bundle = FacetTypes.Bundle
 export type Reaction = FacetTypes.Reaction
 export type Derived = FacetTypes.Derived
 export type FacetSet = FacetTypes.FacetSet
+export type Profile = ProfileModule.Profile
+export type ProfileStore = ProfileStore.ProfileStore
 
 --[=[
 	@class Geode
@@ -160,6 +165,15 @@ Geode.react = Facet.react
 	@return Derived
 ]=]
 Geode.derive = Facet.derive
+
+--[=[
+	@prop Profile Profile
+	@within Geode
+	@readonly
+
+	Session locked player data: `Geode.Profile.store({ ... })`
+]=]
+Geode.Profile = Sapphire
 
 --[=[
 	@function op
