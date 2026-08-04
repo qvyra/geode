@@ -34,6 +34,7 @@ export type Backend = {
 	userIds: { number },
 	userId: number?,
 	schema: Schema.Schema?,
+	schemaVersion: number,
 	sizeBudget: Size.Budget,
 	autosaveInterval: number,
 	onSessionLost: SessionLostPolicy,
@@ -232,6 +233,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				local candidate = Record.copy(record)
 				candidate.data = self:_encode(document:snapshot())
 				candidate.meta.revision = revision
+				candidate.meta.schemaVersion = backend.schemaVersion
 				local report = Size.check(backend.json, candidate, backend.sizeBudget)
 				if report.level == "hard" then
 					-- keep what's stored and only renew the lease. Never trim to fit

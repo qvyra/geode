@@ -7,12 +7,14 @@ local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
 local Profile = require("./Profile")
+local Reconcile = require("./Reconcile")
 local Record = require("./Record")
 local RealServices = require("../Quartz/Real/Services")
 local Scheduler = require("../Quartz/Scheduler")
 local Schema = require("../Obsidian/Schema")
 local Signal = require("../Quartz/Signal")
 local Size = require("../Obsidian/Size")
+local Transaction = require("../Matrix/Transaction")
 local Types = require("../Quartz/Types")
 local Universe = require("../Quartz/Mock/Universe")
 local Validate = require("../Obsidian/Validate")
@@ -30,6 +32,8 @@ export type Options = {
 	scheduler: Scheduler.Scheduler?,
 	schema: Schema.Schema?,
 	schemaVersion: number?,
+	-- Keyed by the version each one upgrades to. They run on the stored form, oldest first
+	migrations: { [number]: (tx: Transaction.Transaction) -> () }?,
 	guards: { Guards.Guard }?,
 	bundles: { Facet.Bundle }?,
 	reactions: { Facet.Reaction }?,
@@ -57,7 +61,14 @@ export type LoadOptions = {
 	userIds: { number }?,
 }
 
-export type LoadErrorKind = "leaseHeld" | "adapter" | "corrupt" | "invalidData" | "alreadyLoaded"
+export type LoadErrorKind =
+	"leaseHeld"
+	| "adapter"
+	| "corrupt"
+	| "invalidData"
+	| "alreadyLoaded"
+	| "newerData"
+	| "migrationFailed"
 
 export type LoadResult =
 	{ ok: true, profile: Profile.Profile }
@@ -83,6 +94,8 @@ type Fields = {
 	_services: Types.Services,
 	_scheduler: Scheduler.Scheduler,
 	_dataStore: Types.DataStore,
+	_template: { [string]: unknown },
+	_migrations: { [number]: (tx: Transaction.Transaction) -> () },
 	_storedTemplate: unknown,
 	_schema: Schema.Schema?,
 	_guards: { Guards.Guard },
@@ -215,6 +228,19 @@ function ProfileStore.new(options: Options): ProfileStore
 	)
 	assert(config.stealAfter >= 0, "stealAfter can't be negative")
 
+	local migrations: { [number]: (tx: Transaction.Transaction) -> () } = options.migrations or {}
+	for version, migration in migrations do
+		assert(
+			type(version) == "number" and version % 1 == 0 and version >= 2,
+			"migrations are keyed by the whole version number they upgrade to, starting at 2"
+		)
+		assert(
+			version <= config.schemaVersion,
+			`a migration to version {version} is newer than schemaVersion {config.schemaVersion}`
+		)
+		assert(type(migration) == "function", `the migration to version {version} isn't a function`)
+	end
+
 	local self: Fields = {
 		name = options.name,
 		scope = scope,
@@ -223,6 +249,8 @@ function ProfileStore.new(options: Options): ProfileStore
 		_scheduler = options.scheduler
 			or Scheduler.new({ clock = services.clock, budget = services.budget }),
 		_dataStore = services.dataStore(options.name, scope),
+		_template = copy(options.template) :: { [string]: unknown },
+		_migrations = migrations,
 		_storedTemplate = if options.schema
 			then Validate.encode(options.schema, options.template)
 			else copy(options.template),
@@ -415,7 +443,25 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		services.clock:wait(math.min(RETRY_BASE * 2 ^ (tries - 1), RETRY_MAX))
 	end
 
+	local storedVersion = record.meta.schemaVersion
+	if storedVersion > config.schemaVersion then
+		self:_abandon(key, owner)
+		return loadFailure(
+			"newerData",
+			`profile {key} was saved by schema version {storedVersion}, newer than this server's {config.schemaVersion}`
+		)
+	end
+
 	local data = record.data
+	if storedVersion < config.schemaVersion then
+		local migrated, migrationError = self:_migrate(data, storedVersion)
+		if migrationError then
+			self:_abandon(key, owner)
+			return loadFailure("migrationFailed", `profile {key}: {migrationError}`)
+		end
+		data = migrated
+	end
+
 	if self._schema then
 		local ok, decoded = Validate.decode(self._schema, data)
 		if not ok then
@@ -428,6 +474,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		end
 		data = decoded
 	end
+	data = Reconcile.fill(data, self._template)
 
 	local document = Document.new({
 		data = data,
@@ -458,6 +505,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		userIds = userIds,
 		userId = userId,
 		schema = self._schema,
+		schemaVersion = config.schemaVersion,
 		sizeBudget = config.sizeBudget,
 		autosaveInterval = config.autosaveInterval,
 		onSessionLost = config.onSessionLost,
@@ -473,6 +521,28 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	end)
 	self._open[key] = profile
 	return { ok = true, profile = profile }
+end
+
+-- Runs each migration from the stored version up, each as its own migration transaction on the
+-- stored form. Returns the migrated data, or an error and leaves nothing changed
+function ProfileStore._migrate(
+	self: ProfileStore,
+	data: unknown,
+	fromVersion: number
+): (unknown, string?)
+	local document = Document.new({ data = data, reportError = self._report })
+	for version = fromVersion + 1, self._config.schemaVersion do
+		local migration = self._migrations[version]
+		if migration == nil then
+			continue
+		end
+		local result =
+			document:transact(migration, { source = "migration", note = `to version {version}` })
+		if not result.ok then
+			return nil, `the migration to version {version} failed: {result.error.message}`
+		end
+	end
+	return document:snapshot(), nil
 end
 
 --// ================================================================ //--
