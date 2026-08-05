@@ -35,6 +35,8 @@ export type Backend = {
 	userId: number?,
 	schema: Schema.Schema?,
 	schemaVersion: number,
+	receipts: { string },
+	receiptHistory: number,
 	sizeBudget: Size.Budget,
 	autosaveInterval: number,
 	onSessionLost: SessionLostPolicy,
@@ -60,6 +62,10 @@ type Fields = {
 	_backend: Backend,
 	_state: State,
 	_savedRevision: number,
+	_receipts: { string },
+	-- bumped on receipt changes so isSaved sees unsaved metadata
+	_metaVersion: number,
+	_savedMetaVersion: number,
 	_autosaveToken: number,
 	_releasing: { thread }?,
 }
@@ -83,6 +89,9 @@ function Profile.new(document: Document.Document, backend: Backend): Profile
 		_backend = backend,
 		_state = "active",
 		_savedRevision = document:revision(),
+		_receipts = table.clone(backend.receipts),
+		_metaVersion = 0,
+		_savedMetaVersion = 0,
 		_autosaveToken = 0,
 		_releasing = nil,
 	}
@@ -208,6 +217,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 	-- reset on every transform run, UpdateAsync may call the transform more than once
 	local lostReason: string? = nil
 	local savedRevision: number? = nil
+	local savedMetaVersion: number? = nil
 	local oversize: number? = nil
 
 	local result = backend.scheduler:submit({
@@ -217,7 +227,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 		write = true,
 		run = function()
 			return backend.dataStore:update(backend.key, function(current: unknown)
-				lostReason, savedRevision, oversize = nil, nil, nil
+				lostReason, savedRevision, savedMetaVersion, oversize = nil, nil, nil, nil
 				if not Record.isRecord(current) then
 					lostReason = "the stored record is missing or corrupt"
 					return nil
@@ -234,6 +244,8 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				candidate.data = self:_encode(document:snapshot())
 				candidate.meta.revision = revision
 				candidate.meta.schemaVersion = backend.schemaVersion
+				candidate.meta.receipts = table.clone(self._receipts)
+				local metaVersion = self._metaVersion
 				local report = Size.check(backend.json, candidate, backend.sizeBudget)
 				if report.level == "hard" then
 					-- keep what's stored and only renew the lease. Never trim to fit
@@ -241,6 +253,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				else
 					record = candidate
 					savedRevision = revision
+					savedMetaVersion = metaVersion
 					if report.level == "soft" then
 						backend.report(
 							`profile {backend.key} is {report.size} bytes, close to the size limit`
@@ -269,6 +282,9 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 	if savedRevision then
 		self._savedRevision = math.max(self._savedRevision, savedRevision)
 	end
+	if savedMetaVersion then
+		self._savedMetaVersion = math.max(self._savedMetaVersion, savedMetaVersion)
+	end
 	if oversize then
 		local message =
 			`profile {backend.key} is {oversize} bytes, over the hard limit. Changes stay in memory and weren't saved`
@@ -289,10 +305,39 @@ function Profile.save(self: Profile): SaveResult
 end
 
 --[=[
-	Whether every committed change has been saved
+	Whether every committed change and receipt has been saved
 ]=]
 function Profile.isSaved(self: Profile): boolean
 	return self._savedRevision >= self._document:revision()
+		and self._savedMetaVersion >= self._metaVersion
+end
+
+-- Receipts
+
+--[=[
+	Whether a purchase was already granted to this profile
+]=]
+function Profile.hasReceipt(self: Profile, purchaseId: string): boolean
+	return table.find(self._receipts, purchaseId) ~= nil
+end
+
+--[=[
+	Remembers a granted purchase. It's saved with the data, so a grant and its receipt reach
+	the DataStore in the same write or not at all. Only the most recent ones are kept
+]=]
+function Profile.recordReceipt(self: Profile, purchaseId: string)
+	if self:hasReceipt(purchaseId) then
+		return
+	end
+	table.insert(self._receipts, purchaseId)
+	local excess = #self._receipts - self._backend.receiptHistory
+	if excess > 0 then
+		table.move(self._receipts, excess + 1, #self._receipts, 1)
+		for _ = 1, excess do
+			table.remove(self._receipts)
+		end
+	end
+	self._metaVersion += 1
 end
 
 --[=[

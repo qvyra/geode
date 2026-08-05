@@ -34,6 +34,10 @@ export type Options = {
 	schemaVersion: number?,
 	-- Keyed by the version each one upgrades to. They run on the stored form, oldest first
 	migrations: { [number]: (tx: Transaction.Transaction) -> () }?,
+	-- How a player's user id maps to their key here. Defaults to the id as a string
+	userKey: ((userId: number) -> string)?,
+	-- How many recent purchase ids each profile keeps to refuse repeats. Defaults to 50
+	receiptHistory: number?,
 	guards: { Guards.Guard }?,
 	bundles: { Facet.Bundle }?,
 	reactions: { Facet.Reaction }?,
@@ -84,6 +88,7 @@ type Config = {
 	closeTimeout: number,
 	loadTimeout: number,
 	schemaVersion: number,
+	receiptHistory: number,
 }
 
 type Fields = {
@@ -96,6 +101,7 @@ type Fields = {
 	_dataStore: Types.DataStore,
 	_template: { [string]: unknown },
 	_migrations: { [number]: (tx: Transaction.Transaction) -> () },
+	_userKey: (userId: number) -> string,
 	_storedTemplate: unknown,
 	_schema: Schema.Schema?,
 	_guards: { Guards.Guard },
@@ -123,6 +129,7 @@ local DEFAULTS = {
 	studio = "mock" :: StudioMode,
 	closeTimeout = 25,
 	loadTimeout = 30,
+	receiptHistory = 50,
 	-- TODO(verify): the DataStore value limit is about 4 MB. The hard budget stays under it
 	sizeBudget = { soft = 3000000, hard = 4000000 },
 }
@@ -220,6 +227,7 @@ function ProfileStore.new(options: Options): ProfileStore
 		closeTimeout = options.closeTimeout or DEFAULTS.closeTimeout,
 		loadTimeout = options.loadTimeout or DEFAULTS.loadTimeout,
 		schemaVersion = options.schemaVersion or 1,
+		receiptHistory = options.receiptHistory or DEFAULTS.receiptHistory,
 	}
 	assert(config.autosaveInterval > 0, "autosaveInterval must be positive")
 	assert(
@@ -227,6 +235,7 @@ function ProfileStore.new(options: Options): ProfileStore
 		"leaseTimeout must be longer than autosaveInterval"
 	)
 	assert(config.stealAfter >= 0, "stealAfter can't be negative")
+	assert(config.receiptHistory >= 1, "receiptHistory must be at least 1")
 
 	local migrations: { [number]: (tx: Transaction.Transaction) -> () } = options.migrations or {}
 	for version, migration in migrations do
@@ -251,6 +260,9 @@ function ProfileStore.new(options: Options): ProfileStore
 		_dataStore = services.dataStore(options.name, scope),
 		_template = copy(options.template) :: { [string]: unknown },
 		_migrations = migrations,
+		_userKey = options.userKey or function(userId: number): string
+			return tostring(userId)
+		end,
 		_storedTemplate = if options.schema
 			then Validate.encode(options.schema, options.template)
 			else copy(options.template),
@@ -506,6 +518,8 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		userId = userId,
 		schema = self._schema,
 		schemaVersion = config.schemaVersion,
+		receipts = if type(record.meta.receipts) == "table" then record.meta.receipts else {},
+		receiptHistory = config.receiptHistory,
 		sizeBudget = config.sizeBudget,
 		autosaveInterval = config.autosaveInterval,
 		onSessionLost = config.onSessionLost,
@@ -562,6 +576,13 @@ function ProfileStore.openCount(self: ProfileStore): number
 		count += 1
 	end
 	return count
+end
+
+--[=[
+	The key a player's profile has in this store
+]=]
+function ProfileStore.keyForUser(self: ProfileStore, userId: number): string
+	return self._userKey(userId)
 end
 
 --[=[
