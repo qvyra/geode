@@ -6,6 +6,7 @@
 local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
+local Mailbox = require("./Mailbox")
 local Profile = require("./Profile")
 local Reconcile = require("./Reconcile")
 local Record = require("./Record")
@@ -14,6 +15,7 @@ local Scheduler = require("../Quartz/Scheduler")
 local Schema = require("../Obsidian/Schema")
 local Signal = require("../Quartz/Signal")
 local Size = require("../Obsidian/Size")
+local Storable = require("../Obsidian/Storable")
 local Transaction = require("../Matrix/Transaction")
 local Types = require("../Quartz/Types")
 local Universe = require("../Quartz/Mock/Universe")
@@ -99,6 +101,7 @@ type Fields = {
 	_services: Types.Services,
 	_scheduler: Scheduler.Scheduler,
 	_dataStore: Types.DataStore,
+	_mailboxStore: Types.DataStore,
 	_template: { [string]: unknown },
 	_migrations: { [number]: (tx: Transaction.Transaction) -> () },
 	_userKey: (userId: number) -> string,
@@ -258,6 +261,7 @@ function ProfileStore.new(options: Options): ProfileStore
 		_scheduler = options.scheduler
 			or Scheduler.new({ clock = services.clock, budget = services.budget }),
 		_dataStore = services.dataStore(options.name, scope),
+		_mailboxStore = services.dataStore(`{options.name}_mailbox`, scope),
 		_template = copy(options.template) :: { [string]: unknown },
 		_migrations = migrations,
 		_userKey = options.userKey or function(userId: number): string
@@ -520,6 +524,9 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		schemaVersion = config.schemaVersion,
 		receipts = if type(record.meta.receipts) == "table" then record.meta.receipts else {},
 		receiptHistory = config.receiptHistory,
+		mailboxCursor = if type(record.meta.mailboxCursor) == "number"
+			then record.meta.mailboxCursor
+			else 0,
 		sizeBudget = config.sizeBudget,
 		autosaveInterval = config.autosaveInterval,
 		onSessionLost = config.onSessionLost,
@@ -533,6 +540,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	guardSet.broken:connect(function(violation: Guards.Violation)
 		self.guardBroken:fire(violation, profile)
 	end)
+	self:_deliverMail(key, profile)
 	self._open[key] = profile
 	return { ok = true, profile = profile }
 end
@@ -557,6 +565,135 @@ function ProfileStore._migrate(
 		end
 	end
 	return document:snapshot(), nil
+end
+
+--// ================================================================ //--
+--//  Mailbox                                                         //--
+--// ================================================================ //--
+
+-- Applies everything after the saved cursor, one mailbox transaction per message, then trims
+-- what earlier sessions already saved as applied. Failed messages are archived, not dropped
+function ProfileStore._deliverMail(self: ProfileStore, key: string, profile: Profile.Profile)
+	local savedCursor = profile:mailboxCursor()
+	local read = self._scheduler:submit({
+		priority = "load",
+		budget = "get",
+		key = self:_mailboxKey(key),
+		run = function()
+			return self._mailboxStore:get(key)
+		end,
+	})
+	if not read.ok then
+		self._report(
+			`couldn't read the mailbox of {key}, it will be delivered on a later load: {read.error.message}`
+		)
+		return
+	end
+	local box = Mailbox.read(read.value.value)
+	if box == nil then
+		self._report(`the mailbox of {key} is malformed and was left untouched`)
+		return
+	end
+
+	local failures: { [number]: string } = {}
+	for _, message in Mailbox.pending(box, savedCursor) do
+		local result = profile:transact(function(tx)
+			Mailbox.apply(tx, message)
+		end, { source = "mailbox", note = `mail {message.seq}` })
+		if not result.ok then
+			failures[message.seq] = result.error.message
+			self._report(`mail {message.seq} for {key} couldn't be applied: {result.error.message}`)
+		end
+		profile:_advanceMailbox(message.seq)
+	end
+
+	local alreadyApplied = #box.items - #Mailbox.pending(box, savedCursor)
+	if next(failures) == nil and alreadyApplied == 0 then
+		return
+	end
+	self._scheduler:submit({
+		priority = "background",
+		budget = "update",
+		key = self:_mailboxKey(key),
+		write = true,
+		run = function()
+			return self._mailboxStore:update(key, function(current: unknown)
+				local latest = Mailbox.read(current)
+				if latest == nil then
+					return nil
+				end
+				return Mailbox.prune(latest, savedCursor, failures)
+			end)
+		end,
+	})
+end
+
+function ProfileStore._mailboxKey(self: ProfileStore, key: string): string
+	return `dataStore/{self.name}_mailbox/{self.scope}/{key}`
+end
+
+--[=[
+	Queues an op for a profile, wherever its player is. It's applied as a mailbox transaction the
+	next time the profile loads. Yields
+
+	@param key string
+	@param op string -- a built-in op other than update, or a custom op this store enables
+	@return Result<number> -- the message's sequence number
+]=]
+function ProfileStore.mail(
+	self: ProfileStore,
+	key: string,
+	op: string,
+	...: unknown
+): Types.Result<number>
+	local enabled = Mailbox.isBuiltIn(op) or (self._ops ~= nil and table.find(self._ops, op) ~= nil)
+	if not enabled then
+		return {
+			ok = false,
+			error = {
+				kind = "invalidValue",
+				message = `{op} can't be mailed, it isn't a storable built-in op or an op this store enables`,
+			},
+		}
+	end
+	local args = table.pack(...)
+	local list = table.move(args, 1, args.n, 1, {})
+	local storable = Storable.check(list, "args")
+	if not storable.ok then
+		local issue = storable.issues[1]
+		return {
+			ok = false,
+			error = { kind = "invalidValue", message = `{issue.path} {issue.message}` },
+		}
+	end
+
+	local seq = 0
+	local result = self._scheduler:submit({
+		priority = "save",
+		budget = "update",
+		key = self:_mailboxKey(key),
+		write = true,
+		run = function()
+			return self._mailboxStore:update(key, function(current: unknown)
+				local box = Mailbox.read(current)
+				if box == nil then
+					return nil
+				end
+				seq = box.nextSeq
+				return Mailbox.push(box, op, list, self._services.clock:now())
+			end)
+		end,
+	})
+	if not result.ok then
+		return { ok = false, error = result.error }
+	end
+	if result.value.cancelled then
+		return {
+			ok = false,
+			error = { kind = "invalidValue", message = `the mailbox of {key} is malformed` },
+		}
+	end
+	return { ok = true, value = seq }
 end
 
 --// ================================================================ //--

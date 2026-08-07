@@ -37,6 +37,7 @@ export type Backend = {
 	schemaVersion: number,
 	receipts: { string },
 	receiptHistory: number,
+	mailboxCursor: number,
 	sizeBudget: Size.Budget,
 	autosaveInterval: number,
 	onSessionLost: SessionLostPolicy,
@@ -63,7 +64,8 @@ type Fields = {
 	_state: State,
 	_savedRevision: number,
 	_receipts: { string },
-	-- bumped on receipt changes so isSaved sees unsaved metadata
+	_mailboxCursor: number,
+	-- bumped on receipt or mailbox cursor changes so isSaved sees unsaved metadata
 	_metaVersion: number,
 	_savedMetaVersion: number,
 	_autosaveToken: number,
@@ -90,6 +92,7 @@ function Profile.new(document: Document.Document, backend: Backend): Profile
 		_state = "active",
 		_savedRevision = document:revision(),
 		_receipts = table.clone(backend.receipts),
+		_mailboxCursor = backend.mailboxCursor,
 		_metaVersion = 0,
 		_savedMetaVersion = 0,
 		_autosaveToken = 0,
@@ -245,6 +248,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				candidate.meta.revision = revision
 				candidate.meta.schemaVersion = backend.schemaVersion
 				candidate.meta.receipts = table.clone(self._receipts)
+				candidate.meta.mailboxCursor = self._mailboxCursor
 				local metaVersion = self._metaVersion
 				local report = Size.check(backend.json, candidate, backend.sizeBudget)
 				if report.level == "hard" then
@@ -305,14 +309,14 @@ function Profile.save(self: Profile): SaveResult
 end
 
 --[=[
-	Whether every committed change and receipt has been saved
+	Whether every committed change, receipt and applied mailbox message has been saved
 ]=]
 function Profile.isSaved(self: Profile): boolean
 	return self._savedRevision >= self._document:revision()
 		and self._savedMetaVersion >= self._metaVersion
 end
 
--- Receipts
+-- Receipts and mailbox
 
 --[=[
 	Whether a purchase was already granted to this profile
@@ -338,6 +342,17 @@ function Profile.recordReceipt(self: Profile, purchaseId: string)
 		end
 	end
 	self._metaVersion += 1
+end
+
+function Profile.mailboxCursor(self: Profile): number
+	return self._mailboxCursor
+end
+
+function Profile._advanceMailbox(self: Profile, seq: number)
+	if seq > self._mailboxCursor then
+		self._mailboxCursor = seq
+		self._metaVersion += 1
+	end
 end
 
 --[=[
