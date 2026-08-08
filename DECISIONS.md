@@ -146,3 +146,34 @@ Reaction cycles should be caught when reactions are defined, not when they loop 
 Bundle and reaction writes are labeled with their writer. Rate guards skip them by default while every other guard still sees them, so a level up reward doesn't use up the player's coin rate limit but still can't push coins past a range guard.
 
 **Commits:** 5d7e925, 1582005
+
+## 14. Lease timings and what a failed release does
+
+**Date:** 2026-08-08
+
+**Context:** The session lease needs default timings, a policy for leases another server holds, and a rule for what happens when the last save before release fails.
+
+**Options:**
+
+- Release the lease anyway, so the next server isn't blocked
+- Keep the lease and the data, and try again
+
+**Chosen:** keep both. Dropping the lease after a failed save would hand the next server stale data and lose the player's changes. A failed release puts the profile back to active with its data, and the next release or autosave tries again. The profile goes read only before its final snapshot, so nothing written during a release can slip away unsaved.
+
+Defaults: an autosave every 60 seconds, a lease that goes stale after 300 seconds without renewal (about five missed autosaves), and a steal after 15 seconds of retrying a live holder. The default session lost policy kicks the player. In Studio, data stays in memory unless the store asks for a separate scope or live data. Loads keep retrying throttled requests for up to 30 seconds before giving up.
+
+**Commits:** f7ad3a2
+
+## 15. Receipts, mail and erasure ride on the profile save
+
+**Date:** 2026-08-08
+
+Purchases must never be granted twice, mail for an offline player has to apply exactly once, and an erased player's data must not come back from a server that still held it. The choice was between tracking all of that in separate keys written on their own, or keeping it in the profile record's metadata and saving it in the same write as the data. I went with the same write.
+
+A purchase grant and its receipt, or an applied message and the mailbox cursor, change together in memory with no yield in between, so a save carries both or neither. If a server dies before saving, the grant or message is lost along with the data it changed and simply gets applied again. PurchaseGranted is only returned after the save succeeded.
+
+Erasure leaves an erased marker in the record instead of deleting the key. A server still holding the profile then fails its lease check on the next save and loses the session, rather than writing the data back.
+
+Migrations run on the stored form before decoding, since old data may not match the current schema, and reconcile only adds what the template has and the data lacks.
+
+**Commits:** abb8145, 4d98f43, d713d56, 891d2ef
