@@ -22,6 +22,8 @@ export type Meta = {
 	mailboxCursor: number,
 	createdAt: number,
 	updatedAt: number,
+	-- Set when the player's data was erased. The record then holds no data
+	erasedAt: number?,
 }
 
 export type Record = {

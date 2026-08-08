@@ -173,7 +173,30 @@ Geode.derive = Facet.derive
 
 	Session locked player data: `Geode.Profile.store({ ... })`
 ]=]
-Geode.Profile = Sapphire
+Geode.Profile = Sapphire.Profile
+
+--[=[
+	@function receipts
+	@within Geode
+	@param store ProfileStore
+	@param handlers { [number]: ReceiptHandler }
+	@param options ReceiptOptions?
+	@return (info: ReceiptInfo) -> ProductPurchaseDecision
+
+	Builds a ProcessReceipt callback. Each purchase is granted exactly once
+]=]
+Geode.receipts = Sapphire.receipts
+
+--[=[
+	@function erase
+	@within Geode
+	@param userId number
+	@param services Services?
+	@return EraseReport
+
+	Erases a player's data from every profile store. Yields
+]=]
+Geode.erase = Sapphire.erase
 
 --[=[
 	@function op

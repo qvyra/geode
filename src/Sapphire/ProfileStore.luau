@@ -10,6 +10,7 @@ local Mailbox = require("./Mailbox")
 local Profile = require("./Profile")
 local Reconcile = require("./Reconcile")
 local Record = require("./Record")
+local Registry = require("./Registry")
 local RealServices = require("../Quartz/Real/Services")
 local Scheduler = require("../Quartz/Scheduler")
 local Schema = require("../Obsidian/Schema")
@@ -192,11 +193,9 @@ function ProfileStore.new(options: Options): ProfileStore
 		warn(message)
 	end
 
-	local services, scope = studioServices(
-		options.services or RealServices.live(),
-		options.studio or DEFAULTS.studio,
-		options.scope
-	)
+	local givenServices = options.services or RealServices.live()
+	local services, scope =
+		studioServices(givenServices, options.studio or DEFAULTS.studio, options.scope)
 
 	if options.schema then
 		local check = Validate.validate(options.schema, options.template, { root = "template" })
@@ -281,6 +280,8 @@ function ProfileStore.new(options: Options): ProfileStore
 		_report = report,
 	}
 	local store = setmetatable(self, ProfileStore)
+	-- The registry holds stores loosely typed, see Registry.Erasable
+	Registry.add(store :: any, givenServices)
 	if options.bindToClose ~= false then
 		services.lifecycle:bindToClose(function()
 			store:releaseAll()
@@ -522,6 +523,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		userId = userId,
 		schema = self._schema,
 		schemaVersion = config.schemaVersion,
+		template = self._template,
 		receipts = if type(record.meta.receipts) == "table" then record.meta.receipts else {},
 		receiptHistory = config.receiptHistory,
 		mailboxCursor = if type(record.meta.mailboxCursor) == "number"
@@ -697,6 +699,76 @@ function ProfileStore.mail(
 end
 
 --// ================================================================ //--
+--//  Erasure                                                         //--
+--// ================================================================ //--
+
+--[=[
+	The key a player's profile has in this store
+]=]
+function ProfileStore.keyForUser(self: ProfileStore, userId: number): string
+	return self._userKey(userId)
+end
+
+--[=[
+	Erases the data under `key` and its mailbox. The record keeps only an erased marker and its
+	metadata, so a server elsewhere still holding the profile loses its session on the next save
+	instead of writing the data back. Yields
+
+	TODO(verify): whether erasure also has to remove older DataStore versions of the key
+]=]
+function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, message: string? }
+	local open = self._open[key]
+	if open then
+		open:_erased()
+	end
+
+	local erased = self._scheduler:submit({
+		priority = "save",
+		budget = "update",
+		key = self:_schedulerKey(key),
+		write = true,
+		run = function()
+			return self._dataStore:update(key, function(current: unknown)
+				if current == nil then
+					return nil
+				end
+				local now = self._services.clock:now()
+				local record = if Record.isRecord(current)
+					then Record.copy(current :: Record.Record)
+					else Record.new(nil, now, self._config.schemaVersion)
+				record.data = nil
+				record.meta.lease = nil
+				record.meta.receipts = {}
+				record.meta.mailboxCursor = 0
+				record.meta.erasedAt = now
+				record.meta.updatedAt = now
+				return record, { userIds = {} }
+			end)
+		end,
+	})
+	if not erased.ok then
+		return { ok = false, message = erased.error.message }
+	end
+
+	local mailbox = self._scheduler:submit({
+		priority = "save",
+		budget = "setIncrement",
+		key = self:_mailboxKey(key),
+		write = true,
+		run = function()
+			return self._mailboxStore:remove(key)
+		end,
+	})
+	if not mailbox.ok then
+		return {
+			ok = false,
+			message = `the profile was erased but its mailbox wasn't: {mailbox.error.message}`,
+		}
+	end
+	return { ok = true, message = nil }
+end
+
+--// ================================================================ //--
 --//  Open profiles                                                   //--
 --// ================================================================ //--
 
@@ -713,13 +785,6 @@ function ProfileStore.openCount(self: ProfileStore): number
 		count += 1
 	end
 	return count
-end
-
---[=[
-	The key a player's profile has in this store
-]=]
-function ProfileStore.keyForUser(self: ProfileStore, userId: number): string
-	return self._userKey(userId)
 end
 
 --[=[

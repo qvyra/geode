@@ -35,6 +35,7 @@ export type Backend = {
 	userId: number?,
 	schema: Schema.Schema?,
 	schemaVersion: number,
+	template: unknown,
 	receipts: { string },
 	receiptHistory: number,
 	mailboxCursor: number,
@@ -238,7 +239,9 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				local record = Record.copy(current :: Record.Record)
 				local now = backend.clock:now()
 				if Record.leaseState(record, now, math.huge, backend.owner) ~= "mine" then
-					lostReason = "another server took the session"
+					lostReason = if record.meta.erasedAt
+						then "the profile was erased"
+						else "another server took the session"
 					return nil
 				end
 
@@ -316,7 +319,7 @@ function Profile.isSaved(self: Profile): boolean
 		and self._savedMetaVersion >= self._metaVersion
 end
 
--- Receipts and mailbox
+-- Receipts, mailbox and erasure
 
 --[=[
 	Whether a purchase was already granted to this profile
@@ -353,6 +356,23 @@ function Profile._advanceMailbox(self: Profile, seq: number)
 		self._mailboxCursor = seq
 		self._metaVersion += 1
 	end
+end
+
+--[=[
+	Resets the data to the template in one transaction. Purchase receipts are kept, so a wipe never
+	lets a purchase be granted twice
+
+	@return TxResult
+]=]
+function Profile.wipe(self: Profile): Document.TxResult
+	local template = self._backend.template
+	return self._document:transact(function(tx)
+		tx:set({}, template)
+	end, { source = "system", note = "wipe" })
+end
+
+function Profile._erased(self: Profile)
+	self:_lose("the profile was erased")
 end
 
 --[=[

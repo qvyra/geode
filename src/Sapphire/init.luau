@@ -3,6 +3,8 @@
 -- L2. Session locked profiles
 
 local ProfileStore = require("@self/ProfileStore")
+local Receipts = require("@self/Receipts")
+local Registry = require("@self/Registry")
 
 --[=[
 	@class Profile
@@ -19,4 +21,8 @@ local Profile = {
 	store = ProfileStore.new,
 }
 
-return table.freeze(Profile)
+return {
+	Profile = table.freeze(Profile),
+	receipts = Receipts.build,
+	erase = Registry.erase,
+}
