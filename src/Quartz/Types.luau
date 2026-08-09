@@ -12,8 +12,13 @@ export type ErrorKind =
 	| "invalidKey"
 	| "invalidValue"
 	| "noAccess"
+	-- The server is shutting down and the service no longer takes requests
+	| "unavailable"
 	| "internal"
 	| "unknown"
+
+-- each service shapes its errors differently
+export type ErrorSource = "dataStore" | "memoryStore" | "messaging"
 
 export type AdapterError = {
 	kind: ErrorKind,

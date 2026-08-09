@@ -29,7 +29,7 @@ function RealSortedMap.get(self: RealSortedMap, key: string): Types.Result<Types
 		return found, foundSortKey :: Types.SortKey?
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(value))
+		return Errors.failWith(Errors.classify(value, "memoryStore"))
 	end
 	if value == nil then
 		return Errors.ok(nil)
@@ -48,7 +48,7 @@ function RealSortedMap.set(
 		self._map:SetAsync(key, value, ttl, sortKey)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(err))
+		return Errors.failWith(Errors.classify(err, "memoryStore"))
 	end
 	return Errors.ok(nil)
 end
@@ -77,7 +77,7 @@ function RealSortedMap.update(
 		return updated, updatedSortKey :: Types.SortKey?
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(value))
+		return Errors.failWith(Errors.classify(value, "memoryStore"))
 	end
 	if cancelled then
 		return Errors.ok({ value = lastSeen, sortKey = lastSortKey, cancelled = true })
@@ -90,7 +90,7 @@ function RealSortedMap.remove(self: RealSortedMap, key: string): Types.Result<ni
 		self._map:RemoveAsync(key)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(err))
+		return Errors.failWith(Errors.classify(err, "memoryStore"))
 	end
 	return Errors.ok(nil)
 end
@@ -104,7 +104,7 @@ function RealSortedMap.getRange(
 		return self._map:GetRangeAsync(direction, range.count, range.lower, range.upper)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(itemsOrError))
+		return Errors.failWith(Errors.classify(itemsOrError, "memoryStore"))
 	end
 
 	local entries: { Types.SortedEntry } = {}

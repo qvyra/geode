@@ -37,7 +37,7 @@ function RealQueue.add(
 		self._queue:AddAsync(value, ttl, priority or 0)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(err))
+		return Errors.failWith(Errors.classify(err, "memoryStore"))
 	end
 	return Errors.ok(nil)
 end
@@ -55,7 +55,7 @@ function RealQueue.read(
 		return readItems :: { unknown }, readId :: string?
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(items))
+		return Errors.failWith(Errors.classify(items, "memoryStore"))
 	end
 	return Errors.ok({ items = items or {}, id = id })
 end
@@ -65,7 +65,7 @@ function RealQueue.remove(self: RealQueue, id: string): Types.Result<nil>
 		self._queue:RemoveAsync(id)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(err))
+		return Errors.failWith(Errors.classify(err, "memoryStore"))
 	end
 	return Errors.ok(nil)
 end

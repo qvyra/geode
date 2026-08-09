@@ -21,7 +21,7 @@ function RealMessaging.publish(self: RealMessaging, topic: string, data: unknown
 		self._service:PublishAsync(topic, data)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(err))
+		return Errors.failWith(Errors.classify(err, "messaging"))
 	end
 	return Errors.ok(nil)
 end
@@ -40,7 +40,7 @@ function RealMessaging.subscribe(
 		)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(connectionOrError))
+		return Errors.failWith(Errors.classify(connectionOrError, "messaging"))
 	end
 	local robloxConnection = connectionOrError :: RBXScriptConnection
 	local connection: Types.Connection = {

@@ -39,6 +39,7 @@ local Raw = {
 		@function classifyError
 		@within Raw
 		@param raw unknown -- an error thrown by a Roblox service
+		@param service ErrorSource? -- which service threw it, defaults to "dataStore"
 		@return AdapterError
 	]=]
 	classifyError = Errors.classify,

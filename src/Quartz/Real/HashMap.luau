@@ -25,7 +25,7 @@ function RealHashMap.get(self: RealHashMap, key: string): Types.Result<unknown>
 		return self._map:GetAsync(key)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(value))
+		return Errors.failWith(Errors.classify(value, "memoryStore"))
 	end
 	return Errors.ok(value)
 end
@@ -40,7 +40,7 @@ function RealHashMap.set(
 		self._map:SetAsync(key, value, ttl)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(err))
+		return Errors.failWith(Errors.classify(err, "memoryStore"))
 	end
 	return Errors.ok(nil)
 end
@@ -62,7 +62,7 @@ function RealHashMap.update(
 		end, ttl)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(value))
+		return Errors.failWith(Errors.classify(value, "memoryStore"))
 	end
 	if cancelled then
 		return Errors.ok({ value = lastSeen, cancelled = true })
@@ -75,7 +75,7 @@ function RealHashMap.remove(self: RealHashMap, key: string): Types.Result<nil>
 		self._map:RemoveAsync(key)
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(err))
+		return Errors.failWith(Errors.classify(err, "memoryStore"))
 	end
 	return Errors.ok(nil)
 end
@@ -86,7 +86,7 @@ function RealHashMap.list(self: RealHashMap, limit: number?): Types.Result<{ Typ
 		return self._map:ListItemsAsync(math.min(wanted, LIST_PAGE_SIZE))
 	end)
 	if not ok then
-		return Errors.failWith(Errors.classify(pagesOrError))
+		return Errors.failWith(Errors.classify(pagesOrError, "memoryStore"))
 	end
 	local pages = pagesOrError :: MemoryStoreHashMapPages
 
@@ -106,7 +106,7 @@ function RealHashMap.list(self: RealHashMap, limit: number?): Types.Result<{ Typ
 			pages:AdvanceToNextPageAsync()
 		end)
 		if not advanced then
-			return Errors.failWith(Errors.classify(advanceError))
+			return Errors.failWith(Errors.classify(advanceError, "memoryStore"))
 		end
 	end
 end
