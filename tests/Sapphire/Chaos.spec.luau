@@ -99,7 +99,7 @@ return function(spec: Spec.Api)
 		it("loses nothing and repeats nothing through a throttle storm", function()
 			local universe = Universe.new()
 			local server = universe:server({ jobId = "A" })
-			server:setBudget("update", 0, 0.2)
+			server:setBudget("standardWrite", 0, 0.2)
 			local store = Helpers.store(server)
 
 			local profile = load(universe, store, "p1")

@@ -138,6 +138,9 @@ local DEFAULTS = {
 	sizeBudget = { soft = 3000000, hard = 4000000 },
 }
 
+-- same as Profile, UpdateAsync waits on the read and the write budget
+local UPDATE_BUDGET: { Types.BudgetType } = { "standardRead", "standardWrite" }
+
 local RETRY_BASE = 1
 local RETRY_MAX = 5
 
@@ -319,7 +322,7 @@ function ProfileStore._tryAcquire(
 
 	local result = self._scheduler:submit({
 		priority = "load",
-		budget = "update",
+		budget = UPDATE_BUDGET,
 		key = self:_schedulerKey(key),
 		write = true,
 		run = function()
@@ -364,7 +367,7 @@ end
 function ProfileStore._abandon(self: ProfileStore, key: string, owner: Record.Owner)
 	self._scheduler:submit({
 		priority = "release",
-		budget = "update",
+		budget = UPDATE_BUDGET,
 		key = self:_schedulerKey(key),
 		write = true,
 		run = function()
@@ -579,7 +582,7 @@ function ProfileStore._deliverMail(self: ProfileStore, key: string, profile: Pro
 	local savedCursor = profile:mailboxCursor()
 	local read = self._scheduler:submit({
 		priority = "load",
-		budget = "get",
+		budget = "standardRead",
 		key = self:_mailboxKey(key),
 		run = function()
 			return self._mailboxStore:get(key)
@@ -615,7 +618,7 @@ function ProfileStore._deliverMail(self: ProfileStore, key: string, profile: Pro
 	end
 	self._scheduler:submit({
 		priority = "background",
-		budget = "update",
+		budget = UPDATE_BUDGET,
 		key = self:_mailboxKey(key),
 		write = true,
 		run = function()
@@ -672,7 +675,7 @@ function ProfileStore.mail(
 	local seq = 0
 	local result = self._scheduler:submit({
 		priority = "save",
-		budget = "update",
+		budget = UPDATE_BUDGET,
 		key = self:_mailboxKey(key),
 		write = true,
 		run = function()
@@ -724,7 +727,7 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 
 	local erased = self._scheduler:submit({
 		priority = "save",
-		budget = "update",
+		budget = UPDATE_BUDGET,
 		key = self:_schedulerKey(key),
 		write = true,
 		run = function()
@@ -752,7 +755,7 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 
 	local mailbox = self._scheduler:submit({
 		priority = "save",
-		budget = "setIncrement",
+		budget = "standardRemove",
 		key = self:_mailboxKey(key),
 		write = true,
 		run = function()

@@ -97,26 +97,24 @@ export type Context = {
 
 local Context = {}
 
--- Which budget each call draws from.
--- TODO(verify): best guess at how Roblox charges calls, esp. RemoveAsync, GetVersionAsync
--- and the ordered store writes
-local BUDGET_TYPES: { [string]: { [string]: Types.BudgetType } } = {
+-- UpdateAsync reads and writes, so it draws from both
+local BUDGET_TYPES: { [string]: { [string]: { Types.BudgetType } } } = {
 	dataStore = {
-		get = "get",
-		set = "setIncrement",
-		increment = "setIncrement",
-		remove = "setIncrement",
-		update = "update",
-		listVersions = "list",
-		getVersion = "get",
+		get = { "standardRead" },
+		set = { "standardWrite" },
+		increment = { "standardWrite" },
+		remove = { "standardRemove" },
+		update = { "standardRead", "standardWrite" },
+		listVersions = { "standardList" },
+		getVersion = { "standardRead" },
 	},
 	orderedDataStore = {
-		get = "get",
-		set = "setIncrementSorted",
-		increment = "setIncrementSorted",
-		remove = "setIncrementSorted",
-		update = "update",
-		getSorted = "getSorted",
+		get = { "orderedRead" },
+		set = { "orderedWrite" },
+		increment = { "orderedWrite" },
+		remove = { "orderedRemove" },
+		update = { "orderedRead", "orderedWrite" },
+		getSorted = { "orderedList" },
 	},
 }
 
@@ -125,7 +123,7 @@ local BUDGET_TYPES: { [string]: { [string]: Types.BudgetType } } = {
 ]=]
 function Context.budget(context: Context, budgetType: Types.BudgetType): number
 	local state = context.budgets[budgetType]
-	if state == nil then
+	if state == nil or budgetType == "orderedList" then
 		return math.huge
 	end
 	local now = context.shared.clock:now()
@@ -136,15 +134,24 @@ end
 
 local function consume(context: Context, service: string, method: string): Types.AdapterError?
 	local byMethod = BUDGET_TYPES[service]
-	local budgetType: Types.BudgetType? = if byMethod then byMethod[method] else nil
-	if budgetType == nil or context.budgets[budgetType] == nil then
+	local budgetTypes = if byMethod then byMethod[method] else nil
+	if budgetTypes == nil then
 		return nil
 	end
-	if Context.budget(context, budgetType) < 1 then
-		local code = Errors.THROTTLE_CODES[method] or 304
-		return Errors.classify(`{code}: {method} request dropped, {budgetType} budget exhausted`)
+	for _, budgetType: Types.BudgetType in budgetTypes do
+		if Context.budget(context, budgetType) < 1 then
+			local code = Errors.THROTTLE_CODES[method] or 304
+			return Errors.classify(
+				`{code}: {method} request dropped, {budgetType} budget exhausted`
+			)
+		end
 	end
-	context.budgets[budgetType].amount -= 1
+	for _, budgetType: Types.BudgetType in budgetTypes do
+		local state = context.budgets[budgetType]
+		if state and budgetType ~= "orderedList" then
+			state.amount -= 1
+		end
+	end
 	return nil
 end
 

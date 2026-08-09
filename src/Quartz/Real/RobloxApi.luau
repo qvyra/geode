@@ -22,12 +22,14 @@ local RobloxApi = {}
 function RobloxApi.live(): RobloxApi
 	return {
 		budgetTypes = {
-			get = Enum.DataStoreRequestType.GetAsync,
-			setIncrement = Enum.DataStoreRequestType.SetIncrementAsync,
-			update = Enum.DataStoreRequestType.UpdateAsync,
-			getSorted = Enum.DataStoreRequestType.GetSortedAsync,
-			setIncrementSorted = Enum.DataStoreRequestType.SetIncrementSortedAsync,
-			list = Enum.DataStoreRequestType.ListAsync,
+			standardRead = Enum.DataStoreRequestType.StandardRead,
+			standardWrite = Enum.DataStoreRequestType.StandardWrite,
+			standardList = Enum.DataStoreRequestType.StandardList,
+			standardRemove = Enum.DataStoreRequestType.StandardRemove,
+			orderedRead = Enum.DataStoreRequestType.OrderedRead,
+			orderedWrite = Enum.DataStoreRequestType.OrderedWrite,
+			orderedList = Enum.DataStoreRequestType.OrderedList,
+			orderedRemove = Enum.DataStoreRequestType.OrderedRemove,
 		},
 		sortAscending = Enum.SortDirection.Ascending,
 		sortDescending = Enum.SortDirection.Descending,

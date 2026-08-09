@@ -78,6 +78,9 @@ Profile.__index = Profile
 
 export type Profile = typeof(setmetatable({} :: Fields, Profile))
 
+-- UpdateAsync reads and writes, so it waits on both budgets
+local UPDATE_BUDGET: { Types.BudgetType } = { "standardRead", "standardWrite" }
+
 local function failure(kind: SaveErrorKind, message: string): SaveResult
 	return { ok = false, error = { kind = kind, message = message } }
 end
@@ -226,7 +229,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 
 	local result = backend.scheduler:submit({
 		priority = if releasing then "release" else "save",
-		budget = "update",
+		budget = UPDATE_BUDGET,
 		key = backend.schedulerKey,
 		write = true,
 		run = function()

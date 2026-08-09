@@ -16,8 +16,8 @@ export type Request<T> = {
 	-- store qualified, e.g. "dataStore/Players/p1". Writes to one key run one at a time
 	key: string?,
 	write: boolean?,
-	-- budget to draw from, waits while it's empty
-	budget: Types.BudgetType?,
+	-- Budgets to draw from, waits while any is empty. UpdateAsync passes both read and write
+	budget: (Types.BudgetType | { Types.BudgetType })?,
 	-- same coalesce id shares one pending call. reads only
 	coalesce: string?,
 }
@@ -119,7 +119,7 @@ local DEFAULTS = {
 	local scheduler = Geode.Raw.scheduler({ clock = services.clock, budget = services.budget })
 	local result = scheduler:submit({
 		priority = "load",
-		budget = "get",
+		budget = "standardRead",
 		run = function()
 			return store:get("player_1")
 		end,
@@ -186,8 +186,16 @@ function Scheduler._readiness(self: Scheduler, entry: Entry, now: number): (bool
 		end
 	end
 
-	if request.budget and self._budget and self._budget:get(request.budget) < 1 then
-		return false, now + self._config.budgetPollInterval
+	local budget = self._budget
+	if request.budget and budget then
+		local budgetTypes: { Types.BudgetType } = if type(request.budget) == "table"
+			then request.budget
+			else { request.budget }
+		for _, budgetType: Types.BudgetType in budgetTypes do
+			if budget:get(budgetType) < 1 then
+				return false, now + self._config.budgetPollInterval
+			end
+		end
 	end
 	return true, nil
 end

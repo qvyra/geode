@@ -35,6 +35,8 @@ local function timed(
 	end
 end
 
+local UPDATE_BUDGET: { Types.BudgetType } = { "standardRead", "standardWrite" }
+
 return function(spec: Spec.Api)
 	local describe, it, expect = spec.describe, spec.it, spec.expect
 
@@ -80,14 +82,14 @@ return function(spec: Spec.Api)
 			local store = server.dataStore("Players")
 			local clock = universe.clock
 			local scheduler = Scheduler.new({ clock = server.clock, budget = server.budget })
-			server:setBudget("get", 0, 1)
+			server:setBudget("standardRead", 0, 1)
 
 			local finished = {}
 			for _, priority in { "background", "read", "load", "save", "release" } do
 				clock:spawn(function()
 					local result = scheduler:submit({
 						priority = priority :: Scheduler.Priority,
-						budget = "get",
+						budget = "standardRead",
 						run = function()
 							return store:get("p1")
 						end,
@@ -289,13 +291,13 @@ return function(spec: Spec.Api)
 			local server = universe:server()
 			local store = server.dataStore("Players")
 			local scheduler = Scheduler.new({ clock = server.clock, budget = server.budget })
-			server:setBudget("update", 0)
+			server:setBudget("standardWrite", 0)
 
 			local order = {}
 			universe.clock:spawn(function()
 				scheduler:submit({
 					priority = "release",
-					budget = "update",
+					budget = UPDATE_BUDGET,
 					run = function()
 						table.insert(order, "update")
 						return Errors.ok(true)
@@ -305,7 +307,7 @@ return function(spec: Spec.Api)
 			universe.clock:spawn(function()
 				unwrap(scheduler:submit({
 					priority = "background",
-					budget = "get",
+					budget = "standardRead",
 					run = function()
 						table.insert(order, "get")
 						return store:get("p1")
@@ -315,7 +317,7 @@ return function(spec: Spec.Api)
 			universe.clock:advance(3)
 			expect(order).toEqual({ "get" })
 
-			server:setBudget("update", 1)
+			server:setBudget("standardWrite", 1)
 			universe.clock:advance(2)
 			expect(order).toEqual({ "get", "update" })
 		end)

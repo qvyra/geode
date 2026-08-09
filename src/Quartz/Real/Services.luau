@@ -60,6 +60,10 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 		clock = roblox.clock or RealClock.new(),
 		budget = {
 			get = function(_self: Types.Budget, budgetType: Types.BudgetType): number
+				-- not metered, always reports 0
+				if budgetType == "orderedList" then
+					return math.huge
+				end
 				local requestType = roblox.api.budgetTypes[budgetType]
 				return roblox.dataStoreService:GetRequestBudgetForRequestType(requestType)
 			end,

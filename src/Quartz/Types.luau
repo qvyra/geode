@@ -42,15 +42,17 @@ export type Clock = {
 
 --// request budget
 
--- Mirrors Enum.DataStoreRequestType. Which calls draw from which budget is a guess, see
--- Mock/Context.luau
+-- Mirrors the modern Enum.DataStoreRequestType items. UpdateAsync draws on read and write at
+-- once. OrderedList always reports 0 since it isn't metered, so it counts as unlimited
 export type BudgetType =
-	"get"
-	| "setIncrement"
-	| "update"
-	| "getSorted"
-	| "setIncrementSorted"
-	| "list"
+	"standardRead"
+	| "standardWrite"
+	| "standardList"
+	| "standardRemove"
+	| "orderedRead"
+	| "orderedWrite"
+	| "orderedList"
+	| "orderedRemove"
 
 export type Budget = {
 	-- how many of this type can go out right now without a throttle
