@@ -143,7 +143,7 @@ return function(spec: Spec.Api)
 			load(universe, storeA, 5)
 
 			-- The save hangs on the dead server, so the grant only ever existed in A's memory
-			serverA:inject({ method = "update", fault = { latency = 5 }, times = 1 })
+			serverA:inject({ method = "update", fault = { latency = 1000 }, times = 1 })
 			universe.clock:spawn(function()
 				processA(receiptFor(5, "p-1"))
 			end)

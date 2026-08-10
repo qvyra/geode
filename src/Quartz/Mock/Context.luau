@@ -6,6 +6,7 @@
 local Errors = require("../Errors")
 local Faults = require("./Faults")
 local MockClock = require("./Clock")
+local Throughput = require("../Throughput")
 local Types = require("../Types")
 
 export type Limits = {
@@ -14,6 +15,8 @@ export type Limits = {
 	-- needs both set. Wire a JSON length in to mimic the real value size cap
 	valueSize: number?,
 	measure: ((value: unknown) -> number)?,
+	-- Throttle keys that go past Roblox's per key throughput. Needs `measure`
+	keyThroughput: boolean?,
 }
 
 export type StoredVersion = {
@@ -78,6 +81,7 @@ export type Shared = {
 	teleports: { TeleportRecord },
 	kicks: { KickRecord },
 	sequence: number,
+	throughput: { [string]: { read: Throughput.Tracker, write: Throughput.Tracker } },
 }
 
 export type BudgetState = {
@@ -201,6 +205,39 @@ function Context.checkKey(shared: Shared, key: string): Types.AdapterError?
 			`102: Key name exceeds the {shared.limits.keyLength} character limit`
 		)
 	end
+	return nil
+end
+
+--[=[
+	Counts `value` against the throughput of `id`, a store qualified key. Does nothing unless
+	the universe turns on `keyThroughput` and provides a `measure`
+]=]
+function Context.useThroughput(
+	shared: Shared,
+	id: string,
+	value: unknown,
+	write: boolean
+): Types.AdapterError?
+	local measure = shared.limits.measure
+	if not shared.limits.keyThroughput or measure == nil then
+		return nil
+	end
+	local windows = shared.throughput[id]
+	if windows == nil then
+		windows = {
+			read = Throughput.tracker(Throughput.READ_LIMIT_KB),
+			write = Throughput.tracker(Throughput.WRITE_LIMIT_KB),
+		}
+		shared.throughput[id] = windows
+	end
+	local now = shared.clock:now()
+	local kilobytes = Throughput.kilobytes(if value == nil then 0 else measure(value))
+	local tracker = if write then windows.write else windows.read
+	if not tracker:room(now, kilobytes) then
+		local direction = if write then "write" else "read"
+		return Errors.classify(`KeyThrottled: {direction} throughput on {id} is over its limit`)
+	end
+	tracker:add(now, kilobytes)
 	return nil
 end
 

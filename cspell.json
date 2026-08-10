@@ -60,6 +60,7 @@
 		"cframe",
 		"udim",
 		"ipairs",
-		"millis"
+		"millis",
+		"cooldown"
 	]
 }

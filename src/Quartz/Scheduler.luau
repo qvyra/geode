@@ -2,10 +2,11 @@
 
 -- Every DataStore request goes through here. When requests compete for budget it picks
 -- releases, then saves, loads, reads, and background work last. Waiting requests age upward
--- so nothing starves, failures retry with jittered backoff, writes to one key are spaced
--- apart, and identical reads share one call
+-- so nothing starves, failures retry with jittered backoff, each key stays inside its
+-- throughput limits, and identical reads share one call
 
 local Future = require("./Future")
+local Throughput = require("./Throughput")
 local Types = require("./Types")
 
 export type Priority = "release" | "save" | "load" | "read" | "background"
@@ -20,6 +21,9 @@ export type Request<T> = {
 	budget: (Types.BudgetType | { Types.BudgetType })?,
 	-- same coalesce id shares one pending call. reads only
 	coalesce: string?,
+	-- Bytes moved, if known, counted against the key's throughput window. Writes count against
+	-- both the read and write windows, like UpdateAsync
+	size: number?,
 }
 
 export type Options = {
@@ -30,7 +34,11 @@ export type Options = {
 	baseDelay: number?,
 	maxDelay: number?,
 	agingInterval: number?,
+	-- Min gap between two writes to one key. Off by default, Roblox limits throughput per key
+	-- rather than spacing writes
 	writeSpacing: number?,
+	-- per key throughput limits, on by default
+	keyThroughput: boolean?,
 	budgetPollInterval: number?,
 	-- in [0, 1). Tests pass a fixed sequence to pin down backoff
 	random: (() -> number)?,
@@ -59,9 +67,12 @@ type Config = {
 	maxDelay: number,
 	agingInterval: number,
 	writeSpacing: number,
+	keyThroughput: boolean,
 	budgetPollInterval: number,
 	random: () -> number,
 }
+
+type KeyWindows = { read: Throughput.Tracker, write: Throughput.Tracker }
 
 type Fields = {
 	_clock: Types.Clock,
@@ -72,6 +83,7 @@ type Fields = {
 	_inFlight: number,
 	_writing: { [string]: boolean },
 	_lastWriteAt: { [string]: number },
+	_windows: { [string]: KeyWindows },
 	_coalesced: { [string]: Future.Future },
 	_pumping: boolean,
 	_pumpAgain: boolean,
@@ -103,8 +115,7 @@ local DEFAULTS = {
 	baseDelay = 1,
 	maxDelay = 30,
 	agingInterval = 10,
-	-- TODO(verify): Roblox spaces writes to one key ~6s apart
-	writeSpacing = 6,
+	writeSpacing = 0,
 	budgetPollInterval = 1,
 }
 
@@ -134,6 +145,7 @@ function Scheduler.new(options: Options): Scheduler
 		maxDelay = options.maxDelay or DEFAULTS.maxDelay,
 		agingInterval = options.agingInterval or DEFAULTS.agingInterval,
 		writeSpacing = options.writeSpacing or DEFAULTS.writeSpacing,
+		keyThroughput = options.keyThroughput ~= false,
 		budgetPollInterval = options.budgetPollInterval or DEFAULTS.budgetPollInterval,
 		random = options.random or math.random,
 	}
@@ -150,6 +162,7 @@ function Scheduler.new(options: Options): Scheduler
 		_inFlight = 0,
 		_writing = {},
 		_lastWriteAt = {},
+		_windows = {},
 		_coalesced = {},
 		_pumping = false,
 		_pumpAgain = false,
@@ -186,6 +199,21 @@ function Scheduler._readiness(self: Scheduler, entry: Entry, now: number): (bool
 		end
 	end
 
+	local windows = self:_windowsFor(request)
+	if windows then
+		local kilobytes = Throughput.kilobytes(request.size :: number)
+		local readRoom, readAt = windows.read:room(now, kilobytes)
+		if not readRoom then
+			return false, readAt
+		end
+		if request.write then
+			local writeRoom, writeAt = windows.write:room(now, kilobytes)
+			if not writeRoom then
+				return false, writeAt
+			end
+		end
+	end
+
 	local budget = self._budget
 	if request.budget and budget then
 		local budgetTypes: { Types.BudgetType } = if type(request.budget) == "table"
@@ -198,6 +226,22 @@ function Scheduler._readiness(self: Scheduler, entry: Entry, now: number): (bool
 		end
 	end
 	return true, nil
+end
+
+function Scheduler._windowsFor(self: Scheduler, request: Request<unknown>): KeyWindows?
+	local key = request.key
+	if not self._config.keyThroughput or key == nil or request.size == nil then
+		return nil
+	end
+	local windows = self._windows[key]
+	if windows == nil then
+		windows = {
+			read = Throughput.tracker(Throughput.READ_LIMIT_KB),
+			write = Throughput.tracker(Throughput.WRITE_LIMIT_KB),
+		}
+		self._windows[key] = windows
+	end
+	return windows
 end
 
 -- Linear scan. One entry per pending request on one server, so a heap wouldn't pay off yet
@@ -247,6 +291,14 @@ function Scheduler._start(self: Scheduler, entry: Entry)
 	if request.write and request.key then
 		self._writing[request.key] = true
 		self._lastWriteAt[request.key] = clock:now()
+	end
+	local windows = self:_windowsFor(request)
+	if windows then
+		local kilobytes = Throughput.kilobytes(request.size :: number)
+		windows.read:add(clock:now(), kilobytes)
+		if request.write then
+			windows.write:add(clock:now(), kilobytes)
+		end
 	end
 
 	clock:spawn(function()

@@ -24,6 +24,7 @@ export type SessionLostPolicy = "kick" | "none" | (profile: any, reason: string)
 -- require the store module
 export type Backend = {
 	key: string,
+	-- scheduler id for the key, the scheduler runs one write per key at a time
 	schedulerKey: string,
 	dataStore: Types.DataStore,
 	scheduler: Scheduler.Scheduler,
@@ -69,6 +70,8 @@ type Fields = {
 	-- bumped on receipt or mailbox cursor changes so isSaved sees unsaved metadata
 	_metaVersion: number,
 	_savedMetaVersion: number,
+	-- size of the last written record, used to guess the next one for key throughput
+	_lastSize: number?,
 	_autosaveToken: number,
 	_releasing: { thread }?,
 }
@@ -99,6 +102,7 @@ function Profile.new(document: Document.Document, backend: Backend): Profile
 		_mailboxCursor = backend.mailboxCursor,
 		_metaVersion = 0,
 		_savedMetaVersion = 0,
+		_lastSize = nil,
 		_autosaveToken = 0,
 		_releasing = nil,
 	}
@@ -232,6 +236,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 		budget = UPDATE_BUDGET,
 		key = backend.schedulerKey,
 		write = true,
+		size = self._lastSize,
 		run = function()
 			return backend.dataStore:update(backend.key, function(current: unknown)
 				lostReason, savedRevision, savedMetaVersion, oversize = nil, nil, nil, nil
@@ -257,6 +262,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				candidate.meta.mailboxCursor = self._mailboxCursor
 				local metaVersion = self._metaVersion
 				local report = Size.check(backend.json, candidate, backend.sizeBudget)
+				self._lastSize = report.size
 				if report.level == "hard" then
 					-- keep what's stored and only renew the lease. Never trim to fit
 					oversize = report.size

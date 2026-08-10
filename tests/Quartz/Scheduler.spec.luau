@@ -236,6 +236,78 @@ return function(spec: Spec.Api)
 			expect(startedAt[3]).toBe(0)
 		end)
 
+		it("doesn't space writes to one key by default", function()
+			local clock = MockClock.new()
+			local scheduler = Scheduler.new({ clock = asClock(clock) })
+			local startedAt = {}
+			for index = 1, 2 do
+				clock:spawn(function()
+					scheduler:submit({
+						priority = "save",
+						key = "dataStore/Players/p1",
+						write = true,
+						run = function()
+							startedAt[index] = clock:now()
+							return Errors.ok(true)
+						end,
+					})
+				end)
+			end
+			clock:advance(1)
+			expect(startedAt).toEqual({ 0, 0 })
+		end)
+
+		it("holds writes that would push a key past its throughput", function()
+			local clock = MockClock.new()
+			local scheduler = Scheduler.new({ clock = asClock(clock) })
+			local startedAt = {}
+			local function write(index: number, at: number, bytes: number)
+				clock:delay(at, function()
+					scheduler:submit({
+						priority = "save",
+						key = "dataStore/Players/p1",
+						write = true,
+						size = bytes,
+						run = function()
+							startedAt[index] = clock:now()
+							return Errors.ok(true)
+						end,
+					})
+				end)
+			end
+			-- 3 MB, then 1 MB plus one byte, which rounds up past the 4 MB a minute
+			write(1, 0, 3 * 1024 * 1024)
+			write(2, 10, 1024 * 1024 + 1)
+			write(3, 20, 100)
+			clock:advance(100)
+
+			expect(startedAt[1]).toBe(0)
+			expect(startedAt[2]).toBe(60)
+			expect(startedAt[3]).toBe(20)
+		end)
+
+		it("can turn throughput tracking off", function()
+			local clock = MockClock.new()
+			local scheduler = Scheduler.new({ clock = asClock(clock), keyThroughput = false })
+			local started = 0
+			for _ = 1, 3 do
+				clock:spawn(function()
+					scheduler:submit({
+						priority = "save",
+						key = "dataStore/Players/p1",
+						write = true,
+						size = 3 * 1024 * 1024,
+						run = function()
+							started += 1
+							return Errors.ok(true)
+						end,
+					})
+				end)
+			end
+			clock:advance(1)
+			expect(started).toBe(3)
+		end)
+
 		it("shares one call between identical concurrent reads", function()
 			local clock = MockClock.new()
 			local scheduler = Scheduler.new({ clock = asClock(clock) })

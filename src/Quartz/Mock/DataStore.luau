@@ -93,6 +93,11 @@ function MockDataStore._write(
 	if sizeError then
 		return sizeError, nil
 	end
+	local throughputError =
+		Context.useThroughput(self._context.shared, self:_throughputId(key), copy, true)
+	if throughputError then
+		return throughputError, nil
+	end
 
 	local shared = self._context.shared
 	local now = Context.nowMillis(shared)
@@ -115,6 +120,10 @@ function MockDataStore._write(
 	return nil, stored
 end
 
+function MockDataStore._throughputId(self: MockDataStore, key: string): string
+	return `{self.name}/{self.scope}/{key}`
+end
+
 --// adapter
 
 function MockDataStore.get(self: MockDataStore, key: string): Types.Result<Types.Read>
@@ -123,6 +132,16 @@ function MockDataStore.get(self: MockDataStore, key: string): Types.Result<Types
 		return Errors.failWith(err)
 	end
 	local entry = self._entries[key]
+	local stored = latest(entry)
+	local readError = Context.useThroughput(
+		self._context.shared,
+		self:_throughputId(key),
+		if stored then stored.value else nil,
+		false
+	)
+	if readError then
+		return Errors.failWith(readError)
+	end
 	return Errors.ok(readOf(entry, latest(entry)))
 end
 
