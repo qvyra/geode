@@ -25,8 +25,9 @@ local SERVICE = "queue"
 -- poll interval for a waiting read. Virtual time only, costs nothing real
 local POLL_INTERVAL = 0.25
 
--- GetQueue's default invisibility timeout, not verified
 local DEFAULT_INVISIBILITY_TIMEOUT = 30
+
+local MAX_READ_COUNT = 100
 
 function MockQueue.new(context: Context, name: string, invisibilityTimeout: number?): MockQueue
 	local queues = context.shared.queues
@@ -108,6 +109,13 @@ function MockQueue.read(
 		return Errors.failWith(err)
 	end
 
+	if options.count < 1 or options.count > MAX_READ_COUNT or options.count % 1 ~= 0 then
+		return Errors.fail(
+			"invalidValue",
+			`count must be a whole number from 1 to {MAX_READ_COUNT}`
+		)
+	end
+
 	local clock = self._context.shared.clock
 	local deadline = clock:now() + (options.waitTimeout or 0)
 	local needed = if options.allOrNothing then options.count else 1
@@ -136,9 +144,12 @@ function MockQueue.remove(self: MockQueue, id: string): Types.Result<nil>
 	if err then
 		return Errors.failWith(err)
 	end
-	-- unverified: RemoveAsync with an id whose items were read again since
+	-- Past the invisibility timeout the read no longer owns its items, so removing does nothing.
+	-- Unverified what an old id does once the same items were read again
+	local now = self._context.shared.clock:now()
 	for index = #self._items, 1, -1 do
-		if self._items[index].readId == id then
+		local item = self._items[index]
+		if item.readId == id and item.invisibleUntil > now then
 			table.remove(self._items, index)
 		end
 	end

@@ -30,7 +30,6 @@ export type Roblox = {
 	clock: Types.Clock?,
 }
 
--- GetQueue's default invisibility timeout, unverified
 local DEFAULT_INVISIBILITY_TIMEOUT = 30
 
 local RealServices = {}

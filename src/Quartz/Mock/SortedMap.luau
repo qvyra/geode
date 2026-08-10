@@ -33,14 +33,15 @@ function MockSortedMap.new(context: Context, name: string): MockSortedMap
 	return setmetatable(self, MockSortedMap)
 end
 
+local MAX_RANGE_COUNT = 200
+
 --// ordering
 
--- Roblox orders by sort key, then key. Where items without a sort key go, and how numbers
--- and strings interleave, is assumed: none first, then numbers, then strings
+-- Numbers first, then strings, then no sort key at all. Ties go by key, alphabetically
 local function rank(sortKey: SortKey?): number
-	if sortKey == nil then
+	if type(sortKey) == "number" then
 		return 0
-	elseif type(sortKey) == "number" then
+	elseif sortKey ~= nil then
 		return 1
 	end
 	return 2
@@ -68,8 +69,8 @@ local function compareEntries(a: Types.SortedEntry, b: Types.SortedEntry): numbe
 	return if a.key < b.key then -1 else 1
 end
 
--- Unverified how a bound with only a key or only a sort key behaves. A missing field just
--- isn't compared here
+-- Unverified what a bound with only a key or only a sort key compares against. The missing
+-- field just isn't compared here
 local function compareToBound(entry: Types.SortedEntry, bound: Types.SortedBound): number
 	if bound.sortKey ~= nil then
 		local bySortKey = compareSortKeys(entry.sortKey, bound.sortKey)
@@ -190,6 +191,12 @@ function MockSortedMap.getRange(
 	local err = Context.enter(self._context, SERVICE, self.name, "getRange", nil)
 	if err then
 		return Errors.failWith(err)
+	end
+	if range.count < 1 or range.count > MAX_RANGE_COUNT or range.count % 1 ~= 0 then
+		return Errors.fail(
+			"invalidValue",
+			`count must be a whole number from 1 to {MAX_RANGE_COUNT}`
+		)
 	end
 
 	local entries: { Types.SortedEntry } = {}
