@@ -56,6 +56,9 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 	local services: Types.Services = {
 		jobId = roblox.jobId,
 		placeId = roblox.placeId,
+		guid = function(): string
+			return roblox.httpService:GenerateGUID(false)
+		end,
 		clock = roblox.clock or RealClock.new(),
 		budget = {
 			get = function(_self: Types.Budget, budgetType: Types.BudgetType): number

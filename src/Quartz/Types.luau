@@ -313,6 +313,8 @@ export type Json = {
 export type Services = {
 	jobId: string,
 	placeId: number,
+	-- unique across every call anywhere, like HttpService:GenerateGUID
+	guid: () -> string,
 	clock: Clock,
 	budget: Budget,
 	json: Json,

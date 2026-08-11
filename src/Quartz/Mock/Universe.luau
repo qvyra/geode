@@ -37,6 +37,7 @@ export type ServerOptions = {
 export type MockServer = {
 	jobId: string,
 	placeId: number,
+	guid: () -> string,
 	clock: Types.Clock,
 	budget: Types.Budget,
 	json: Types.Json,
@@ -169,6 +170,9 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 	local server: MockServer = {
 		jobId = context.jobId,
 		placeId = context.placeId,
+		guid = function(): string
+			return `guid-{Context.nextId(self._shared)}`
+		end,
 		clock = asAdapter(self.clock),
 		budget = {
 			get = function(_self: Types.Budget, budgetType: Types.BudgetType): number

@@ -341,6 +341,9 @@ function FakeRoblox.services(server: Universe.MockServer): Types.Services
 			JSONEncode = function(_self: any, value: unknown)
 				return Json.encode(value)
 			end,
+			GenerateGUID = function(_self: any, _wrap: boolean)
+				return server.guid()
+			end,
 		},
 		jobId = server.jobId,
 		placeId = server.placeId,
