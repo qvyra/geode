@@ -13,8 +13,7 @@ RealHashMap.__index = RealHashMap
 
 export type RealHashMap = typeof(setmetatable({} :: Fields, RealHashMap))
 
--- unverified: largest page size ListItemsAsync accepts
-local LIST_PAGE_SIZE = 100
+local LIST_PAGE_SIZE = 200
 
 function RealHashMap.new(map: MemoryStoreHashMap, name: string): RealHashMap
 	return setmetatable({ name = name, _map = map } :: Fields, RealHashMap)

@@ -134,7 +134,8 @@ local DEFAULTS = {
 	closeTimeout = 25,
 	loadTimeout = 30,
 	receiptHistory = 50,
-	-- TODO(verify): the DataStore value limit is about 4 MB. The hard budget stays under it
+	-- DS limit is 4,194,304 per key. The hard budget stays below it since this JSON estimate
+	-- can differ from HttpService's escaping
 	sizeBudget = { soft = 3000000, hard = 4000000 },
 }
 
@@ -717,7 +718,8 @@ end
 	metadata, so a server elsewhere still holding the profile loses its session on the next save
 	instead of writing the data back. Yields
 
-	TODO(verify): whether erasure also has to remove older DataStore versions of the key
+	Overwriting a key doesn't remove its history. Older versions stay readable for 30 days, and
+	RemoveVersionAsync is deprecated, so erasure is complete once those 30 days have passed
 ]=]
 function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, message: string? }
 	local open = self._open[key]

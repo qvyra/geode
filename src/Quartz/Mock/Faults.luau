@@ -48,7 +48,8 @@ Faults.__index = Faults
 
 export type Faults = typeof(setmetatable({} :: Fields, Faults))
 
--- Real throttle message wording is unverified. `classify` only reads the code prefix
+-- Injected throttles carry the method's throttle code, since that's what `classify` reads
+-- first
 function Faults.new(): Faults
 	return setmetatable({ _rules = {} } :: Fields, Faults)
 end

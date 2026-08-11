@@ -318,8 +318,7 @@ function MockDataStore.getVersion(
 			end
 		end
 	end
-	-- Unverified: what GetVersionAsync does for a version that never existed. Treated like a
-	-- missing key for now
+	-- unverified whether GetVersionAsync returns nil or throws for a version that never existed
 	return Errors.ok({ value = nil, info = nil })
 end
 

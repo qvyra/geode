@@ -16,7 +16,8 @@ RealDataStore.__index = RealDataStore
 
 export type RealDataStore = typeof(setmetatable({} :: Fields, RealDataStore))
 
--- unverified: largest page size ListVersionsAsync accepts
+-- ListVersionsAsync pages 1024 by default and has no documented max. Smaller pages keep
+-- each call cheap
 local VERSION_PAGE_SIZE = 100
 
 function RealDataStore.new(
@@ -148,7 +149,7 @@ function RealDataStore.listVersions(
 ): Types.Result<{ Types.VersionInfo }>
 	local ascending = query == nil or query.ascending ~= false
 	local limit = query and query.limit or VERSION_PAGE_SIZE
-	-- assumes 0 means no bound for minDate and maxDate, unverified
+	-- 0 = open on that side
 	local minDate = query and query.minDate or 0
 	local maxDate = query and query.maxDate or 0
 	local direction = if ascending then self._api.sortAscending else self._api.sortDescending

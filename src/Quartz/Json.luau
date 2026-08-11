@@ -1,7 +1,8 @@
 --!strict
 
 -- Plain Luau JSON encoder for where HttpService isn't around. Output is for size estimates:
--- same shape as HttpService, no byte-for-byte promise.
+-- same shape as HttpService, no byte-for-byte promise. HttpService lets inf and NaN through,
+-- so validation rejects them before they get here.
 -- Not checked yet: how HttpService:JSONEncode formats floats and escapes non-ASCII text
 
 local Types = require("./Types")

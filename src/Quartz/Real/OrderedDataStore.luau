@@ -14,7 +14,6 @@ RealOrderedDataStore.__index = RealOrderedDataStore
 
 export type RealOrderedDataStore = typeof(setmetatable({} :: Fields, RealOrderedDataStore))
 
--- unverified: largest page size GetSortedAsync accepts
 local SORTED_PAGE_SIZE = 100
 
 function RealOrderedDataStore.new(

@@ -1,8 +1,7 @@
 --!strict
 
--- Size of a value as a DataStore would see it. Measured as the length of its JSON encoding, which
--- is what the size limit applies to.
--- TODO(verify): whether the DataStore limit counts bytes or characters of the encoded JSON
+-- Size of a value as a DataStore sees it. The limit is documented in characters of the JSON
+-- encoding; this counts bytes, which are never fewer, so it errs on the safe side
 
 local Types = require("../Quartz/Types")
 
