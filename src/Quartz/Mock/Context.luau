@@ -10,8 +10,9 @@ local Throughput = require("../Throughput")
 local Types = require("../Types")
 
 export type Limits = {
-	-- 50 char cap on DataStore key names, not verified yet
+	-- 50 chars each for keys, store names and scopes
 	keyLength: number,
+	nameLength: number,
 	-- needs both set. Wire a JSON length in to mimic the real value size cap
 	valueSize: number?,
 	measure: ((value: unknown) -> number)?,
@@ -238,6 +239,20 @@ function Context.useThroughput(
 		return Errors.classify(`KeyThrottled: {direction} throughput on {id} is over its limit`)
 	end
 	tracker:add(now, kilobytes)
+	return nil
+end
+
+--[=[
+	Checks a DataStore's name and scope against their length cap
+]=]
+function Context.checkStoreName(shared: Shared, name: string, scope: string): Types.AdapterError?
+	local limit = shared.limits.nameLength
+	if #name > limit then
+		return { kind = "invalidKey", message = `store name exceeds the {limit} character limit` }
+	end
+	if #scope > limit then
+		return { kind = "invalidKey", message = `scope exceeds the {limit} character limit` }
+	end
 	return nil
 end
 

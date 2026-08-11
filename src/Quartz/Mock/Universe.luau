@@ -20,6 +20,7 @@ export type UniverseOptions = {
 	clock: MockClock.MockClock?,
 	limits: {
 		keyLength: number?,
+		nameLength: number?,
 		valueSize: number?,
 		measure: ((value: unknown) -> number)?,
 		keyThroughput: boolean?,
@@ -106,6 +107,7 @@ function Universe.new(options: UniverseOptions?): Universe
 		clock = clock,
 		limits = {
 			keyLength = limits and limits.keyLength or DEFAULT_KEY_LENGTH,
+			nameLength = limits and limits.nameLength or DEFAULT_KEY_LENGTH,
 			valueSize = limits and limits.valueSize,
 			measure = limits and limits.measure,
 			keyThroughput = limits and limits.keyThroughput,

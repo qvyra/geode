@@ -43,6 +43,9 @@ end
 
 function MockOrderedDataStore._enter(self: MockOrderedDataStore, method: string, key: string?)
 	local err = Context.enter(self._context, SERVICE, self.name, method, key)
+	if err == nil then
+		err = Context.checkStoreName(self._context.shared, self.name, self.scope)
+	end
 	if err == nil and key then
 		err = Context.checkKey(self._context.shared, key)
 	end

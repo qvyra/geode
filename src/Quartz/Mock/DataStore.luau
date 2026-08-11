@@ -76,7 +76,9 @@ function MockDataStore._enter(
 	if err then
 		return err, nil
 	end
-	return Context.checkKey(self._context.shared, key), foreign
+	local shared = self._context.shared
+	return Context.checkStoreName(shared, self.name, self.scope) or Context.checkKey(shared, key),
+		foreign
 end
 
 function MockDataStore._write(
