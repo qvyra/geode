@@ -71,14 +71,15 @@ function MockDataStore._enter(
 	self: MockDataStore,
 	method: string,
 	key: string
-): (Types.AdapterError?, Faults.ForeignWrite?)
-	local err, foreign = Context.enter(self._context, SERVICE, self.name, method, key)
+): (Types.AdapterError?, Faults.ForeignWrite?, Types.AdapterError?)
+	local err, foreign, landed = Context.enter(self._context, SERVICE, self.name, method, key)
 	if err then
-		return err, nil
+		return err, nil, nil
 	end
 	local shared = self._context.shared
 	return Context.checkStoreName(shared, self.name, self.scope) or Context.checkKey(shared, key),
-		foreign
+		foreign,
+		landed
 end
 
 function MockDataStore._write(
@@ -153,13 +154,16 @@ function MockDataStore.set(
 	value: unknown,
 	options: Types.WriteOptions?
 ): Types.Result<string>
-	local err = self:_enter("set", key)
+	local err, _, landed = self:_enter("set", key)
 	if err then
 		return Errors.failWith(err)
 	end
 	local writeError, stored = self:_write(key, value, options)
 	if writeError or stored == nil then
 		return Errors.failWith(writeError :: Types.AdapterError)
+	end
+	if landed then
+		return Errors.failWith(landed)
 	end
 	return Errors.ok(stored.version)
 end
@@ -169,7 +173,7 @@ function MockDataStore.update(
 	key: string,
 	transform: Types.Transform
 ): Types.Result<Types.Update>
-	local err, foreign = self:_enter("update", key)
+	local err, foreign, landed = self:_enter("update", key)
 	if err then
 		return Errors.failWith(err)
 	end
@@ -197,6 +201,9 @@ function MockDataStore.update(
 	if writeError or stored == nil then
 		return Errors.failWith(writeError :: Types.AdapterError)
 	end
+	if landed then
+		return Errors.failWith(landed)
+	end
 	local written = self._entries[key]
 	return Errors.ok({
 		value = Values.clone(stored.value),
@@ -206,7 +213,7 @@ function MockDataStore.update(
 end
 
 function MockDataStore.remove(self: MockDataStore, key: string): Types.Result<Types.Read>
-	local err = self:_enter("remove", key)
+	local err, _, landed = self:_enter("remove", key)
 	if err then
 		return Errors.failWith(err)
 	end
@@ -226,6 +233,9 @@ function MockDataStore.remove(self: MockDataStore, key: string): Types.Result<Ty
 		userIds = {},
 		metadata = {},
 	})
+	if landed then
+		return Errors.failWith(landed)
+	end
 	return Errors.ok(previous)
 end
 
@@ -235,7 +245,7 @@ function MockDataStore.increment(
 	delta: number,
 	options: Types.WriteOptions?
 ): Types.Result<number>
-	local err = self:_enter("increment", key)
+	local err, _, landed = self:_enter("increment", key)
 	if err then
 		return Errors.failWith(err)
 	end
@@ -251,6 +261,9 @@ function MockDataStore.increment(
 	local writeError, stored = self:_write(key, base + delta, options)
 	if writeError or stored == nil then
 		return Errors.failWith(writeError :: Types.AdapterError)
+	end
+	if landed then
+		return Errors.failWith(landed)
 	end
 	return Errors.ok(stored.value :: number)
 end

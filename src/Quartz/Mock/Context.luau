@@ -179,22 +179,22 @@ function Context.enter(
 	store: string,
 	method: string,
 	key: string?
-): (Types.AdapterError?, Faults.ForeignWrite?)
+): (Types.AdapterError?, Faults.ForeignWrite?, Types.AdapterError?)
 	if not context.alive then
 		-- crashed server: the thread never gets an answer, same as a dead process
 		coroutine.yield()
 	end
 	-- MockClock is a Clock at runtime, but Luau won't accept its method types as Clock's
 	local clock = context.shared.clock :: any
-	local err, foreign = context.faults:apply(clock, service, store, method, key)
+	local err, foreign, landed = context.faults:apply(clock, service, store, method, key)
 	if err then
-		return err, nil
+		return err, nil, nil
 	end
 	local budgetError = consume(context, service, method)
 	if budgetError then
-		return budgetError, nil
+		return budgetError, nil, nil
 	end
-	return nil, foreign
+	return nil, foreign, landed
 end
 
 function Context.checkKey(shared: Shared, key: string): Types.AdapterError?

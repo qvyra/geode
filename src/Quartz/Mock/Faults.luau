@@ -3,11 +3,14 @@
 local Errors = require("../Errors")
 local Types = require("../Types")
 
--- Set one field: `{ code = 304 }`, `{ latency = 2 }` or `{ foreignWrite = fn, rerun = true }`.
--- A foreign write runs before the call as if another server got there first. `rerun` also
--- shows the caller's transform the stale value once, like a real UpdateAsync retry
+-- Set one field: `{ code = 304 }`, `{ latency = 2 }`, `{ landed = 304 }` or
+-- `{ foreignWrite = fn, rerun = true }`. A foreign write runs before the call as if another
+-- server got there first. `rerun` also shows the caller's transform the stale value once,
+-- like a real UpdateAsync retry. `landed` lets a DataStore write go through and still reports
+-- the error, since Roblox doesn't promise a failed write didn't happen
 export type FaultSpec = {
 	code: number?,
+	landed: number?,
 	latency: number?,
 	foreignWrite: ((current: unknown) -> unknown)?,
 	rerun: boolean?,
@@ -97,7 +100,8 @@ end
 
 --[=[
 	Runs every matching rule for one call. Latency waits on the clock, an error ends the call,
-	and a foreign write is handed back for the adapter to apply
+	and a foreign write is handed back for the adapter to apply. So is a landed error, which the
+	adapter reports after its write went through
 ]=]
 function Faults.apply(
 	self: Faults,
@@ -106,8 +110,9 @@ function Faults.apply(
 	store: string,
 	method: string,
 	key: string?
-): (Types.AdapterError?, ForeignWrite?)
+): (Types.AdapterError?, ForeignWrite?, Types.AdapterError?)
 	local foreign: ForeignWrite? = nil
+	local landed: Types.AdapterError? = nil
 	for index = #self._rules, 1, -1 do
 		local rule = self._rules[index]
 		if not matches(rule, service, store, method, key) then
@@ -122,11 +127,17 @@ function Faults.apply(
 
 		local fault = rule.fault
 		if fault == "throttle" then
-			return throttleError(service, method), nil
+			return throttleError(service, method), nil, nil
 		elseif type(fault) == "table" then
 			local fields: FaultSpec = fault
 			if fields.code then
-				return Errors.classify(`{fields.code}: injected fault on {service}.{method}`), nil
+				return Errors.classify(`{fields.code}: injected fault on {service}.{method}`),
+					nil,
+					nil
+			elseif fields.landed then
+				landed = Errors.classify(
+					`{fields.landed}: injected fault after the write landed on {service}.{method}`
+				)
 			elseif fields.latency then
 				clock:wait(fields.latency)
 			elseif fields.foreignWrite then
@@ -134,7 +145,7 @@ function Faults.apply(
 			end
 		end
 	end
-	return nil, foreign
+	return nil, foreign, landed
 end
 
 return Faults
