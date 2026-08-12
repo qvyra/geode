@@ -78,7 +78,9 @@ export type LoadErrorKind =
 	| "migrationFailed"
 
 export type LoadResult =
-	{ ok: true, profile: Profile.Profile }
+	-- `erasedAt` is set when the stored data had been erased and the profile starts over from the
+	-- template
+	{ ok: true, profile: Profile.Profile, erasedAt: number? }
 	| { ok: false, error: { kind: LoadErrorKind, message: string } }
 
 type Config = {
@@ -99,6 +101,8 @@ type Fields = {
 	scope: string,
 	-- Fires for guard violations on any profile of this store, with the violation and the profile
 	guardBroken: Signal.Signal,
+	-- Fires with the key and the erasure time when a profile whose data was erased loads again
+	erasedProfileLoaded: Signal.Signal,
 	_services: Types.Services,
 	_scheduler: Scheduler.Scheduler,
 	_dataStore: Types.DataStore,
@@ -259,6 +263,7 @@ function ProfileStore.new(options: Options): ProfileStore
 		name = options.name,
 		scope = scope,
 		guardBroken = Signal.new(report),
+		erasedProfileLoaded = Signal.new(report),
 		_services = services,
 		_scheduler = options.scheduler
 			or Scheduler.new({ clock = services.clock, budget = services.budget }),
@@ -304,6 +309,7 @@ type Attempt = {
 	outcome: "acquired" | "held" | "corrupt",
 	record: Record.Record?,
 	holder: Record.Lease?,
+	erasedAt: number?,
 }
 
 -- One try at taking the lease. Free, stale and already held leases are taken. A live holder is
@@ -336,6 +342,14 @@ function ProfileStore._tryAcquire(
 				else
 					attempt.outcome = "corrupt"
 					return nil
+				end
+
+				if record.meta.erasedAt and record.data == nil then
+					-- The player's data was erased and they're back. They start over from the
+					-- template, and erasedAt stays so history from before it is never served again
+					record.data = copy(self._storedTemplate)
+					record.meta.schemaVersion = config.schemaVersion
+					attempt.erasedAt = record.meta.erasedAt
 				end
 
 				local state = Record.leaseState(record, now, config.leaseTimeout, owner)
@@ -426,6 +440,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	local force = false
 	local tries = 0
 	local record: Record.Record
+	local erasedAt: number? = nil
 	while true do
 		local attempt, adapterError = self:_tryAcquire(key, owner, userIds, force)
 		if attempt == nil then
@@ -448,6 +463,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		end
 		if attempt.outcome == "acquired" then
 			record = attempt.record :: Record.Record
+			erasedAt = attempt.erasedAt
 			break
 		end
 
@@ -549,7 +565,10 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	end)
 	self:_deliverMail(key, profile)
 	self._open[key] = profile
-	return { ok = true, profile = profile }
+	if erasedAt then
+		self.erasedProfileLoaded:fire(key, erasedAt)
+	end
+	return { ok = true, profile = profile, erasedAt = erasedAt }
 end
 
 -- Runs each migration from the stored version up, each as its own migration transaction on the
@@ -728,8 +747,12 @@ end
 	metadata, so a server elsewhere still holding the profile loses its session on the next save
 	instead of writing the data back. Yields
 
-	Overwriting a key doesn't remove its history. Older versions stay readable for 30 days, and
-	RemoveVersionAsync is deprecated, so erasure is complete once those 30 days have passed
+	Erasure is immediate for every live read. Roblox still keeps the older versions of the key
+	readable through the versioning API for 30 days, and RemoveVersionAsync is deprecated, so they
+	can't be purged early. History and rollback refuse versions from before the erasure
+
+	If the player joins again, their profile starts over from the template. The load result and
+	`erasedProfileLoaded` report when that happens
 ]=]
 function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, message: string? }
 	local open = self._open[key]

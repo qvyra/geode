@@ -7,6 +7,7 @@ local Profile = require("../../src/Sapphire/Profile")
 local ProfileStore = require("../../src/Sapphire/ProfileStore")
 local Record = require("../../src/Sapphire/Record")
 local Registry = require("../../src/Sapphire/Registry")
+local Schema = require("../../src/Obsidian/Schema")
 local Spec = require("../_lib/Spec")
 local Universe = require("../../src/Quartz/Mock/Universe")
 
@@ -111,6 +112,61 @@ return function(spec: Spec.Api)
 			local store = Helpers.store(universe:server())
 			local profile = load(universe, store, "p1")
 			profile:increment("coins", 5)
+			release(universe, profile)
+			universe.clock:run(function()
+				return store:erase("p1")
+			end)
+			expect(load(universe, store, "p1"):get("coins")).toBe(0)
+		end)
+
+		it("reports the erasure on the load that starts over, and only that one", function()
+			local universe = Universe.new()
+			local store = Helpers.store(universe:server())
+			local profile = load(universe, store, "p1")
+			release(universe, profile)
+			universe.clock:advance(7)
+			universe.clock:run(function()
+				return store:erase("p1")
+			end)
+			local heard: { { unknown } } = {}
+			store.erasedProfileLoaded:connect(function(key: string, erasedAt: number)
+				table.insert(heard, { key :: unknown, erasedAt })
+			end)
+
+			local first = universe.clock:run(function()
+				return store:load("p1")
+			end)
+			expect(first.ok).toBe(true)
+			if not first.ok then
+				return
+			end
+			expect(first.erasedAt).toBe(7)
+			local expected: { { unknown } } = { { "p1" :: unknown, 7 } }
+			expect(heard).toEqual(expected)
+			release(universe, first.profile)
+			local record = Helpers.stored(universe, "p1") :: Record.Record
+			expect(record.meta.erasedAt).toBe(7)
+			expect((record.data :: Any).coins).toBe(0)
+
+			local second = universe.clock:run(function()
+				return store:load("p1")
+			end)
+			expect(second.ok).toBe(true)
+			if second.ok then
+				expect(second.erasedAt).toBeNil()
+			end
+			expect(#heard).toBe(1)
+		end)
+
+		it("starts over with a schema too", function()
+			local universe = Universe.new()
+			local store = Helpers.store(universe:server(), {
+				schema = Schema.struct({
+					coins = Schema.integer(),
+					log = Schema.array(Schema.string()),
+				}),
+			})
+			local profile = load(universe, store, "p1")
 			release(universe, profile)
 			universe.clock:run(function()
 				return store:erase("p1")

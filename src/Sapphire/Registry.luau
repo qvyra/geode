@@ -47,6 +47,10 @@ export type EraseReport = {
 	still holds one of the profiles loses its session on its next save instead of writing the data
 	back
 
+	Erasure is immediate for live reads. Roblox keeps older versions of each key readable for 30
+	days and RemoveVersionAsync is deprecated, so those can't be purged early. A player who joins
+	again starts over from the template
+
 	@within Geode
 	@param userId number
 	@param services Services? -- only stores created with these services. All stores when nil

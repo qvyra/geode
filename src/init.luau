@@ -195,6 +195,10 @@ Geode.receipts = Sapphire.receipts
 	@return EraseReport
 
 	Erases a player's data from every profile store. Yields
+
+	Live reads see the erasure right away. Older versions of each key stay readable for 30 days
+	on Roblox's side and RemoveVersionAsync is deprecated, so those can't be purged early. A
+	player who joins again starts over from the template
 ]=]
 Geode.erase = Sapphire.erase
 
