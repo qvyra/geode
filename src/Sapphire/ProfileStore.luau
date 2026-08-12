@@ -114,7 +114,6 @@ type Fields = {
 	_config: Config,
 	_open: { [string]: Profile.Profile },
 	_loading: { [string]: boolean },
-	_sessions: number,
 	_report: (message: string) -> (),
 }
 
@@ -280,7 +279,6 @@ function ProfileStore.new(options: Options): ProfileStore
 		_config = config,
 		_open = {},
 		_loading = {},
-		_sessions = 0,
 		_report = report,
 	}
 	local store = setmetatable(self, ProfileStore)
@@ -353,6 +351,8 @@ function ProfileStore._tryAcquire(
 					renewedAt = now,
 				}
 				record.meta.updatedAt = now
+				record.meta.lastSession =
+					{ session = owner.session, revision = record.meta.revision }
 				attempt.outcome = "acquired"
 				attempt.record = record
 				return record, { userIds = userIds }
@@ -415,9 +415,7 @@ end
 function ProfileStore._load(self: ProfileStore, key: string, options: LoadOptions?): LoadResult
 	local services = self._services
 	local config = self._config
-	self._sessions += 1
-	local owner: Record.Owner =
-		{ jobId = services.jobId, session = `{services.jobId}:{self._sessions}` }
+	local owner: Record.Owner = { jobId = services.jobId, session = services.guid() }
 	local userId = options and options.userId
 	local userIds: { number } = if options and options.userIds
 		then options.userIds
@@ -434,6 +432,8 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 			local err = adapterError :: Types.AdapterError
 			local retryable = err.kind == "throttled" or err.kind == "internal"
 			if not retryable or services.clock:now() - started >= config.loadTimeout then
+				-- the failed acquire may still have landed, give the lease back if so
+				self:_abandon(key, owner)
 				return loadFailure("adapter", err.message)
 			end
 			tries += 1
@@ -523,6 +523,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		json = services.json,
 		players = services.players,
 		owner = owner,
+		placeId = services.placeId,
 		userIds = userIds,
 		userId = userId,
 		schema = self._schema,
@@ -673,7 +674,9 @@ function ProfileStore.mail(
 		}
 	end
 
+	local id = self._services.guid()
 	local seq = 0
+	local duplicate = false
 	local result = self._scheduler:submit({
 		priority = "save",
 		budget = UPDATE_BUDGET,
@@ -682,18 +685,25 @@ function ProfileStore.mail(
 		run = function()
 			return self._mailboxStore:update(key, function(current: unknown)
 				local box = Mailbox.read(current)
+				duplicate = false
 				if box == nil then
 					return nil
 				end
+				local existing = Mailbox.find(box, id)
+				if existing then
+					-- earlier try landed despite reporting failure
+					seq, duplicate = existing, true
+					return nil
+				end
 				seq = box.nextSeq
-				return Mailbox.push(box, op, list, self._services.clock:now())
+				return Mailbox.push(box, op, list, self._services.clock:now(), id)
 			end)
 		end,
 	})
 	if not result.ok then
 		return { ok = false, error = result.error }
 	end
-	if result.value.cancelled then
+	if result.value.cancelled and not duplicate then
 		return {
 			ok = false,
 			error = { kind = "invalidValue", message = `the mailbox of {key} is malformed` },
@@ -743,6 +753,7 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 					else Record.new(nil, now, self._config.schemaVersion)
 				record.data = nil
 				record.meta.lease = nil
+				record.meta.lastSession = nil
 				record.meta.receipts = {}
 				record.meta.mailboxCursor = 0
 				record.meta.erasedAt = now

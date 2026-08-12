@@ -8,6 +8,8 @@ local Transaction = require("../Matrix/Transaction")
 
 export type Message = {
 	seq: number,
+	-- one per send, so a retry whose first try landed isn't queued twice
+	id: string?,
 	op: string,
 	args: { unknown },
 	sentAt: number,
@@ -70,10 +72,22 @@ end
 --[=[
 	Appends a message to a box and returns it. The box is changed in place
 ]=]
-function Mailbox.push(box: Box, op: string, args: { unknown }, now: number): Box
-	table.insert(box.items, { seq = box.nextSeq, op = op, args = args, sentAt = now })
+function Mailbox.push(box: Box, op: string, args: { unknown }, now: number, id: string?): Box
+	table.insert(box.items, { seq = box.nextSeq, id = id, op = op, args = args, sentAt = now })
 	box.nextSeq += 1
 	return box
+end
+
+--[=[
+	The sequence number of the message sent with `id`, if the box still holds it
+]=]
+function Mailbox.find(box: Box, id: string): number?
+	for _, message in box.items do
+		if message.id == id then
+			return message.seq
+		end
+	end
+	return nil
 end
 
 --[=[

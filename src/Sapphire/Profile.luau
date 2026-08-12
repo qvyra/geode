@@ -32,6 +32,7 @@ export type Backend = {
 	json: Types.Json,
 	players: Types.Players,
 	owner: Record.Owner,
+	placeId: number,
 	userIds: { number },
 	userId: number?,
 	schema: Schema.Schema?,
@@ -246,6 +247,18 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				end
 				local record = Record.copy(current :: Record.Record)
 				local now = backend.clock:now()
+				local revision = document:revision()
+				if record.meta.lease == nil and Record.lastWrittenBy(record, backend.owner) then
+					-- Our release reported failure but actually landed, and nobody wrote since.
+					-- Take the lease back and carry on, a release then just writes again
+					record.meta.lease = {
+						jobId = backend.owner.jobId,
+						placeId = backend.placeId,
+						session = backend.owner.session,
+						acquiredAt = now,
+						renewedAt = now,
+					}
+				end
 				if Record.leaseState(record, now, math.huge, backend.owner) ~= "mine" then
 					lostReason = if record.meta.erasedAt
 						then "the profile was erased"
@@ -253,10 +266,10 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 					return nil
 				end
 
-				local revision = document:revision()
 				local candidate = Record.copy(record)
 				candidate.data = self:_encode(document:snapshot())
-				candidate.meta.revision = revision
+				-- Revisions only move forward, even past a landed write this session already made
+				candidate.meta.revision = math.max(revision, record.meta.revision)
 				candidate.meta.schemaVersion = backend.schemaVersion
 				candidate.meta.receipts = table.clone(self._receipts)
 				candidate.meta.mailboxCursor = self._mailboxCursor
@@ -278,6 +291,8 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				end
 
 				record.meta.updatedAt = now
+				record.meta.lastSession =
+					{ session = backend.owner.session, revision = record.meta.revision }
 				local lease = record.meta.lease :: Record.Lease
 				lease.renewedAt = now
 				if releasing and oversize == nil then
@@ -420,6 +435,8 @@ function Profile.release(self: Profile): SaveResult
 	elseif self:state() == "releasing" then
 		self._state = "active"
 		self._document:clearReadOnly()
+		-- an autosave came due mid-release, found the profile busy and gave up
+		self:_scheduleAutosave()
 		self._backend.report(
 			`releasing profile {self.key} failed and will be retried: {result.error.message}`
 		)

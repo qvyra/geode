@@ -24,6 +24,14 @@ export type Meta = {
 	updatedAt: number,
 	-- Set when the player's data was erased. The record then holds no data
 	erasedAt: number?,
+	-- The session behind the last write and the revision it left. A write that failed may still
+	-- have landed, and this is how a retry recognizes its own earlier write
+	lastSession: LastSession?,
+}
+
+export type LastSession = {
+	session: string,
+	revision: number,
 }
 
 export type Record = {
@@ -33,6 +41,7 @@ export type Record = {
 
 export type Owner = {
 	jobId: string,
+	-- unique per load, so loading the same key twice on one server gives two sessions
 	session: string,
 }
 
@@ -92,6 +101,15 @@ end
 ]=]
 function Record.copy(record: Record): Record
 	return copy(record) :: Record
+end
+
+--[=[
+	Whether `owner` made the last write to `record`. When its lease is gone too, that write was a
+	release of ours that reported failure but landed, and nobody has touched the record since
+]=]
+function Record.lastWrittenBy(record: Record, owner: Owner): boolean
+	local last = record.meta.lastSession
+	return last ~= nil and last.session == owner.session and last.revision == record.meta.revision
 end
 
 --[=[

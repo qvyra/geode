@@ -48,7 +48,7 @@ return function(spec: Spec.Api)
 			local record = Helpers.stored(universe, "p1") :: Record.Record
 			local lease = record.meta.lease :: Record.Lease
 			expect(lease.jobId).toBe("A")
-			expect(lease.session).toBe("A:1")
+			expect(lease.session).toBe((record.meta.lastSession :: Record.LastSession).session)
 			expect(record.meta.revision).toBe(0)
 			expect(record.data).toEqual({ coins = 0, log = {} })
 			expect(store:get("p1")).toBe(profile)
