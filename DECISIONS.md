@@ -164,6 +164,8 @@ Defaults: an autosave every 60 seconds, a lease that goes stale after 300 second
 
 **Commits:** f7ad3a2
 
+**Note, 2026-08-13:** until release requests over MessagingService exist, stealing from a live holder throws away up to one autosave interval of that server's unsaved changes, because the holder only finds out it lost the session on its next save. Release requests are what shrink that window in practice.
+
 ## 15. Receipts, mail and erasure ride on the profile save
 
 **Date:** 2026-08-08
@@ -177,3 +179,63 @@ Erasure leaves an erased marker in the record instead of deleting the key. A ser
 Migrations run on the stored form before decoding, since old data may not match the current schema, and reconcile only adds what the template has and the data lacks.
 
 **Commits:** abb8145, 4d98f43, d713d56, 891d2ef
+
+## 16. Errors are matched by name as well as code
+
+**Date:** 2026-08-13
+
+**Revises:** entry 6
+
+Entry 6 classified DataStore errors by numeric code and everything else by wording. Going through the official error reference showed problems with that: newer throttles come back as names like `KeyThrottled` with no code, a few codes were in the wrong group, and MemoryStore and MessagingService have no documented wording at all.
+
+Went with matching codes and throttle names for DataStore, and treating unmatched MemoryStore and MessagingService errors as retryable. Codes now follow the reference:
+
+- 301 to 306 are throttles
+- 404 and 501 to 505 are retryable internal errors
+- 401 and 402 mean the server is shutting down
+- 1xx, 403, 509 and 511 to 513 are never retried
+
+Names ending in `Throttled` are throttles. An unmatched DataStore error stays unknown and is never retried, since a guess there could hammer a key that will never accept the call. MemoryStore and MessagingService errors can't be matched reliably, so an unmatched one is retried a bounded number of times.
+
+**Commits:** 88c4b75
+
+## 17. Budgets follow the modern request types
+
+**Date:** 2026-08-13
+
+**Revises:** entry 9
+
+Entry 9 checked budgets against the legacy request types, which are deprecated, and spaced writes to one key 6 seconds apart, a rule Roblox doesn't have. Both are gone.
+
+Budgets now use the modern types, and a call waits on every budget it draws from. UpdateAsync waits until both the read and the write budget have room, RemoveAsync draws on its own budget, and OrderedList counts as unlimited because it isn't metered and always reports 0.
+
+Writes are no longer spaced by default. The scheduler tracks each key's reads and writes over a rolling 60 seconds against 25 MB and 4 MB, rounds every request up to the next kilobyte the way Roblox does, and holds a request until it fits. The mocks throttle the same way when a test turns it on.
+
+**Commits:** dfbd203, 60443f5
+
+## 18. Retries recognize their own landed writes
+
+**Date:** 2026-08-13
+
+**Context:** Roblox documents that a failed UpdateAsync doesn't guarantee the write didn't happen. That bit us twice. A release that landed but reported failure left the profile active with the lease already gone, and the next save reported the session lost. A mail send that landed and was retried queued the message twice.
+
+**Options:**
+
+- Treat every failure as not written, and accept lost sessions and duplicates as rare
+- Mark every write with the session behind it, so a retry can recognize its own earlier write
+
+**Chosen:** mark the writes. Every profile write records `meta.lastSession = { session, revision }`. The session is a unique id generated per load, not the job id, since one server can load, release and load the same key again. A save that finds the lease gone while the last write is still ours knows its own release landed and nobody wrote since, so it takes the lease back and carries on. A retried release simply writes again, and revisions never move backwards.
+
+The same idea covers the other paths. Mail carries an id so a landed send isn't queued twice, a load that gives up hands back a lease its acquire may have taken, and erasure clears `lastSession` so nothing reclaims an erased record. A new mock fault lets writes land and then report failure, and chaos tests cover acquire, save, autosave, release, erase, receipts and mail.
+
+**Commits:** 9464483, 66295cc, cc76a54
+
+## 19. Erased players start over
+
+**Date:** 2026-08-13
+
+Erasure leaves a marker record with no data, so when the player joins again the load has to do something with it. Refusing the load and firing an event would lock that player out of the game forever. Instead the load starts a fresh profile from the template.
+
+The marker's `erasedAt` stays in the record, so history and rollback can refuse every version from before it while Roblox keeps old versions readable for 30 days. The load that starts over reports `erasedAt` in its result and fires `erasedProfileLoaded`.
+
+**Commits:** 1c7c2b1
