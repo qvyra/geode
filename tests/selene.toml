@@ -1,1 +1,2 @@
 std = "luau"
+exclude = ["studio/*"]

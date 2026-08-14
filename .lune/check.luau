@@ -11,7 +11,7 @@ local stdio = require("@lune/stdio")
 local Files = require("./lib/Files")
 
 -- Pinned to the luau-lsp release in rokit.toml so the API surface only moves on purpose
-local LUAU_LSP_VERSION = "1.68.0"
+local LUAU_LSP_VERSION = "1.69.0"
 local ROBLOX_TYPES_URL =
 	`https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/{LUAU_LSP_VERSION}/scripts/globalTypes.None.d.luau`
 local ROBLOX_TYPES_PATH = `.cache/globalTypes-{LUAU_LSP_VERSION}.d.luau`
@@ -89,6 +89,7 @@ local STEPS: { Step } = {
 	{ name = "stylua", program = "stylua", args = { "--check", "src", "tests", ".lune" } },
 	{ name = "selene src", program = "selene", args = { "src" } },
 	{ name = "selene tests", program = "selene", args = { "." }, cwd = "tests" },
+	{ name = "selene studio", program = "selene", args = { "." }, cwd = "tests/studio" },
 	{ name = "selene scripts", program = "selene", args = { "." }, cwd = ".lune" },
 	{
 		name = "luau-lsp src",

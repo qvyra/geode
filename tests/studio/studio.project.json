@@ -1,0 +1,32 @@
+{
+	"name": "GeodeStudioCheck",
+	"tree": {
+		"$className": "DataModel",
+		"ServerScriptService": {
+			"GeodeCheck": {
+				"$className": "Folder",
+				"src": {
+					"$path": "../../src"
+				},
+				"tests": {
+					"$className": "Folder",
+					"_lib": {
+						"$path": "../_lib"
+					},
+					"Quartz": {
+						"$className": "Folder",
+						"Contracts": {
+							"$path": "../Quartz/Contracts"
+						}
+					},
+					"studio": {
+						"$className": "Folder",
+						"Checks": {
+							"$path": "Checks.server.luau"
+						}
+					}
+				}
+			}
+		}
+	}
+}
