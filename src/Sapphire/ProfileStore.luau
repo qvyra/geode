@@ -175,7 +175,12 @@ local function studioServices(
 	local universe = Universe.new({ clock = services.clock :: any })
 	local mock =
 		universe:server({ jobId = services.jobId, placeId = services.placeId, studio = true })
-	return mock, resolvedScope
+	-- only the data lives in memory. Players, purchases and shutdown stay real
+	local mixed = table.clone(mock) :: Types.Services
+	mixed.players = services.players
+	mixed.marketplace = services.marketplace
+	mixed.lifecycle = services.lifecycle
+	return mixed, resolvedScope
 end
 
 --[=[
