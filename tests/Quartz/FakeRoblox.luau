@@ -261,6 +261,23 @@ local function queue(mock: Types.Queue): any
 	}
 end
 
+-- A stand-in for Players.PlayerAdded or PlayerRemoving, fed by the mock server's players
+local function playerEvent(server: Universe.MockServer, method: "onJoin" | "onLeave"): any
+	return {
+		Connect = function(_self: any, callback: (player: any) -> ())
+			local players: any = server.players
+			local connection = players[method](players, function(_userId: number, player: any)
+				callback(player)
+			end)
+			return {
+				Disconnect = function()
+					connection:disconnect()
+				end,
+			}
+		end,
+	}
+end
+
 --[=[
 	Real services wired to fake Roblox objects, all backed by `server`
 ]=]
@@ -336,7 +353,22 @@ function FakeRoblox.services(server: Universe.MockServer): Types.Services
 					end,
 				}
 			end,
+			GetPlayers = function(_self: any)
+				local players = {}
+				for _, entry in server.players:list() do
+					table.insert(players, entry.player)
+				end
+				return players
+			end,
+			PlayerAdded = playerEvent(server, "onJoin"),
+			PlayerRemoving = playerEvent(server, "onLeave"),
 		},
+		marketplaceService = setmetatable({}, {
+			__newindex = function(_self: any, field: string, value: any)
+				assert(field == "ProcessReceipt", `unexpected field {field}`)
+				server.marketplace:setProcessReceipt(value)
+			end,
+		}),
 		httpService = {
 			JSONEncode = function(_self: any, value: unknown)
 				return Json.encode(value)

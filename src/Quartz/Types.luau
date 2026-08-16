@@ -286,9 +286,27 @@ export type Teleport = {
 
 --// players
 
+export type PlayerEntry = {
+	userId: number,
+	player: unknown,
+}
+
+export type PlayerHandler = (userId: number, player: unknown) -> ()
+
 export type Players = {
 	-- not an error if they already left
 	kick: (self: Players, userId: number, reason: string) -> Result<nil>,
+	-- Handlers run for players who join or leave from now on, each in its own thread
+	onJoin: (self: Players, handler: PlayerHandler) -> Connection,
+	onLeave: (self: Players, handler: PlayerHandler) -> Connection,
+	-- Players on this server right now, in the order they joined
+	list: (self: Players) -> { PlayerEntry },
+	isPresent: (self: Players, userId: number) -> boolean,
+}
+
+export type Marketplace = {
+	-- Sets MarketplaceService.ProcessReceipt. One per game, a second call replaces it
+	setProcessReceipt: (self: Marketplace, callback: (info: unknown) -> unknown) -> (),
 }
 
 --// lifecycle
@@ -319,6 +337,7 @@ export type Services = {
 	budget: Budget,
 	json: Json,
 	players: Players,
+	marketplace: Marketplace,
 	lifecycle: Lifecycle,
 	dataStore: (name: string, scope: string?) -> DataStore,
 	orderedDataStore: (name: string, scope: string?) -> OrderedDataStore,

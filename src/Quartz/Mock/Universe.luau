@@ -12,6 +12,7 @@ local MockHashMap = require("./HashMap")
 local MockMessaging = require("./Messaging")
 local MockOrderedDataStore = require("./OrderedDataStore")
 local MockQueue = require("./Queue")
+local MockPlayers = require("./Players")
 local MockSortedMap = require("./SortedMap")
 local MockTeleport = require("./Teleport")
 local Types = require("../Types")
@@ -42,6 +43,7 @@ export type MockServer = {
 	budget: Types.Budget,
 	json: Types.Json,
 	players: Types.Players,
+	marketplace: Types.Marketplace,
 	lifecycle: Types.Lifecycle,
 	dataStore: (name: string, scope: string?) -> Types.DataStore,
 	orderedDataStore: (name: string, scope: string?) -> Types.OrderedDataStore,
@@ -66,6 +68,16 @@ export type MockServer = {
 		refillPerSecond: number?
 	) -> (),
 	clearFaults: (self: MockServer) -> (),
+	--[=[
+		Brings a player into this server. Join handlers each run in their own thread, so advance
+		the clock to let them finish
+	]=]
+	join: (self: MockServer, userId: number, name: string?) -> MockPlayers.MockPlayer,
+	leave: (self: MockServer, userId: number) -> (),
+	--[=[
+		Runs the ProcessReceipt callback like a purchase would and returns its decision. Yields
+	]=]
+	purchase: (self: MockServer, info: unknown) -> unknown,
 	--[=[
 		Kills the server. Its pending calls never return and its subscribers stop hearing
 		messages, like a process that died mid flight
@@ -157,6 +169,7 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 	}
 
 	local closeCallbacks: { () -> () } = {}
+	local players = MockPlayers.new(context)
 	local studio: boolean = if options and options.studio then true else false
 
 	local cache: { [string]: unknown } = {}
@@ -180,19 +193,8 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 			end,
 		},
 		json = Json.adapter(),
-		players = {
-			kick = function(
-				_self: Types.Players,
-				userId: number,
-				reason: string
-			): Types.Result<nil>
-				table.insert(
-					self._shared.kicks,
-					{ jobId = context.jobId, userId = userId, reason = reason }
-				)
-				return { ok = true, value = nil }
-			end,
-		},
+		players = asAdapter(players),
+		marketplace = asAdapter(players),
 		lifecycle = {
 			bindToClose = function(_self: Types.Lifecycle, callback: () -> ())
 				table.insert(closeCallbacks, callback)
@@ -248,6 +250,15 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 		end,
 		clearFaults = function(_self: MockServer)
 			context.faults:clear()
+		end,
+		join = function(_self: MockServer, userId: number, name: string?)
+			return players:join(userId, name)
+		end,
+		leave = function(_self: MockServer, userId: number)
+			players:leave(userId)
+		end,
+		purchase = function(_self: MockServer, info: unknown): unknown
+			return players:purchase(info)
 		end,
 		crash = function(_self: MockServer)
 			context.alive = false

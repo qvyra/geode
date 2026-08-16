@@ -22,6 +22,7 @@ export type Roblox = {
 	teleportService: TeleportService,
 	httpService: HttpService,
 	playersService: Players,
+	marketplaceService: MarketplaceService,
 	runService: RunService,
 	bindToClose: (callback: () -> ()) -> (),
 	jobId: string,
@@ -92,6 +93,52 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 				end
 				return Errors.ok(nil)
 			end,
+			onJoin = function(_self: Types.Players, handler: Types.PlayerHandler): Types.Connection
+				local connection = roblox.playersService.PlayerAdded:Connect(
+					function(player: Player)
+						handler(player.UserId, player)
+					end
+				)
+				return {
+					disconnect = function(_connection: Types.Connection)
+						connection:Disconnect()
+					end,
+				}
+			end,
+			onLeave = function(
+				_self: Types.Players,
+				handler: Types.PlayerHandler
+			): Types.Connection
+				local connection = roblox.playersService.PlayerRemoving:Connect(
+					function(player: Player)
+						handler(player.UserId, player)
+					end
+				)
+				return {
+					disconnect = function(_connection: Types.Connection)
+						connection:Disconnect()
+					end,
+				}
+			end,
+			list = function(_self: Types.Players): { Types.PlayerEntry }
+				local entries = {}
+				for _, player in roblox.playersService:GetPlayers() do
+					table.insert(entries, { userId = player.UserId, player = player })
+				end
+				return entries
+			end,
+			isPresent = function(_self: Types.Players, userId: number): boolean
+				return roblox.playersService:GetPlayerByUserId(userId) ~= nil
+			end,
+		},
+		marketplace = {
+			setProcessReceipt = function(
+				_self: Types.Marketplace,
+				callback: (info: unknown) -> unknown
+			)
+				local service = roblox.marketplaceService :: any
+				service.ProcessReceipt = callback
+			end,
 		},
 		lifecycle = {
 			bindToClose = function(_self: Types.Lifecycle, callback: () -> ())
@@ -157,6 +204,7 @@ function RealServices.live(): Types.Services
 			teleportService = game:GetService("TeleportService"),
 			httpService = game:GetService("HttpService"),
 			playersService = game:GetService("Players"),
+			marketplaceService = game:GetService("MarketplaceService"),
 			runService = game:GetService("RunService"),
 			bindToClose = function(callback: () -> ())
 				game:BindToClose(callback)
