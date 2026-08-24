@@ -6,6 +6,9 @@ local Facet = require("@self/Facet")
 local FacetTypes = require("@self/Facet/Facet")
 local Guards = require("@self/Obsidian/Guards")
 local Obsidian = require("@self/Obsidian")
+local PlayerDataModule = require("@self/Polish/PlayerData")
+local PlayerProfileModule = require("@self/Polish/PlayerProfile")
+local Polish = require("@self/Polish")
 local ObsidianIssues = require("@self/Obsidian/Issues")
 local ObsidianSchema = require("@self/Obsidian/Schema")
 local Quartz = require("@self/Quartz")
@@ -17,6 +20,10 @@ local Scheduler = require("@self/Quartz/Scheduler")
 local Transaction = require("@self/Matrix/Transaction")
 
 export type Services = QuartzTypes.Services
+export type PlayerData = PlayerDataModule.PlayerData
+export type PlayerDataOptions = PlayerDataModule.Options
+export type PlayerProfile = PlayerProfileModule.PlayerProfile
+export type SetupOptions = Polish.SetupOptions
 export type Clock = QuartzTypes.Clock
 export type Result<T> = QuartzTypes.Result<T>
 export type AdapterError = QuartzTypes.AdapterError
@@ -201,6 +208,26 @@ Geode.receipts = Sapphire.receipts
 	player who joins again starts over from the template
 ]=]
 Geode.erase = Sapphire.erase
+
+--[=[
+	@function players
+	@within Geode
+	@param options PlayerDataOptions
+	@return PlayerData
+
+	Player data with joins, leaves, shutdown, session loss and purchases handled for you. See
+	Polish
+]=]
+Geode.players = Polish.players
+
+--[=[
+	@function setup
+	@within Geode
+	@param options SetupOptions
+
+	Sets the defaults every `Geode.players` store made afterwards starts from
+]=]
+Geode.setup = Polish.setup
 
 --[=[
 	@function op
