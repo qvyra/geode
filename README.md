@@ -2,7 +2,26 @@
 
 A layered data framework for Roblox. Geode puts DataStoreService, MemoryStoreService and MessagingService behind one API, with guards, reactive data and replication on top.
 
-> Geode is in early development and nothing is usable yet. The API will change without notice until 1.0.
+> Geode is in early development. The API will change without notice until 1.0.
+
+## Quick start
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+
+local PlayerData = Geode.players({
+	name = "PlayerData",
+	template = { coins = 0, xp = 0, level = 1, inventory = {} },
+	replicate = { coins = "owner", level = "public" },
+})
+
+PlayerData:onLoaded(function(player, profile)
+	profile:increment("coins", 100)
+end)
+```
+
+Each player's data loads when they join and is saved and released when they leave or the server shuts down. Until it loads, `PlayerData:get(player)` reads the template, and `isLoaded`, `waitFor` and `onLoaded` tell you when the real data is in. In Studio, data stays in memory unless you ask for a separate scope or live data. `PlayerData.store` is the profile store underneath, with every option visible, for when you need more control.
 
 ## The idea
 
