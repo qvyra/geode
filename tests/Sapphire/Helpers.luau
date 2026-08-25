@@ -28,6 +28,8 @@ function Helpers.store(
 		autosaveInterval = 10,
 		leaseTimeout = 60,
 		stealAfter = 5,
+		-- Off so lease tests see a holder that never answers. Handoff tests turn it on
+		handoff = false,
 		reportError = function(message: string)
 			table.insert(reported, message)
 		end,

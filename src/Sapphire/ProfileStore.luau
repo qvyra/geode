@@ -6,6 +6,7 @@
 local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
+local Handoff = require("./Handoff")
 local Mailbox = require("./Mailbox")
 local Profile = require("./Profile")
 local Reconcile = require("./Reconcile")
@@ -60,6 +61,9 @@ export type Options = {
 	loadTimeout: number?,
 	-- Release every profile on shutdown. On by default
 	bindToClose: boolean?,
+	-- Ask holders over MessagingService to release, and hear when they have, so server hops
+	-- don't wait out retries. On by default. Correctness never depends on it
+	handoff: boolean?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -118,6 +122,9 @@ type Fields = {
 	_config: Config,
 	_open: { [string]: Profile.Profile },
 	_loading: { [string]: boolean },
+	-- player of each open profile, so we can kick them when another server asks for it
+	_owners: { [string]: number },
+	_handoff: Handoff.Handoff,
 	_report: (message: string) -> (),
 }
 
@@ -289,9 +296,14 @@ function ProfileStore.new(options: Options): ProfileStore
 		_config = config,
 		_open = {},
 		_loading = {},
+		_owners = {},
+		_handoff = Handoff.new(services, options.name, options.handoff ~= false, report),
 		_report = report,
 	}
 	local store = setmetatable(self, ProfileStore)
+	store._handoff:onRequest(function(key: string)
+		store:_releaseRequested(key)
+	end)
 	-- The registry holds stores loosely typed, see Registry.Erasable
 	Registry.add(store :: any, givenServices)
 	if options.bindToClose ~= false then
@@ -441,6 +453,8 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		elseif userId then { userId }
 		else {}
 
+	self._handoff:start()
+	local requested = false
 	local started = services.clock:now()
 	local force = false
 	local tries = 0
@@ -473,7 +487,8 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		end
 
 		local holder = attempt.holder :: Record.Lease
-		if services.clock:now() - started >= config.stealAfter then
+		local waited = services.clock:now() - started
+		if waited >= config.stealAfter then
 			if config.stealPolicy == "fail" then
 				return loadFailure("leaseHeld", `profile {key} is in use on server {holder.jobId}`)
 			elseif config.stealPolicy == "steal" then
@@ -481,8 +496,19 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 				continue
 			end
 		end
+		if not requested then
+			requested = true
+			self._handoff:request(key)
+		end
 		tries += 1
-		services.clock:wait(math.min(RETRY_BASE * 2 ^ (tries - 1), RETRY_MAX))
+		-- Wakes early on the holder's release announcement. The handoff key backs that message
+		-- up until the steal window closes
+		self._handoff:wait(
+			key,
+			math.min(RETRY_BASE * 2 ^ (tries - 1), RETRY_MAX),
+			holder.jobId,
+			waited < config.stealAfter
+		)
 	end
 
 	local storedVersion = record.meta.schemaVersion
@@ -562,18 +588,48 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		onClosed = function(closed: unknown)
 			if (self._open[key] :: unknown) == closed then
 				self._open[key] = nil
+				self._owners[key] = nil
 			end
 		end,
 	})
 	guardSet.broken:connect(function(violation: Guards.Violation)
 		self.guardBroken:fire(violation, profile)
 	end)
+	profile.released:connect(function()
+		services.clock:spawn(function()
+			self._handoff:announce(key, profile:revision())
+		end)
+	end)
 	self:_deliverMail(key, profile)
 	self._open[key] = profile
+	if userId then
+		self._owners[key] = userId
+	end
 	if erasedAt then
 		self.erasedProfileLoaded:fire(key, erasedAt)
 	end
 	return { ok = true, profile = profile, erasedAt = erasedAt }
+end
+
+-- Another server wants `key`. Its player has moved on, so release it and kick them if they're
+-- somehow still here
+function ProfileStore._releaseRequested(self: ProfileStore, key: string)
+	local open: unknown = self._open[key]
+	if open == nil then
+		return
+	end
+	local profile = self._open[key]
+	if not profile:isActive() then
+		return
+	end
+	local services = self._services
+	local userId = self._owners[key]
+	services.clock:spawn(function()
+		if userId and services.players:isPresent(userId) then
+			services.players:kick(userId, "Your data was opened on another server. Please rejoin.")
+		end
+		profile:release()
+	end)
 end
 
 -- Runs each migration from the stored version up, each as its own migration transaction on the
