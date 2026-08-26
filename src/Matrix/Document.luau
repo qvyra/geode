@@ -45,6 +45,15 @@ export type Options = {
 	clock: Types.Clock?,
 	-- Where listener errors go. Defaults to warn
 	reportError: ((message: string) -> ())?,
+	-- Hold deferred callbacks until `runHeld` instead of running them after each transaction.
+	-- For callers that may throw away a transaction that already committed here, e.g. a write
+	-- UpdateAsync retries
+	holdDeferred: boolean?,
+}
+
+type Held = {
+	callbacks: { (outcome: Transaction.Outcome) -> () },
+	outcome: Transaction.Outcome,
 }
 
 export type Observer = (new: unknown, old: unknown, record: CommitRecord) -> ()
@@ -74,6 +83,8 @@ type Fields = {
 	_busy: boolean,
 	_readOnly: string?,
 	_derived: { [string]: Derived },
+	_holdDeferred: boolean,
+	_held: { Held },
 }
 
 local Document = {}
@@ -108,6 +119,8 @@ function Document.new(options: Options?): Document
 		_busy = false,
 		_readOnly = nil,
 		_derived = {},
+		_holdDeferred = options ~= nil and options.holdDeferred == true,
+		_held = {},
 	}
 	return setmetatable(self, Document)
 end
@@ -289,13 +302,37 @@ end
 
 -- Runs what stages deferred. After listeners, so a deferred write sees committed state
 function Document._settle(self: Document, tx: Transaction, outcome: Transaction.Outcome)
-	for _, callback in tx._deferred do
+	if self._holdDeferred then
+		table.insert(self._held, { callbacks = table.clone(tx._deferred), outcome = outcome })
+		return
+	end
+	self:_runDeferred(tx._deferred, outcome)
+end
+
+function Document._runDeferred(
+	self: Document,
+	callbacks: { (outcome: Transaction.Outcome) -> () },
+	outcome: Transaction.Outcome
+)
+	for _, callback in callbacks do
 		local ok, err = pcall(function()
 			callback(outcome)
 		end)
 		if not ok then
 			self._reportError(`deferred callback error: {tostring(err)}`)
 		end
+	end
+end
+
+--[=[
+	Runs the callbacks a `holdDeferred` document kept, oldest first. `outcome` overrides the one
+	they were held with, for a transaction that committed here and was then thrown away
+]=]
+function Document.runHeld(self: Document, outcome: Transaction.Outcome?)
+	local held = self._held
+	self._held = {}
+	for _, entry in held do
+		self:_runDeferred(entry.callbacks, outcome or entry.outcome)
 	end
 end
 

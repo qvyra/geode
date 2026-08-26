@@ -40,6 +40,31 @@ return function(spec: Spec.Api)
 			expect((seen.error :: Transaction.TxError).kind).toBe("error")
 		end)
 
+		it("waits for runHeld on a document that holds deferred callbacks", function()
+			local doc = Document.new({
+				data = { coins = 1 },
+				holdDeferred = true,
+				reportError = function() end,
+			})
+			local outcomes: { Transaction.Outcome } = {}
+			doc:transact(function(tx)
+				tx:increment("coins")
+				tx:defer(function(result)
+					table.insert(outcomes, result)
+				end)
+			end)
+			expect(#outcomes).toBe(0)
+			doc:runHeld({
+				committed = false,
+				record = nil,
+				error = { kind = "error", message = "dropped" },
+			})
+			expect(#outcomes).toBe(1)
+			expect(outcomes[1].committed).toBe(false)
+			doc:runHeld()
+			expect(#outcomes).toBe(1)
+		end)
+
 		it("runs when nothing changed", function()
 			local doc = newDoc({})
 			local ran = false
