@@ -6,6 +6,8 @@ local Facet = require("@self/Facet")
 local FacetTypes = require("@self/Facet/Facet")
 local Guards = require("@self/Obsidian/Guards")
 local Obsidian = require("@self/Obsidian")
+local Opal = require("@self/Opal")
+local SharedStoreModule = require("@self/Opal/SharedStore")
 local PlayerDataModule = require("@self/Polish/PlayerData")
 local PlayerProfileModule = require("@self/Polish/PlayerProfile")
 local Polish = require("@self/Polish")
@@ -21,6 +23,8 @@ local Transaction = require("@self/Matrix/Transaction")
 
 export type Services = QuartzTypes.Services
 export type PlayerData = PlayerDataModule.PlayerData
+export type SharedStore = SharedStoreModule.SharedStore
+export type SharedStoreOptions = SharedStoreModule.Options
 export type PlayerDataOptions = PlayerDataModule.Options
 export type PlayerProfile = PlayerProfileModule.PlayerProfile
 export type SetupOptions = Polish.SetupOptions
@@ -181,6 +185,15 @@ Geode.derive = Facet.derive
 	Session locked player data: `Geode.Profile.store({ ... })`
 ]=]
 Geode.Profile = Sapphire.Profile
+
+--[=[
+	@prop Shared Shared
+	@within Geode
+	@readonly
+
+	Stores any server may write, with every write run through the pipeline inside UpdateAsync
+]=]
+Geode.Shared = Opal
 
 --[=[
 	@function receipts
