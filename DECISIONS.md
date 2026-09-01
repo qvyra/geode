@@ -239,3 +239,51 @@ Erasure leaves a marker record with no data, so when the player joins again the 
 The marker's `erasedAt` stays in the record, so history and rollback can refuse every version from before it while Roblox keeps old versions readable for 30 days. The load that starts over reports `erasedAt` in its result and fires `erasedProfileLoaded`.
 
 **Commits:** 1c7c2b1
+
+## 20. Player data is usable before it loads
+
+**Date:** 2026-09-01
+
+Beginners write UI code that reads player data the moment a player joins, before the profile has loaded, and something has to answer those reads. There were three ways to go: hand out nothing until the load finishes and make every caller wait, hand out a handle right away that reads the template and refuses writes, or queue early writes and apply them after the load.
+
+The handle won. `PlayerData:get(player)` returns one for any player on the server. Reads return template values until the profile loads, and `isLoaded` tells defaults from real data. Writes before the load are refused with a not loaded error instead of being queued, because a queued write would apply to data its author never saw.
+
+Loads that can pass on their own are retried three times before the player is kicked, and a load that finishes after the player left is released at once. `Geode.setup` only affects stores made after it and says so when called late.
+
+**Commits:** cdbb409, 7a3a0a6, 1a6b7c9, 6acc1fd
+
+## 21. Server hops wait for an announcement, not a poll
+
+**Date:** 2026-09-01
+
+A player who hops servers finds their profile still held by the server they left. With retries, backoff and then the steal window, that hop could take up to 15 seconds and, if it ended in a steal, cost the old server its unsaved changes.
+
+Polling the MemoryStore handoff key every half second was the obvious fix, but MemoryStore reads would then scale with every waiting player. I went with announcements over MessagingService instead. The waiting server publishes one release request. The holder releases, kicks the player if they're still there, and publishes that it released, and the waiter retries the acquire as soon as it hears.
+
+The handoff key stays as a slower fallback. Every release writes one with a 30 second lifetime, and a waiter checks it every 2 seconds until the steal window closes, so a lost message costs at most a couple of seconds. Neither path is trusted. Both only say "try now", and the lease check inside UpdateAsync still decides who holds the profile.
+
+**Commits:** 19861e4
+
+## 22. Shared writes run the pipeline inside the transform
+
+**Date:** 2026-09-01
+
+Shared stores have no lease, so any server may write a key at any moment, and guards, bundles and reactions still have to see exactly what gets written. Running the pipeline on cached data and then writing the result with UpdateAsync doesn't hold up: a guard could approve a change that breaks its rule once applied to fresher data, and the write would overwrite other servers' changes.
+
+Went with running the whole pipeline inside the UpdateAsync transform, against the value UpdateAsync hands over. The transform builds a scratch document from the stored value and runs the full pipeline on it. UpdateAsync can run a transform more than once, so that document holds its deferred callbacks, and they run once, along with listeners, for the run that landed. Transforms must not yield, so the pipeline runs in its own coroutine and a yield fails the write with an error naming the rule.
+
+Stored keys carry a small `meta` with a revision, so caches and invalidation messages can tell newer data from older.
+
+**Commits:** 17f70e6, ac6d184
+
+## 23. Premades trade precision for quota
+
+**Date:** 2026-09-01
+
+MemoryStore quota is shared by the whole experience and grows with server count, and each premade had a cheaper design and a more precise one. The precise options were sliding window rate limits, auto renewed locks and per call presence lookups. I took the cheaper designs and kept their tradeoffs out in the open.
+
+RateLimiter counts in fixed windows with one atomic update per check, accepting that a burst across a window edge can reach twice the limit. Mutex locks have a lease that callers renew, and each acquire hands out a fencing token that never goes below the wall clock in milliseconds, so it keeps growing even after the stored item expires. JobQueue's nack leaves jobs to reappear after the invisibility timeout instead of re-adding them, which could duplicate them.
+
+Every premade reports an estimated request rate and registers itself, so the cost is visible before it becomes a surprise.
+
+**Commits:** 8275936
