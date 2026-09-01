@@ -48,6 +48,8 @@
 		"pathspecs",
 		"serde",
 		"ignorecase",
+		"premade",
+		"premades",
 		"nonword",
 		"Compey",
 		"Morganz",

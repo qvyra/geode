@@ -5,6 +5,7 @@ local Matrix = require("@self/Matrix")
 local Facet = require("@self/Facet")
 local FacetTypes = require("@self/Facet/Facet")
 local Guards = require("@self/Obsidian/Guards")
+local Moonstone = require("@self/Moonstone")
 local Obsidian = require("@self/Obsidian")
 local Opal = require("@self/Opal")
 local SharedStoreModule = require("@self/Opal/SharedStore")
@@ -194,6 +195,60 @@ Geode.Profile = Sapphire.Profile
 	Stores any server may write, with every write run through the pipeline inside UpdateAsync
 ]=]
 Geode.Shared = Opal
+
+--[=[
+	@prop Ephemeral Ephemeral
+	@within Geode
+	@readonly
+
+	MemoryStore hash maps, sorted maps and queues with validation and retries
+]=]
+Geode.Ephemeral = Moonstone.Ephemeral
+
+--[=[
+	@prop Presence Presence
+	@within Geode
+	@readonly
+
+	Which server each player is on. `Geode.Presence.new(options)`
+]=]
+Geode.Presence = Moonstone.Presence
+
+--[=[
+	@prop Mutex Mutex
+	@within Geode
+	@readonly
+
+	Locks shared by every server, with fencing tokens. `Geode.Mutex.new(name, options)`
+]=]
+Geode.Mutex = Moonstone.Mutex
+
+--[=[
+	@prop Counter Counter
+	@within Geode
+	@readonly
+
+	Counters any server can change atomically. `Geode.Counter.new(name, options)`
+]=]
+Geode.Counter = Moonstone.Counter
+
+--[=[
+	@prop RateLimiter RateLimiter
+	@within Geode
+	@readonly
+
+	Limits shared by every server. `Geode.RateLimiter.new(name, { limit, window })`
+]=]
+Geode.RateLimiter = Moonstone.RateLimiter
+
+--[=[
+	@prop JobQueue JobQueue
+	@within Geode
+	@readonly
+
+	Jobs any server adds and one server at a time claims. `Geode.JobQueue.new(name, options)`
+]=]
+Geode.JobQueue = Moonstone.JobQueue
 
 --[=[
 	@function receipts
