@@ -4,6 +4,7 @@ local Document = require("@self/Matrix/Document")
 local Matrix = require("@self/Matrix")
 local Facet = require("@self/Facet")
 local FacetTypes = require("@self/Facet/Facet")
+local Garnet = require("@self/Garnet")
 local Guards = require("@self/Obsidian/Guards")
 local Moonstone = require("@self/Moonstone")
 local Obsidian = require("@self/Obsidian")
@@ -20,6 +21,7 @@ local ProfileModule = require("@self/Sapphire/Profile")
 local ProfileStore = require("@self/Sapphire/ProfileStore")
 local Sapphire = require("@self/Sapphire")
 local Scheduler = require("@self/Quartz/Scheduler")
+local Topaz = require("@self/Topaz")
 local Transaction = require("@self/Matrix/Transaction")
 
 export type Services = QuartzTypes.Services
@@ -249,6 +251,24 @@ Geode.RateLimiter = Moonstone.RateLimiter
 	Jobs any server adds and one server at a time claims. `Geode.JobQueue.new(name, options)`
 ]=]
 Geode.JobQueue = Moonstone.JobQueue
+
+--[=[
+	@prop Matchmaker Matchmaker
+	@within Geode
+	@readonly
+
+	Matchmaking across servers. `Geode.Matchmaker.new(options)`
+]=]
+Geode.Matchmaker = Garnet
+
+--[=[
+	@prop Ranked Ranked
+	@within Geode
+	@readonly
+
+	Leaderboards. `Geode.Ranked.allTime(name, options)` and `Geode.Ranked.windowed(name, options)`
+]=]
+Geode.Ranked = Topaz
 
 --[=[
 	@function receipts
