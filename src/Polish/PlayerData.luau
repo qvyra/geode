@@ -5,19 +5,66 @@
 -- store is used here, and the store stays reachable as `PlayerData.store`
 
 local Document = require("../Matrix/Document")
+local Facet = require("../Facet/Facet")
+local Guards = require("../Obsidian/Guards")
 local Profile = require("../Sapphire/Profile")
 local ProfileStore = require("../Sapphire/ProfileStore")
 local Receipts = require("../Sapphire/Receipts")
+local Scheduler = require("../Quartz/Scheduler")
+local Schema = require("../Obsidian/Schema")
+local Size = require("../Obsidian/Size")
+local Transaction = require("../Matrix/Transaction")
 local PlayerProfile = require("./PlayerProfile")
 local Signal = require("../Quartz/Signal")
 local Types = require("../Quartz/Types")
 
 export type Visibility = "private" | "owner" | "public"
 
-export type Options = ProfileStore.Options & {
+-- Every profile store option plus this layer's. Spelled out instead of built on
+-- ProfileStore.Options so literals like `studio = "scope"` type check
+export type Options = {
+	name: string,
+	template: { [string]: unknown },
+	services: Types.Services?,
+	scope: string?,
+	scheduler: Scheduler.Scheduler?,
+	schema: Schema.Schema?,
+	schemaVersion: number?,
+	-- keyed by the version each one upgrades to, run on the stored form oldest first
+	migrations: { [number]: (tx: Transaction.Transaction) -> () }?,
+	-- user id -> key. Defaults to the id as a string
+	userKey: ((userId: number) -> string)?,
+	-- recent purchase ids kept per profile to refuse repeats, default 50
+	receiptHistory: number?,
+	guards: { Guards.Guard }?,
+	bundles: { Facet.Bundle }?,
+	reactions: { Facet.Reaction }?,
+	derived: { Facet.Derived }?,
+	maxReactionDepth: number?,
+	ops: { string }?,
+	autosaveInterval: number?,
+	leaseTimeout: number?,
+	stealAfter: number?,
+	stealPolicy: ProfileStore.StealPolicy?,
+	onSessionLost: Profile.SessionLostPolicy?,
+	studio: ProfileStore.StudioMode?,
+	sizeBudget: Size.Budget?,
+	-- Seconds BindToClose waits for releases. Roblox gives about 30
+	closeTimeout: number?,
+	-- seconds a load keeps retrying throttled or failing requests
+	loadTimeout: number?,
+	-- release every profile on shutdown (default on)
+	bindToClose: boolean?,
+	-- Ask holders over MessagingService to release and hear when they have, so server hops
+	-- don't wait out retries. On by default, correctness never depends on it
+	handoff: boolean?,
+	reportError: ((message: string) -> ())?,
+
 	products: { [number]: Receipts.Handler }?,
-	-- Which paths reach which clients. Checked now, takes effect once replication ships
-	replicate: { [string]: Visibility }?,
+	-- Which paths reach which clients: "private", "owner" or "public", checked when the
+	-- store is made. Plain strings because Luau won't match a literal map against a union
+	-- valued map
+	replicate: { [string]: string }?,
 	-- extra load attempts before the player is kicked, default 3
 	loadRetries: number?,
 	-- what the receipt callback returns, defaults to Enum.ProductPurchaseDecision

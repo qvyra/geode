@@ -75,7 +75,7 @@ function Polish.setup(options: SetupOptions)
 end
 
 local function checkReplicate(
-	replicate: { [string]: PlayerData.Visibility }?,
+	replicate: { [string]: string }?,
 	reportError: ((message: string) -> ())?
 )
 	if replicate == nil then
