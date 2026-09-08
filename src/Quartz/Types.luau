@@ -328,6 +328,25 @@ export type Json = {
 
 -- Everything a server needs from Roblox. Stores take one, so the same code runs on
 -- `Geode.Raw.services()` in a game and on a mock server in tests
+--// remotes
+
+-- Server end of a remote event. Args travel by value, the way Roblox copies them
+export type ServerRemote = {
+	fire: (self: ServerRemote, userId: number, ...any) -> (),
+	onEvent: (self: ServerRemote, handler: (userId: number, ...any) -> ()) -> Connection,
+}
+
+export type ClientRemote = {
+	fire: (self: ClientRemote, ...any) -> (),
+	onEvent: (self: ClientRemote, handler: (...any) -> ()) -> Connection,
+}
+
+export type ClientServices = {
+	userId: number,
+	clock: Clock,
+	remote: (name: string) -> ClientRemote,
+}
+
 export type Services = {
 	jobId: string,
 	placeId: number,
@@ -346,6 +365,8 @@ export type Services = {
 	queue: (name: string, invisibilityTimeout: number?) -> Queue,
 	messaging: Messaging,
 	teleport: Teleport,
+	-- created on first use, a game that never replicates has no remotes
+	remote: (name: string) -> ServerRemote,
 }
 
 return nil

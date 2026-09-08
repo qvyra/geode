@@ -13,6 +13,7 @@ local MockMessaging = require("./Messaging")
 local MockOrderedDataStore = require("./OrderedDataStore")
 local MockQueue = require("./Queue")
 local MockPlayers = require("./Players")
+local MockRemotes = require("./Remotes")
 local MockSortedMap = require("./SortedMap")
 local MockTeleport = require("./Teleport")
 local Types = require("../Types")
@@ -52,6 +53,13 @@ export type MockServer = {
 	queue: (name: string, invisibilityTimeout: number?) -> Types.Queue,
 	messaging: Types.Messaging,
 	teleport: Types.Teleport,
+	remote: (name: string) -> Types.ServerRemote,
+
+	--[=[
+		What a client sees for a player on this server. Messages only arrive while that player is
+		on the server
+	]=]
+	client: (self: MockServer, userId: number) -> Types.ClientServices,
 
 	--[=[
 		Adds a fault rule for calls made from this server
@@ -170,6 +178,9 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 
 	local closeCallbacks: { () -> () } = {}
 	local players = MockPlayers.new(context)
+	local remotes = MockRemotes.new(context, function(userId: number): boolean
+		return players:isPresent(userId)
+	end)
 	local studio: boolean = if options and options.studio then true else false
 
 	local cache: { [string]: unknown } = {}
@@ -232,6 +243,20 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 		end,
 		messaging = asAdapter(MockMessaging.new(context)),
 		teleport = asAdapter(MockTeleport.new(context)),
+		remote = function(name: string): Types.ServerRemote
+			return memo(`remote\0{name}`, function()
+				return remotes:server(name)
+			end)
+		end,
+		client = function(_self: MockServer, userId: number): Types.ClientServices
+			return {
+				userId = userId,
+				clock = asAdapter(self.clock),
+				remote = function(name: string): Types.ClientRemote
+					return remotes:client(userId, name)
+				end,
+			}
+		end,
 
 		inject = function(_self: MockServer, rule: Faults.FaultRule)
 			context.faults:add(rule)

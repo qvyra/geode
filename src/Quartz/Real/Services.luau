@@ -10,6 +10,7 @@ local RealHashMap = require("./HashMap")
 local RealMessaging = require("./Messaging")
 local RealOrderedDataStore = require("./OrderedDataStore")
 local RealQueue = require("./Queue")
+local RealRemotes = require("./Remotes")
 local RealSortedMap = require("./SortedMap")
 local RealTeleport = require("./Teleport")
 local RobloxApi = require("./RobloxApi")
@@ -23,6 +24,7 @@ export type Roblox = {
 	httpService: HttpService,
 	playersService: Players,
 	marketplaceService: MarketplaceService,
+	replicatedStorage: Instance,
 	runService: RunService,
 	bindToClose: (callback: () -> ()) -> (),
 	jobId: string,
@@ -183,6 +185,11 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 		end,
 		messaging = asAdapter(RealMessaging.new(roblox.messagingService)),
 		teleport = asAdapter(RealTeleport.new(roblox.teleportService, roblox.api)),
+		remote = function(name: string): Types.ServerRemote
+			return memo(`remote\0{name}`, function()
+				return RealRemotes.server(roblox.replicatedStorage, roblox.playersService, name)
+			end)
+		end,
 	}
 	return services
 end
@@ -205,6 +212,7 @@ function RealServices.live(): Types.Services
 			httpService = game:GetService("HttpService"),
 			playersService = game:GetService("Players"),
 			marketplaceService = game:GetService("MarketplaceService"),
+			replicatedStorage = game:GetService("ReplicatedStorage"),
 			runService = game:GetService("RunService"),
 			bindToClose = function(callback: () -> ())
 				game:BindToClose(callback)
