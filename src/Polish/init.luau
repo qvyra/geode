@@ -4,6 +4,8 @@
 -- `Geode.setup` sets the defaults it starts from. Both stick to the public API below
 
 local PlayerData = require("@self/PlayerData")
+local Prism = require("./Prism")
+local Replicator = require("./Prism/Replicator")
 local ProfileStore = require("./Sapphire/ProfileStore")
 local Receipts = require("./Sapphire/Receipts")
 local RealServices = require("./Quartz/Real/Services")
@@ -25,12 +27,9 @@ type Defaults = {
 	reportError: ((message: string) -> ())?,
 }
 
-local VISIBILITY: { [string]: boolean } = { private = true, owner = true, public = true }
-
 local defaults: Defaults = {}
 local storesMade = 0
 local warnedLateSetup = false
-local warnedReplicate = false
 local receiptsSet = false
 
 local Polish = {}
@@ -74,32 +73,6 @@ function Polish.setup(options: SetupOptions)
 	}
 end
 
-local function checkReplicate(
-	replicate: { [string]: string }?,
-	reportError: ((message: string) -> ())?
-)
-	if replicate == nil then
-		return
-	end
-	for path, visibility in replicate do
-		assert(type(path) == "string", "replicate is keyed by path")
-		assert(
-			VISIBILITY[visibility],
-			`replicate.{path} must be "private", "owner" or "public", got {tostring(visibility)}`
-		)
-	end
-	if not warnedReplicate then
-		warnedReplicate = true
-		local message =
-			"the replicate option is checked but has no effect yet, replication isn't available"
-		if reportError then
-			reportError(message)
-		else
-			report(message)
-		end
-	end
-end
-
 --[=[
 	Player data with the lifecycle handled. Each player's profile loads when they join and is
 	released when they leave, shutdown releases everything, and purchases listed in `products`
@@ -126,7 +99,10 @@ end
 ]=]
 function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 	local reportError = options.reportError or defaults.reportError
-	checkReplicate(options.replicate, reportError)
+	if options.replicate then
+		-- check now so a typo fails at game start, not when a player joins
+		Replicator.parseVisibility(options.replicate)
+	end
 	local services = options.services or defaults.services or RealServices.live()
 
 	-- everything the profile store understands passes through untouched. Options is an
@@ -148,6 +124,18 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 		loadRetries = options.loadRetries,
 		report = reportError or report,
 	})
+
+	local replicate = options.replicate
+	if replicate then
+		local replicator = Prism.replicator(services, reportError)
+		-- signal args are untyped. player is a Player or a mock stand-in, both have UserId
+		playerData.loaded:connect(function(player: any, profile: any)
+			replicator:track(player.UserId, profile, replicate)
+		end)
+		playerData.released:connect(function(player: any)
+			replicator:untrack(player.UserId)
+		end)
+	end
 
 	local products = options.products
 	if products then
@@ -173,7 +161,6 @@ function Polish._reset()
 	defaults = {}
 	storesMade = 0
 	warnedLateSetup = false
-	warnedReplicate = false
 	receiptsSet = false
 end
 

@@ -194,6 +194,30 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 	return services
 end
 
+local liveClient: Types.ClientServices? = nil
+
+--[=[
+	What client code gets on a live Roblox client: the local player's id, a real clock and remotes
+	that wait for the server to create them
+
+	@within Raw
+	@return ClientServices
+]=]
+function RealServices.client(): Types.ClientServices
+	if liveClient == nil then
+		local replicatedStorage = game:GetService("ReplicatedStorage")
+		local localPlayer = game:GetService("Players").LocalPlayer
+		liveClient = {
+			userId = localPlayer.UserId,
+			clock = RealClock.new(),
+			remote = function(name: string): Types.ClientRemote
+				return RealRemotes.client(replicatedStorage, name)
+			end,
+		}
+	end
+	return liveClient :: Types.ClientServices
+end
+
 local live: Types.Services? = nil
 
 --[=[

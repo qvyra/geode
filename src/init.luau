@@ -13,6 +13,8 @@ local SharedStoreModule = require("@self/Opal/SharedStore")
 local PlayerDataModule = require("@self/Polish/PlayerData")
 local PlayerProfileModule = require("@self/Polish/PlayerProfile")
 local Polish = require("@self/Polish")
+local GeodeClient = require("@self/Client")
+local Prism = require("@self/Prism")
 local ObsidianIssues = require("@self/Obsidian/Issues")
 local ObsidianSchema = require("@self/Obsidian/Schema")
 local Quartz = require("@self/Quartz")
@@ -269,6 +271,37 @@ Geode.Matchmaker = Garnet
 	Leaderboards. `Geode.Ranked.allTime(name, options)` and `Geode.Ranked.windowed(name, options)`
 ]=]
 Geode.Ranked = Topaz
+
+--[=[
+	@function replicator
+	@within Geode
+	@param services Services?
+	@return Replicator
+
+	The replicator that sends player data to clients. `Geode.players` uses it for the
+	`replicate` option
+]=]
+Geode.replicator = Prism.replicator
+
+--[=[
+	@function remoteOp
+	@within Geode
+	@param name string
+	@param options RemoteOpOptions
+
+	Lets clients ask for a registered op on their own profile, behind an attempt rate limit and
+	argument checks
+]=]
+Geode.remoteOp = Prism.remoteOp
+
+--[=[
+	@prop Client GeodeClient
+	@within Geode
+	@readonly
+
+	The client side: `Geode.Client.start()` on a LocalScript gives atoms of the shared data
+]=]
+Geode.Client = GeodeClient
 
 --[=[
 	@function receipts

@@ -7,6 +7,7 @@ local fs = require("@lune/fs")
 local luau = require("@lune/luau")
 
 local Geode = require("../../src")
+local GeodeClient = require("../../src/Client")
 local Helpers = require("../Sapphire/Helpers")
 local Polish = require("../../src/Polish")
 local Record = require("../../src/Sapphire/Record")
@@ -73,18 +74,25 @@ return function(spec: Spec.Api)
 			expect(PlayerData).never.toBeNil()
 
 			server:join(42)
+			local client = GeodeClient.start(server:client(42))
 			universe.clock:advance(1)
 			local player = server.players:list()[1].player
 			expect(PlayerData:isLoaded(player)).toBe(true)
 			expect(PlayerData:get(player):get("coins")).toBe(100)
+
+			-- The replicate option reaches the player's client: coins for the owner, level for
+			-- everyone, the rest stays private
+			expect(client:isReady()).toBe(true)
+			expect(client:atom("coins"):get()).toBe(100)
+			expect(client:atom("level"):get()).toBe(1)
+			expect(client:atom("xp"):get()).toBeNil()
 
 			server:leave(42)
 			universe.clock:advance(5)
 			local record = Helpers.stored(universe, "42") :: Record.Record
 			expect((record.data :: Any).coins).toBe(100)
 			expect(record.meta.lease).toBeNil()
-			-- The replicate option is accepted with one warning until replication ships
-			expect(#warnings).toBe(1)
+			expect(#warnings).toBe(0)
 			Polish._reset()
 		end)
 	end)
