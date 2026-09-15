@@ -1,0 +1,230 @@
+--!strict
+
+local Fixture = require("../Quartz/Contracts/Fixture")
+local Helpers = require("../Sapphire/Helpers")
+local Profile = require("../../src/Sapphire/Profile")
+local ProfileStore = require("../../src/Sapphire/ProfileStore")
+local Spec = require("../_lib/Spec")
+local Transaction = require("../../src/Matrix/Transaction")
+local Universe = require("../../src/Quartz/Mock/Universe")
+
+local unwrap = Fixture.unwrap
+
+type Any = any
+
+local function load(
+	universe: Universe.Universe,
+	store: ProfileStore.ProfileStore,
+	key: string
+): Profile.Profile
+	local result = universe.clock:run(function()
+		return store:load(key)
+	end)
+	if not result.ok then
+		error(`load failed: {result.error.message}`, 2)
+	end
+	return result.profile
+end
+
+local function run<T>(universe: Universe.Universe, body: () -> T): T
+	return universe.clock:run(body)
+end
+
+local opRegistered = false
+
+return function(spec: Spec.Api)
+	local describe, it, expect = spec.describe, spec.it, spec.expect
+
+	describe("history", function()
+		it("lists versions and reads what each one held", function()
+			local universe = Universe.new()
+			local store = Helpers.store(universe:server())
+			local profile = load(universe, store, "p1")
+			for coins = 1, 3 do
+				universe.clock:advance(1)
+				profile:set("coins", coins)
+				run(universe, function()
+					return profile:save()
+				end)
+			end
+			local versions = unwrap(run(universe, function()
+				return store:history("p1")
+			end))
+			expect(#versions >= 4).toBe(true)
+			local second = unwrap(run(universe, function()
+				return store:version("p1", versions[3].version)
+			end)) :: Any
+			expect(second.coins).toBe(2)
+		end)
+
+		it("leaves out and refuses versions from before an erasure", function()
+			local universe = Universe.new()
+			local store = Helpers.store(universe:server())
+			local profile = load(universe, store, "p1")
+			profile:set("coins", 50)
+			run(universe, function()
+				return profile:release()
+			end)
+			local before = unwrap(run(universe, function()
+				return store:history("p1")
+			end))
+			universe.clock:advance(5)
+			run(universe, function()
+				return store:erase("p1")
+			end)
+			universe.clock:advance(5)
+			local after = unwrap(run(universe, function()
+				return store:history("p1")
+			end))
+			-- only the erased marker is left, and it holds no data
+			expect(#after).toBe(1)
+			local marker = run(universe, function()
+				return store:version("p1", after[1].version)
+			end)
+			expect(marker.ok).toBe(false)
+			local refused = run(universe, function()
+				return store:version("p1", before[#before].version)
+			end)
+			expect(refused.ok).toBe(false)
+		end)
+	end)
+
+	describe("rollback", function()
+		it("changes a profile open here and saves it", function()
+			local universe = Universe.new()
+			local store = Helpers.store(universe:server())
+			local profile = load(universe, store, "p1")
+			profile:set("coins", 10)
+			run(universe, function()
+				return profile:save()
+			end)
+			local versions = unwrap(run(universe, function()
+				return store:history("p1")
+			end))
+			local target = versions[#versions].version
+			profile:set("coins", 999)
+			local result = run(universe, function()
+				return store:rollback("p1", target, "undo the bug")
+			end)
+			expect(result.ok).toBe(true)
+			expect(result.via).toBe("here")
+			expect(profile:get("coins")).toBe(10)
+			expect((Helpers.stored(universe, "p1") :: Any).data.coins).toBe(10)
+		end)
+
+		it("loads, applies and releases when nobody holds the profile", function()
+			local universe = Universe.new()
+			local store = Helpers.store(universe:server())
+			local profile = load(universe, store, "p1")
+			profile:set("coins", 10)
+			run(universe, function()
+				return profile:save()
+			end)
+			local target = unwrap(run(universe, function()
+				return store:history("p1")
+			end))
+			profile:set("coins", 20)
+			run(universe, function()
+				return profile:release()
+			end)
+			local result = run(universe, function()
+				return store:rollback("p1", target[#target].version)
+			end)
+			expect(result.via).toBe("loaded")
+			local stored = Helpers.stored(universe, "p1") :: Any
+			expect(stored.data.coins).toBe(10)
+			expect(stored.meta.lease).toBeNil()
+		end)
+
+		it("sends the rollback to the server holding the profile", function()
+			local universe = Universe.new()
+			local storeA = Helpers.store(universe:server({ jobId = "A" }), { handoff = true })
+			local storeB = Helpers.store(universe:server({ jobId = "B" }), { handoff = true })
+			local profileA = load(universe, storeA, "p1")
+			profileA:set("coins", 10)
+			run(universe, function()
+				return profileA:save()
+			end)
+			local target = unwrap(run(universe, function()
+				return storeB:history("p1")
+			end))
+			profileA:set("coins", 30)
+			local result = run(universe, function()
+				return storeB:rollback("p1", target[#target].version)
+			end)
+			expect(result.via).toBe("holder")
+			universe.clock:advance(1)
+			expect(profileA:get("coins")).toBe(10)
+		end)
+	end)
+
+	describe("ops sent to the holder", function()
+		it("apply on whichever server holds the profile, with a plugin source", function()
+			if not opRegistered then
+				opRegistered = true
+				Transaction.register(
+					"historyTestGrant",
+					function(tx: Transaction.Transaction, amount: number)
+						tx:increment("coins", amount)
+					end
+				)
+			end
+			local universe = Universe.new()
+			local options = { handoff = true, ops = { "historyTestGrant" } }
+			local storeA = Helpers.store(universe:server({ jobId = "A" }), options)
+			local storeB = Helpers.store(universe:server({ jobId = "B" }), options)
+			local profileA = load(universe, storeA, "p1")
+			local sources = {}
+			profileA:onCommit(function(record: Any)
+				table.insert(sources, record.source.kind)
+			end)
+			expect(run(universe, function()
+				return storeB:sendOp("p1", "historyTestGrant", 7)
+			end)).toBe(true)
+			universe.clock:advance(1)
+			expect(profileA:get("coins")).toBe(7)
+			expect(sources).toEqual({ "plugin" })
+		end)
+	end)
+
+	describe("audit log", function()
+		it("records who changed what in one batch per save, and goes with erasure", function()
+			local universe = Universe.new()
+			local store = Helpers.store(universe:server(), { audit = true })
+			local profile = load(universe, store, "p1")
+			profile:transact(function(tx)
+				tx:increment("coins", 5)
+			end, { source = { kind = "player", userId = 1 }, note = "quest reward" })
+			profile:append("log", "a")
+			run(universe, function()
+				return profile:save()
+			end)
+			profile:increment("coins")
+			run(universe, function()
+				return profile:save()
+			end)
+			universe.clock:advance(1)
+
+			local batches = unwrap(run(universe, function()
+				return store:auditLog("p1")
+			end))
+			expect(#batches).toBe(2)
+			expect(batches[1].from).toBe(3)
+			expect(batches[2].entries[1].note).toBe("quest reward")
+			expect(batches[2].entries[1].userId).toBe(1)
+			expect(batches[2].entries[1].paths).toEqual({ "coins" })
+
+			run(universe, function()
+				return profile:release()
+			end)
+			run(universe, function()
+				return store:erase("p1")
+			end)
+			local reader = universe:server({ jobId = "reader" })
+			local left = run(universe, function()
+				return reader.dataStore(`{Helpers.STORE}_audit`):get("p1/3")
+			end)
+			expect(unwrap(left).value).toBeNil()
+		end)
+	end)
+end

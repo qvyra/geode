@@ -11,6 +11,7 @@ local Guards = require("../Obsidian/Guards")
 local Path = require("../Matrix/Path")
 local RealServices = require("../Quartz/Real/Services")
 local Reconcile = require("../Sapphire/Reconcile")
+local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
 local Schema = require("../Obsidian/Schema")
 local Size = require("../Obsidian/Size")
@@ -180,7 +181,15 @@ function SharedStore.new(options: Options): SharedStore
 		_report = report,
 		_cache = {},
 	}
-	return setmetatable(self, SharedStore)
+	local store = setmetatable(self, SharedStore)
+	Registry.register("sharedStore", options.name, function()
+		local cached = 0
+		for _ in store._cache do
+			cached += 1
+		end
+		return { scope = scope, cachedKeys = cached }
+	end)
+	return store
 end
 
 -- Stored form

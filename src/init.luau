@@ -15,6 +15,7 @@ local PlayerProfileModule = require("@self/Polish/PlayerProfile")
 local Polish = require("@self/Polish")
 local GeodeClient = require("@self/Client")
 local Prism = require("@self/Prism")
+local Vein = require("@self/Vein")
 local ObsidianIssues = require("@self/Obsidian/Issues")
 local ObsidianSchema = require("@self/Obsidian/Schema")
 local Quartz = require("@self/Quartz")
@@ -302,6 +303,15 @@ Geode.remoteOp = Prism.remoteOp
 	The client side: `Geode.Client.start()` on a LocalScript gives atoms of the shared data
 ]=]
 Geode.Client = GeodeClient
+
+--[=[
+	@prop Vein Vein
+	@within Geode
+	@readonly
+
+	Registry of what's running plus the telemetry bus, for tooling
+]=]
+Geode.Vein = Vein
 
 --[=[
 	@function receipts

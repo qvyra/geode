@@ -8,9 +8,10 @@
 local Types = require("../Quartz/Types")
 
 export type Message = {
-	kind: "request" | "released",
+	kind: string,
 	key: string,
 	from: string,
+	[string]: unknown,
 }
 
 type Sleeper = {
@@ -29,6 +30,7 @@ type Fields = {
 	_connection: Types.Connection?,
 	_sleepers: { [string]: { Sleeper } },
 	_onRequest: ((key: string, from: string) -> ())?,
+	_handlers: { [string]: (message: Message) -> () },
 }
 
 local Handoff = {}
@@ -59,6 +61,7 @@ function Handoff.new(
 			_connection = nil,
 			_sleepers = {},
 			_onRequest = nil,
+			_handlers = {},
 		} :: Fields,
 		Handoff
 	)
@@ -104,7 +107,34 @@ function Handoff._receive(self: Handoff, data: unknown)
 		end
 	elseif message.kind == "released" then
 		self:_wake(message.key)
+	else
+		local handler = self._handlers[message.kind]
+		if handler then
+			handler(message)
+		end
 	end
+end
+
+--[=[
+	Handles other message kinds on the same topic, e.g. rollbacks sent to the holder
+]=]
+function Handoff.on(self: Handoff, kind: string, handler: (message: Message) -> ())
+	self._handlers[kind] = handler
+end
+
+--[=[
+	Sends a message of `kind` to every server listening on this store. False when handoff is off
+	or the publish failed
+]=]
+function Handoff.send(self: Handoff, kind: string, key: string, fields: { [string]: any }): boolean
+	if not self.enabled then
+		return false
+	end
+	local message = table.clone(fields)
+	message.kind = kind
+	message.key = key
+	message.from = self._services.jobId
+	return self._services.messaging:publish(self._topic, message).ok
 end
 
 --[=[

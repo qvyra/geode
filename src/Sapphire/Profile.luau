@@ -61,6 +61,7 @@ type Fields = {
 	userId: number?,
 	-- Fires once, with the reason, when another server took the session
 	sessionLost: Signal.Signal,
+	saved: Signal.Signal,
 	released: Signal.Signal,
 	_document: Document.Document,
 	_backend: Backend,
@@ -94,6 +95,7 @@ function Profile.new(document: Document.Document, backend: Backend): Profile
 		key = backend.key,
 		userId = backend.userId,
 		sessionLost = Signal.new(backend.report),
+		saved = Signal.new(backend.report),
 		released = Signal.new(backend.report),
 		_document = document,
 		_backend = backend,
@@ -312,6 +314,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 	end
 	if savedRevision then
 		self._savedRevision = math.max(self._savedRevision, savedRevision)
+		self.saved:fire(savedRevision)
 	end
 	if savedMetaVersion then
 		self._savedMetaVersion = math.max(self._savedMetaVersion, savedMetaVersion)

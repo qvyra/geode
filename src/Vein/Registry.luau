@@ -15,6 +15,8 @@ export type Handle = {
 	unregister: (self: Handle) -> (),
 }
 
+local Bus = require("./Bus")
+
 local Registry = {}
 
 local entries: { Entry } = {}
@@ -26,11 +28,13 @@ local entries: { Entry } = {}
 function Registry.register(kind: string, name: string, describe: Describe?): Handle
 	local entry: Entry = { kind = kind, name = name, describe = describe }
 	table.insert(entries, entry)
+	Bus.publish("registered", { kind = kind, name = name })
 	return {
 		unregister = function(_self: Handle)
 			local index = table.find(entries, entry)
 			if index then
 				table.remove(entries, index)
+				Bus.publish("unregistered", { kind = kind, name = name })
 			end
 		end,
 	}

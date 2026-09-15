@@ -7,6 +7,8 @@ local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
 local Handoff = require("./Handoff")
+local Bus = require("../Vein/Bus")
+local VeinRegistry = require("../Vein/Registry")
 local Mailbox = require("./Mailbox")
 local Profile = require("./Profile")
 local Reconcile = require("./Reconcile")
@@ -64,6 +66,9 @@ export type Options = {
 	-- Ask holders over MessagingService to release, and hear when they have, so server hops
 	-- don't wait out retries. On by default. Correctness never depends on it
 	handoff: boolean?,
+	-- Keep a commit history in a `<name>_audit` DataStore: who changed which paths and why, one
+	-- key per save. Off by default
+	audit: boolean?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -125,6 +130,8 @@ type Fields = {
 	-- player of each open profile, so we can kick them when another server asks for it
 	_owners: { [string]: number },
 	_handoff: Handoff.Handoff,
+	_audit: Types.DataStore?,
+	_veinHandle: VeinRegistry.Handle,
 	_report: (message: string) -> (),
 }
 
@@ -298,11 +305,22 @@ function ProfileStore.new(options: Options): ProfileStore
 		_loading = {},
 		_owners = {},
 		_handoff = Handoff.new(services, options.name, options.handoff ~= false, report),
+		_audit = if options.audit then services.dataStore(`{options.name}_audit`, scope) else nil,
+		_veinHandle = nil :: any,
 		_report = report,
 	}
 	local store = setmetatable(self, ProfileStore)
 	store._handoff:onRequest(function(key: string)
 		store:_releaseRequested(key)
+	end)
+	store._handoff:on("rollback", function(message: Handoff.Message)
+		store:_rollbackRequested(message)
+	end)
+	store._handoff:on("op", function(message: Handoff.Message)
+		store:_opRequested(message)
+	end)
+	store._veinHandle = VeinRegistry.register("profileStore", options.name, function()
+		return { scope = scope, open = store:openCount() }
 	end)
 	-- The registry holds stores loosely typed, see Registry.Erasable
 	Registry.add(store :: any, givenServices)
@@ -511,38 +529,11 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		)
 	end
 
-	local storedVersion = record.meta.schemaVersion
-	if storedVersion > config.schemaVersion then
+	local data, problem, problemMessage = self:_decodeStored(key, record)
+	if problem then
 		self:_abandon(key, owner)
-		return loadFailure(
-			"newerData",
-			`profile {key} was saved by schema version {storedVersion}, newer than this server's {config.schemaVersion}`
-		)
+		return loadFailure(problem :: LoadErrorKind, problemMessage :: string)
 	end
-
-	local data = record.data
-	if storedVersion < config.schemaVersion then
-		local migrated, migrationError = self:_migrate(data, storedVersion)
-		if migrationError then
-			self:_abandon(key, owner)
-			return loadFailure("migrationFailed", `profile {key}: {migrationError}`)
-		end
-		data = migrated
-	end
-
-	if self._schema then
-		local ok, decoded = Validate.decode(self._schema, data)
-		if not ok then
-			self:_abandon(key, owner)
-			local issues = (decoded :: { issues: { { path: string, message: string } } }).issues
-			return loadFailure(
-				"invalidData",
-				`profile {key} can't be decoded: {issues[1].path} {issues[1].message}`
-			)
-		end
-		data = decoded
-	end
-	data = Reconcile.fill(data, self._template)
 
 	local document = Document.new({
 		data = data,
@@ -594,7 +585,35 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	})
 	guardSet.broken:connect(function(violation: Guards.Violation)
 		self.guardBroken:fire(violation, profile)
+		Bus.publish("guardBroken", {
+			store = self.name,
+			key = key,
+			guard = violation.guard,
+			action = violation.action,
+			reason = violation.reason,
+		}, services.clock:now())
 	end)
+	Bus.publish("profileLoaded", { store = self.name, key = key }, services.clock:now())
+	profile.released:connect(function()
+		Bus.publish("profileReleased", { store = self.name, key = key }, services.clock:now())
+	end)
+	profile.sessionLost:connect(function(reason: string)
+		Bus.publish(
+			"sessionLost",
+			{ store = self.name, key = key, reason = reason },
+			services.clock:now()
+		)
+	end)
+	profile.saved:connect(function(revision: number)
+		Bus.publish(
+			"profileSaved",
+			{ store = self.name, key = key, revision = revision },
+			services.clock:now()
+		)
+	end)
+	if self._audit then
+		self:_auditProfile(key, profile)
+	end
 	profile.released:connect(function()
 		services.clock:spawn(function()
 			self._handoff:announce(key, profile:revision())
@@ -630,6 +649,43 @@ function ProfileStore._releaseRequested(self: ProfileStore, key: string)
 		end
 		profile:release()
 	end)
+end
+
+-- The live data in a stored record: migrated, decoded and filled in from the template. On failure
+-- returns nil with the load error kind and a message
+function ProfileStore._decodeStored(
+	self: ProfileStore,
+	key: string,
+	record: Record.Record
+): (unknown, LoadErrorKind?, string?)
+	local config = self._config
+	local storedVersion = record.meta.schemaVersion
+	if storedVersion > config.schemaVersion then
+		return nil,
+			"newerData",
+			`profile {key} was saved by schema version {storedVersion}, newer than this server's {config.schemaVersion}`
+	end
+
+	local data = record.data
+	if storedVersion < config.schemaVersion then
+		local migrated, migrationError = self:_migrate(data, storedVersion)
+		if migrationError then
+			return nil, "migrationFailed", `profile {key}: {migrationError}`
+		end
+		data = migrated
+	end
+
+	if self._schema then
+		local ok, decoded = Validate.decode(self._schema, data)
+		if not ok then
+			local issues = (decoded :: { issues: { { path: string, message: string } } }).issues
+			return nil,
+				"invalidData",
+				`profile {key} can't be decoded: {issues[1].path} {issues[1].message}`
+		end
+		data = decoded
+	end
+	return Reconcile.fill(data, self._template), nil, nil
 end
 
 -- Runs each migration from the stored version up, each as its own migration transaction on the
@@ -850,6 +906,10 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 		return { ok = false, message = erased.error.message }
 	end
 
+	if self._audit then
+		self:_eraseAudit(key)
+	end
+
 	local mailbox = self._scheduler:submit({
 		priority = "save",
 		budget = "standardRemove",
@@ -866,6 +926,423 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 		}
 	end
 	return { ok = true, message = nil }
+end
+
+--// ================================================================ //--
+--//  History, rollback and audit                                     //--
+--// ================================================================ //--
+
+export type HistoryOptions = {
+	ascending: boolean?,
+	limit: number?,
+}
+
+export type RollbackResult = {
+	ok: boolean,
+	message: string?,
+	-- "here": this server held it. "holder": sent to the server holding it. "loaded": nobody
+	-- held it, so this server loaded it to apply the rollback
+	via: ("here" | "holder" | "loaded")?,
+}
+
+export type AuditEntry = {
+	revision: number,
+	source: string,
+	userId: number?,
+	note: string?,
+	ops: { string },
+	paths: { string },
+	at: number,
+}
+
+export type AuditBatch = {
+	from: number,
+	to: number,
+	entries: { AuditEntry },
+}
+
+-- When the stored record was erased, in seconds, or 0
+function ProfileStore._erasedAt(self: ProfileStore, key: string): Types.Result<number>
+	local read = self._scheduler:submit({
+		priority = "read",
+		budget = "standardRead",
+		key = self:_schedulerKey(key),
+		run = function()
+			return self._dataStore:get(key)
+		end,
+	})
+	if not read.ok then
+		return { ok = false, error = read.error }
+	end
+	local value = read.value.value
+	if Record.isRecord(value) then
+		local erasedAt = (value :: Record.Record).meta.erasedAt
+		return { ok = true, value = erasedAt or 0 }
+	end
+	return { ok = true, value = 0 }
+end
+
+--[=[
+	The stored versions of `key`, newest last by default. Versions from before an erasure are left
+	out, since they hold data the player asked to have removed
+
+	@within ProfileStore
+]=]
+function ProfileStore.history(
+	self: ProfileStore,
+	key: string,
+	options: HistoryOptions?
+): Types.Result<{ Types.VersionInfo }>
+	local erased = self:_erasedAt(key)
+	if not erased.ok then
+		return { ok = false, error = erased.error }
+	end
+	local listed = self._scheduler:submit({
+		priority = "read",
+		budget = "standardList",
+		key = self:_schedulerKey(key),
+		run = function()
+			return self._dataStore:listVersions(key, {
+				ascending = if options then options.ascending else nil,
+				limit = if options then options.limit else nil,
+			})
+		end,
+	})
+	if not listed.ok then
+		return { ok = false, error = listed.error }
+	end
+	local cutoff = erased.value * 1000
+	local versions = {}
+	for _, version in listed.value do
+		if version.createdTime >= cutoff then
+			table.insert(versions, version)
+		end
+	end
+	return { ok = true, value = versions }
+end
+
+--[=[
+	The data a stored version of `key` holds, migrated and decoded like a load would. Refuses
+	versions from before an erasure
+
+	@within ProfileStore
+]=]
+function ProfileStore.version(
+	self: ProfileStore,
+	key: string,
+	versionId: string
+): Types.Result<unknown>
+	local erased = self:_erasedAt(key)
+	if not erased.ok then
+		return { ok = false, error = erased.error }
+	end
+	local read = self._scheduler:submit({
+		priority = "read",
+		budget = "standardRead",
+		key = self:_schedulerKey(key),
+		run = function()
+			return self._dataStore:getVersion(key, versionId)
+		end,
+	})
+	if not read.ok then
+		return { ok = false, error = read.error }
+	end
+	local info = read.value.info
+	if info == nil or not Record.isRecord(read.value.value) then
+		return {
+			ok = false,
+			error = { kind = "notFound", message = `version {versionId} of {key} holds no profile` },
+		}
+	end
+	if info.updatedTime < erased.value * 1000 then
+		return {
+			ok = false,
+			error = {
+				kind = "noAccess",
+				message = `version {versionId} of {key} is from before the data was erased`,
+			},
+		}
+	end
+	local record = read.value.value :: Record.Record
+	if record.data == nil then
+		return {
+			ok = false,
+			error = { kind = "notFound", message = `version {versionId} of {key} holds no data` },
+		}
+	end
+	local data, problem, message = self:_decodeStored(key, record)
+	if problem then
+		return { ok = false, error = { kind = "invalidValue", message = message :: string } }
+	end
+	return { ok = true, value = data }
+end
+
+local function rollbackFailure(message: string): RollbackResult
+	return { ok = false, message = message, via = nil }
+end
+
+local function applyRollback(
+	profile: Profile.Profile,
+	data: unknown,
+	versionId: string,
+	note: string?
+): (boolean, string?)
+	local result = profile:transact(function(tx)
+		tx:set({}, data)
+	end, { source = "system", note = `rollback to {versionId}{if note then `: {note}` else ""}` })
+	if not result.ok then
+		return false, result.error.message
+	end
+	local saved = profile:save()
+	if not saved.ok then
+		return false, saved.error.message
+	end
+	return true, nil
+end
+
+--[=[
+	Puts `key` back to a stored version. A profile open here is changed directly. One held by
+	another server gets the rollback sent to that server, which applies it to its open profile,
+	since writing behind the holder's back would be lost on its next save. When nobody holds it,
+	this server takes the lease, applies it and releases. Yields
+
+	@within ProfileStore
+]=]
+function ProfileStore.rollback(
+	self: ProfileStore,
+	key: string,
+	versionId: string,
+	note: string?
+): RollbackResult
+	local version = self:version(key, versionId)
+	if not version.ok then
+		return rollbackFailure(version.error.message)
+	end
+
+	local open: unknown = self._open[key]
+	if open ~= nil then
+		local ok, message = applyRollback(self._open[key], version.value, versionId, note)
+		return { ok = ok, message = message, via = if ok then "here" else nil }
+	end
+
+	local peek = self._scheduler:submit({
+		priority = "read",
+		budget = "standardRead",
+		key = self:_schedulerKey(key),
+		run = function()
+			return self._dataStore:get(key)
+		end,
+	})
+	if not peek.ok then
+		return rollbackFailure(peek.error.message)
+	end
+	local current = peek.value.value
+	if Record.isRecord(current) then
+		local record = current :: Record.Record
+		local now = self._services.clock:now()
+		local nobody = { jobId = "", session = "" }
+		if Record.leaseState(record, now, self._config.leaseTimeout, nobody) == "held" then
+			local sent = self._handoff:send("rollback", key, { version = versionId, note = note })
+			if not sent then
+				return rollbackFailure(
+					`profile {key} is held by server {(record.meta.lease :: Record.Lease).jobId} and the rollback couldn't be sent there`
+				)
+			end
+			return { ok = true, message = nil, via = "holder" }
+		end
+	end
+
+	local loaded = self:load(key)
+	if not loaded.ok then
+		return rollbackFailure(loaded.error.message)
+	end
+	local ok, message = applyRollback(loaded.profile, version.value, versionId, note)
+	local released = loaded.profile:release()
+	if ok and not released.ok then
+		return rollbackFailure(released.error.message)
+	end
+	return { ok = ok, message = message, via = if ok then "loaded" else nil }
+end
+
+function ProfileStore._rollbackRequested(self: ProfileStore, message: Handoff.Message)
+	local open: unknown = self._open[message.key]
+	if open == nil or type(message.version) ~= "string" then
+		return
+	end
+	local note = if type(message.note) == "string" then message.note else nil
+	self._services.clock:spawn(function()
+		local result = self:rollback(message.key, message.version :: string, note)
+		if not result.ok then
+			self._report(`a rollback of {message.key} sent here failed: {result.message}`)
+		end
+	end)
+end
+
+--[=[
+	Runs an op on the profile under `key` wherever it's held, with a plugin source. Tooling uses
+	this so edits to a leased profile go through its holder instead of around it. Returns false
+	when the op couldn't be applied here and couldn't be sent
+
+	@within ProfileStore
+]=]
+function ProfileStore.sendOp(self: ProfileStore, key: string, name: string, ...: any): boolean
+	local args = table.pack(...)
+	local open: unknown = self._open[key]
+	if open ~= nil then
+		local result = self._open[key]:transact(function(tx)
+			tx:op(name, table.unpack(args, 1, args.n))
+		end, { source = "plugin" })
+		return result.ok
+	end
+	return self._handoff:send("op", key, { name = name, args = table.move(args, 1, args.n, 1, {}) })
+end
+
+function ProfileStore._opRequested(self: ProfileStore, message: Handoff.Message)
+	local open: unknown = self._open[message.key]
+	if open == nil or type(message.name) ~= "string" or type(message.args) ~= "table" then
+		return
+	end
+	local args = message.args :: { unknown }
+	local result = self._open[message.key]:transact(function(tx)
+		tx:op(message.name :: string, table.unpack(args))
+	end, { source = "plugin" })
+	if not result.ok then
+		self._report(`an op sent to {message.key} failed: {result.error.message}`)
+	end
+end
+
+local function summarize(record: Document.CommitRecord): AuditEntry
+	local ops = {}
+	for _, call in record.ops do
+		table.insert(ops, call.name)
+	end
+	local paths = {}
+	for path in record.diff do
+		table.insert(paths, path)
+	end
+	table.sort(paths)
+	return {
+		revision = record.revision,
+		source = record.source.kind,
+		userId = record.source.userId,
+		note = record.note,
+		ops = ops,
+		paths = paths,
+		at = record.timestamp,
+	}
+end
+
+function ProfileStore._auditKey(_self: ProfileStore, key: string, revision: number): string
+	return `{key}/{revision}`
+end
+
+-- Buffers commit summaries and writes them as one batch after each save. A batch is keyed
+-- by its last revision and remembers its first, so the log can be walked back from the
+-- current revision one batch at a time
+function ProfileStore._auditProfile(self: ProfileStore, key: string, profile: Profile.Profile)
+	local audit = self._audit :: Types.DataStore
+	local pending: { AuditEntry } = {}
+	profile:onCommit(function(record: Document.CommitRecord)
+		table.insert(pending, summarize(record))
+	end)
+	profile.saved:connect(function(revision: number)
+		local batch: { AuditEntry } = {}
+		local kept: { AuditEntry } = {}
+		for _, entry in pending do
+			table.insert(if entry.revision <= revision then batch else kept, entry)
+		end
+		pending = kept
+		if #batch == 0 then
+			return
+		end
+		local from, to = batch[1].revision, batch[#batch].revision
+		self._services.clock:spawn(function()
+			local written = self._scheduler:submit({
+				priority = "background",
+				budget = "standardWrite",
+				key = `audit/{self.name}/{key}`,
+				write = true,
+				run = function()
+					return audit:set(
+						self:_auditKey(key, to),
+						{ from = from, to = to, entries = batch }
+					)
+				end,
+			})
+			if not written.ok then
+				self._report(`couldn't write the audit log of {key}: {written.error.message}`)
+			end
+		end)
+	end)
+end
+
+--[=[
+	The audit log of `key`, newest batch first, walked back from the current revision. Stops at
+	the first missing batch. Only stores made with `audit = true` keep one
+
+	@within ProfileStore
+]=]
+function ProfileStore.auditLog(
+	self: ProfileStore,
+	key: string,
+	maxBatches: number?
+): Types.Result<{ AuditBatch }>
+	local audit = self._audit
+	if audit == nil then
+		return {
+			ok = false,
+			error = { kind = "invalidValue", message = `{self.name} doesn't keep an audit log` },
+		}
+	end
+	local open: unknown = self._open[key]
+	local revision: number
+	if open ~= nil then
+		revision = self._open[key]:revision()
+	else
+		local read = self._dataStore:get(key)
+		if not read.ok then
+			return { ok = false, error = read.error }
+		end
+		if not Record.isRecord(read.value.value) then
+			return { ok = true, value = {} }
+		end
+		revision = (read.value.value :: Record.Record).meta.revision
+	end
+
+	local batches: { AuditBatch } = {}
+	local cursor = revision
+	while cursor > 0 and #batches < (maxBatches or 20) do
+		local read = audit:get(self:_auditKey(key, cursor))
+		if not read.ok then
+			return { ok = false, error = read.error }
+		end
+		local batch = read.value.value
+		if type(batch) ~= "table" then
+			-- Not saved yet, or written before auditing was on. Look one revision lower once
+			if #batches == 0 and cursor == revision then
+				cursor -= 1
+				continue
+			end
+			break
+		end
+		table.insert(batches, batch :: AuditBatch)
+		cursor = (batch :: AuditBatch).from - 1
+	end
+	return { ok = true, value = batches }
+end
+
+-- Best effort, removes every audit batch of `key` it can reach. The data itself is
+-- already gone by now
+function ProfileStore._eraseAudit(self: ProfileStore, key: string)
+	local audit = self._audit :: Types.DataStore
+	local log = self:auditLog(key, math.huge)
+	if not log.ok then
+		self._report(`couldn't read the audit log of {key} to erase it: {log.error.message}`)
+		return
+	end
+	for _, batch in log.value do
+		audit:remove(self:_auditKey(key, batch.to))
+	end
 end
 
 --// ================================================================ //--
