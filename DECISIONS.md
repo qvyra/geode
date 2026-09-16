@@ -287,3 +287,44 @@ RateLimiter counts in fixed windows with one atomic update per check, accepting 
 Every premade reports an estimated request rate and registers itself, so the cost is visible before it becomes a surprise.
 
 **Commits:** 8275936
+
+## 24. One elected matcher per queue
+
+**Date:** 2026-09-16
+
+Matchmaking reads the whole queue every tick. If every server ran a matching pass on every queue, MemoryStore reads would grow with the number of servers. So one server per mode and region is elected to match, using the Mutex premade, and every server can still add and cancel tickets. The matcher's lock has a short lease it renews each tick, so when its server dies another one takes over within a lease.
+
+Correctness doesn't rest on the election. Every ticket is claimed with an atomic update that only lands while it's unclaimed, and a pass that loses any claim gives back the others, so two matchers that overlap during a handover still can't place a player twice.
+
+Windowed leaderboards run every mode through the sorted map's atomic update. Only all-time sum boards use IncrementAsync on an OrderedDataStore.
+
+**Commits:** c31a550, f77cddc
+
+## 25. Replication sends visible paths, intent goes through remote ops
+
+**Date:** 2026-09-16
+
+**Context:** Clients need to see some of their own data and some of other players' data. They also need a way to ask for changes without being able to write anything themselves.
+
+**Options:**
+
+- Forward every commit's raw diff and let the client filter it
+- Declare visibility per path on the server, send only visible values that changed, and take client intent only as declared ops
+
+**Chosen:** declared visibility. Paths are private unless marked `owner` or `public`, so new fields never leak by default. After each commit the replicator compares each visible path with what it last sent, which is cheap because unchanged subtrees are the same frozen tables, and queues only what changed. The queue goes out once per frame, and clients get atoms over a read only copy.
+
+Remote ops check the attempt rate limit before anything else, then each argument against its schema, then run on the asking player's own profile with a player source, so guards apply as they would to any write. The default limit is 30 attempts per 10 seconds and requests past it are dropped. Remote ops send no reply. The client sees the result through replication, which keeps a refused request from leaking why it was refused.
+
+**Commits:** 8f100c5, a17ede5
+
+## 26. Rollback goes through the holder, audit batches chain backwards
+
+**Date:** 2026-09-16
+
+Two related problems. Rolling back a profile another server holds can't be a direct write, because the holder would overwrite it on its next save. And the audit log has to be readable without listing DataStore keys, which the adapters don't support.
+
+For rollback, the blunt option was writing the old version straight to the key and letting the holder lose its session. Instead the rollback is sent to the holder over the handoff topic. A profile nobody holds is loaded through the normal lease, changed and released, and one open on the same server is changed directly.
+
+For the audit log it came down to one key per commit or one key per save. It's one batch per save, keyed by the batch's last revision and holding its first, so a reader starts at the current revision and steps back batch by batch. That keeps the cost at one write per save, not one per commit. History and rollback refuse every version from before `meta.erasedAt`, and erasure removes the audit batches it can reach.
+
+**Commits:** 7dbaf39
