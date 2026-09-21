@@ -21,10 +21,12 @@
 	"private": true,
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
-		"cspell": "10.0.1",
-		"eslint": "10.4.1",
-		"prettier": "3.8.3",
+		"@rbxts/compiler-types": "3.0.0-types.0",
+		"@rbxts/types": "1.0.953",
+		"cspell": "10.3.3",
+		"eslint": "10.11.0",
+		"prettier": "3.9.8",
 		"typescript": "6.0.3",
-		"typescript-eslint": "8.60.1"
+		"typescript-eslint": "8.70.0"
 	}
 }

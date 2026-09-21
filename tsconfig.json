@@ -1,12 +1,14 @@
 {
 	"compilerOptions": {
-		"target": "ES2022",
+		"target": "ESNext",
 		"module": "ESNext",
 		"moduleResolution": "Bundler",
 		"strict": true,
 		"noEmit": true,
-		"skipLibCheck": false,
-		"types": []
+		"noLib": true,
+		"skipLibCheck": true,
+		"typeRoots": ["node_modules/@rbxts"],
+		"types": ["types", "compiler-types"]
 	},
-	"include": ["types/**/*.ts"]
+	"include": ["types/**/*.ts", "typings-test/**/*.ts"]
 }

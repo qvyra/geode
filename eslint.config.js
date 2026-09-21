@@ -5,7 +5,7 @@ export default tseslint.config(
 	{ ignores: ["node_modules/", ".cache/", "Packages/", "DevPackages/"] },
 	js.configs.recommended,
 	{
-		files: ["types/**/*.ts"],
+		files: ["types/**/*.ts", "typings-test/**/*.ts"],
 		extends: [...tseslint.configs.strictTypeChecked, ...tseslint.configs.stylisticTypeChecked],
 		languageOptions: {
 			parserOptions: {
@@ -23,8 +23,11 @@ export default tseslint.config(
 					format: ["camelCase", "UPPER_CASE", "PascalCase"],
 				},
 				{ selector: "function", format: ["camelCase"] },
-				{ selector: "property", format: ["camelCase", "UPPER_CASE"] },
+				// Roblox fields like UserId and Luau namespaces like Geode.Profile are PascalCase
+				{ selector: "property", format: ["camelCase", "UPPER_CASE", "PascalCase"] },
 			],
+			// roblox-ts marks functions called with a dot by typing `this` as void
+			"@typescript-eslint/no-invalid-void-type": ["error", { allowAsThisParameter: true }],
 		},
 	},
 );
