@@ -1,0 +1,26 @@
+{
+	"name": "GeodeExample",
+	"tree": {
+		"$className": "DataModel",
+		"ReplicatedStorage": {
+			"Packages": {
+				"$className": "Folder",
+				"Geode": {
+					"$path": "../src"
+				}
+			}
+		},
+		"ServerScriptService": {
+			"Example": {
+				"$path": "server"
+			}
+		},
+		"StarterPlayer": {
+			"StarterPlayerScripts": {
+				"Example": {
+					"$path": "client"
+				}
+			}
+		}
+	}
+}

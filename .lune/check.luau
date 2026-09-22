@@ -86,10 +86,15 @@ local function prettier(): Step
 end
 
 local STEPS: { Step } = {
-	{ name = "stylua", program = "stylua", args = { "--check", "src", "tests", ".lune" } },
+	{
+		name = "stylua",
+		program = "stylua",
+		args = { "--check", "src", "tests", ".lune", "example" },
+	},
 	{ name = "selene src", program = "selene", args = { "src" } },
 	{ name = "selene tests", program = "selene", args = { "." }, cwd = "tests" },
 	{ name = "selene studio", program = "selene", args = { "." }, cwd = "tests/studio" },
+	{ name = "selene example", program = "selene", args = { "." }, cwd = "example" },
 	{ name = "selene scripts", program = "selene", args = { "." }, cwd = ".lune" },
 	{
 		name = "luau-lsp src",

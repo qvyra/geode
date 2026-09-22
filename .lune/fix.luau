@@ -13,7 +13,7 @@ for _, arg in Files.prettierIgnoreArgs() do
 end
 
 local STEPS: { { string } } = {
-	{ "stylua", "src", "tests", ".lune" },
+	{ "stylua", "src", "tests", ".lune", "example" },
 	prettier,
 }
 

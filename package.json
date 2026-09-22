@@ -5,10 +5,21 @@
 	"license": "MIT",
 	"type": "module",
 	"author": "Quivery",
+	"homepage": "https://github.com/qvyra/geode#readme",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/qvyra/geode.git"
 	},
+	"bugs": {
+		"url": "https://github.com/qvyra/geode/issues"
+	},
+	"keywords": [
+		"roblox",
+		"roblox-ts",
+		"datastore",
+		"memorystore",
+		"profile"
+	],
 	"main": "src/init.luau",
 	"types": "types/index.d.ts",
 	"files": [
@@ -18,6 +29,9 @@
 		"LICENSE",
 		"README.md"
 	],
+	"publishConfig": {
+		"access": "public"
+	},
 	"private": true,
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
