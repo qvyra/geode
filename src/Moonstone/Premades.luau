@@ -162,6 +162,11 @@ function Presence.set(self: Presence, userId: number): Types.Result<nil>
 	return result
 end
 
+--[=[
+	Marks a player as gone from this server
+
+	@within Presence
+]=]
 function Presence.clear(self: Presence, userId: number): Types.Result<nil>
 	self._tracked[userId] = nil
 	return call(self._scheduler, self._meter, "background", function()
@@ -186,6 +191,11 @@ function Presence.where(self: Presence, userId: number): Types.Result<Location?>
 	return { ok = true, value = value :: Location }
 end
 
+--[=[
+	How many players this server keeps a heartbeat for
+
+	@within Presence
+]=]
 function Presence.trackedCount(self: Presence): number
 	local tracked = 0
 	for _ in self._tracked do
@@ -201,6 +211,11 @@ function Presence.estimatedCost(self: Presence): number
 	return self:trackedCount() * MINUTE / self._heartbeat + perMinute(self._meter)
 end
 
+--[=[
+	Stops tracking every player and removes it from the registry tooling reads
+
+	@within Presence
+]=]
 function Presence.destroy(self: Presence)
 	table.clear(self._tracked)
 	self._handle:unregister()
@@ -328,10 +343,20 @@ function Mutex.acquire(self: Mutex, key: string, wait: number?): Types.Result<Lo
 	end
 end
 
+--[=[
+	Current MemoryStore spend, in requests per minute
+
+	@within Mutex
+]=]
 function Mutex.estimatedCost(self: Mutex): number
 	return perMinute(self._meter)
 end
 
+--[=[
+	Stops it and removes it from the registry tooling reads
+
+	@within Mutex
+]=]
 function Mutex.destroy(self: Mutex)
 	self._handle:unregister()
 end
@@ -434,6 +459,11 @@ function Premades.counter(name: string, options: CounterOptions?): Counter
 	return self
 end
 
+--[=[
+	Adds `delta`, 1 by default, to the counter at `key` and returns the new total
+
+	@within Counter
+]=]
 function Counter.increment(self: Counter, key: string, delta: number?): Types.Result<number>
 	local amount = delta or 1
 	local result = call(self._scheduler, self._meter, "save", function()
@@ -447,6 +477,11 @@ function Counter.increment(self: Counter, key: string, delta: number?): Types.Re
 	return { ok = true, value = result.value.value :: number }
 end
 
+--[=[
+	The counter's value at `key`, 0 when it was never set
+
+	@within Counter
+]=]
 function Counter.get(self: Counter, key: string): Types.Result<number>
 	local result = call(self._scheduler, self._meter, "read", function()
 		return self._map:get(key)
@@ -457,10 +492,20 @@ function Counter.get(self: Counter, key: string): Types.Result<number>
 	return { ok = true, value = if type(result.value) == "number" then result.value else 0 }
 end
 
+--[=[
+	Requests per minute this is spending right now, for budgeting MemoryStore quota
+
+	@within Counter
+]=]
 function Counter.estimatedCost(self: Counter): number
 	return perMinute(self._meter)
 end
 
+--[=[
+	Stops it and removes it from the registry tooling reads
+
+	@within Counter
+]=]
 function Counter.destroy(self: Counter)
 	self._handle:unregister()
 end
@@ -546,10 +591,20 @@ function RateLimiter.allow(self: RateLimiter, key: string, cost: number?): Types
 	return { ok = true, value = allowed }
 end
 
+--[=[
+	Requests per minute this is spending right now, for budgeting MemoryStore quota
+
+	@within RateLimiter
+]=]
 function RateLimiter.estimatedCost(self: RateLimiter): number
 	return perMinute(self._meter)
 end
 
+--[=[
+	Stops it and removes it from the registry tooling reads
+
+	@within RateLimiter
+]=]
 function RateLimiter.destroy(self: RateLimiter)
 	self._handle:unregister()
 end
@@ -611,6 +666,11 @@ function Premades.jobQueue(name: string, options: JobQueueOptions?): JobQueue
 	return self
 end
 
+--[=[
+	Adds a job, with an optional priority
+
+	@within JobQueue
+]=]
 function JobQueue.push(self: JobQueue, job: unknown, priority: number?): Types.Result<nil>
 	return call(self._scheduler, self._meter, "save", function()
 		return self._queue:add(job, self._ttl, priority)
@@ -644,10 +704,20 @@ function JobQueue.claim(self: JobQueue, count: number?, wait: number?): Types.Re
 	return { ok = true, value = claim }
 end
 
+--[=[
+	Requests per minute this queue is spending right now. Useful for budgeting MemoryStore quota
+
+	@within JobQueue
+]=]
 function JobQueue.estimatedCost(self: JobQueue): number
 	return perMinute(self._meter)
 end
 
+--[=[
+	Unregisters it from the registry tooling reads
+
+	@within JobQueue
+]=]
 function JobQueue.destroy(self: JobQueue)
 	self._handle:unregister()
 end

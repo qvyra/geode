@@ -320,6 +320,11 @@ function Leaderboard.top(
 	return { ok = true, value = entries }
 end
 
+--[=[
+	Unregisters the board from the registry tooling reads
+
+	@within Leaderboard
+]=]
 function Leaderboard.destroy(self: Leaderboard)
 	self._handle:unregister()
 end

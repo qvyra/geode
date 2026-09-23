@@ -17,10 +17,10 @@ local signal = Signal.new(function(message: string)
 	warn(message)
 end)
 
+-- fields typed loosely, Luau won't match a literal record against a map of unknowns
 --[=[
 	Publishes a message of `kind` with `fields`. Costs next to nothing when nobody listens
 ]=]
--- fields typed loosely, Luau won't match a literal record against a map of unknowns
 function Bus.publish(kind: string, fields: { [string]: any }?, at: number?)
 	if signal:handlerCount() == 0 then
 		return

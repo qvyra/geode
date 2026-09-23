@@ -637,6 +637,11 @@ function Guards.set(options: SetOptions?): GuardSet
 	return set
 end
 
+--[=[
+	Adds a guard to the set
+
+	@within GuardSet
+]=]
 function GuardSet.add(self: GuardSet, guard: Guard)
 	assert(type(guard) == "table" and type(guard.check) == "function", "expected a guard")
 	table.insert(self._guards, guard)

@@ -105,6 +105,11 @@ function PlayerProfile.get(self: PlayerProfile, path: PathLike?): unknown
 	return self._defaults:get(path)
 end
 
+--[=[
+	The whole value, frozen
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.snapshot(self: PlayerProfile): unknown
 	local profile = self._profile
 	if profile then
@@ -147,6 +152,11 @@ end
 
 --// writes (refused until the data loads)
 
+--[=[
+	Runs `body` as a single transaction: every op inside lands together or none do
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.transact(
 	self: PlayerProfile,
 	body: (tx: Transaction.Transaction) -> (),
@@ -159,11 +169,21 @@ function PlayerProfile.transact(
 	return profile:transact(body, options)
 end
 
+--[=[
+	Sets `path` to `value` as its own transaction
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.set(self: PlayerProfile, path: PathLike, value: unknown): Document.TxResult
 	local profile = self._profile
 	return if profile then profile:set(path, value) else notLoaded(self)
 end
 
+--[=[
+	Replaces the value at `path` with what `transform` returns, as its own transaction
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.update(
 	self: PlayerProfile,
 	path: PathLike,
@@ -173,6 +193,11 @@ function PlayerProfile.update(
 	return if profile then profile:update(path, updater) else notLoaded(self)
 end
 
+--[=[
+	Adds `amount`, 1 by default, to the number at `path`
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.increment(
 	self: PlayerProfile,
 	path: PathLike,
@@ -182,6 +207,11 @@ function PlayerProfile.increment(
 	return if profile then profile:increment(path, amount) else notLoaded(self)
 end
 
+--[=[
+	Subtracts `amount`, 1 by default, from the number at `path`
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.decrement(
 	self: PlayerProfile,
 	path: PathLike,
@@ -191,6 +221,11 @@ function PlayerProfile.decrement(
 	return if profile then profile:decrement(path, amount) else notLoaded(self)
 end
 
+--[=[
+	Adds `value` to the end of the list at `path`
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.append(
 	self: PlayerProfile,
 	path: PathLike,
@@ -200,6 +235,11 @@ function PlayerProfile.append(
 	return if profile then profile:append(path, value) else notLoaded(self)
 end
 
+--[=[
+	Inserts `value` into the list at `path` at `index`
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.insert(
 	self: PlayerProfile,
 	path: PathLike,
@@ -210,16 +250,31 @@ function PlayerProfile.insert(
 	return if profile then profile:insert(path, index, value) else notLoaded(self)
 end
 
+--[=[
+	Removes the value at `path`
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.remove(self: PlayerProfile, path: PathLike): Document.TxResult
 	local profile = self._profile
 	return if profile then profile:remove(path) else notLoaded(self)
 end
 
+--[=[
+	Empties the table at `path`, or everything with no path
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.clear(self: PlayerProfile, path: PathLike?): Document.TxResult
 	local profile = self._profile
 	return if profile then profile:clear(path) else notLoaded(self)
 end
 
+--[=[
+	Copies the fields of `partial` into the table at `path`
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.merge(
 	self: PlayerProfile,
 	path: PathLike?,
@@ -229,6 +284,11 @@ function PlayerProfile.merge(
 	return if profile then profile:merge(path, values) else notLoaded(self)
 end
 
+--[=[
+	Runs the custom op `name` with the given arguments as its own transaction
+
+	@within PlayerProfile
+]=]
 function PlayerProfile.op(self: PlayerProfile, name: string, ...: any): Document.TxResult
 	local profile = self._profile
 	return if profile then profile:op(name, ...) else notLoaded(self)

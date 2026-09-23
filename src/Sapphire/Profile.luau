@@ -116,26 +116,56 @@ end
 
 -- Reading and writing
 
+--[=[
+	Reads a frozen value at `path`, or the whole value with no path
+
+	@within Profile
+]=]
 function Profile.get(self: Profile, path: PathLike?): unknown
 	return self._document:get(path)
 end
 
+--[=[
+	The whole value, frozen
+
+	@within Profile
+]=]
 function Profile.snapshot(self: Profile): unknown
 	return self._document:snapshot()
 end
 
+--[=[
+	How many commits this data has had
+
+	@within Profile
+]=]
 function Profile.revision(self: Profile): number
 	return self._document:revision()
 end
 
+--[=[
+	Where the profile is in its life: active, releasing, released or lost
+
+	@within Profile
+]=]
 function Profile.state(self: Profile): State
 	return self._state
 end
 
+--[=[
+	Whether the profile can still be written and saved
+
+	@within Profile
+]=]
 function Profile.isActive(self: Profile): boolean
 	return self._state == "active"
 end
 
+--[=[
+	Runs `body` as one transaction. Every op inside lands together or not at all
+
+	@within Profile
+]=]
 function Profile.transact(
 	self: Profile,
 	body: (tx: Transaction.Transaction) -> (),
@@ -144,10 +174,20 @@ function Profile.transact(
 	return self._document:transact(body, options)
 end
 
+--[=[
+	Sets `path` to `value` as its own transaction
+
+	@within Profile
+]=]
 function Profile.set(self: Profile, path: PathLike, value: unknown): Document.TxResult
 	return self._document:set(path, value)
 end
 
+--[=[
+	Replaces the value at `path` with what `transform` returns, as its own transaction
+
+	@within Profile
+]=]
 function Profile.update(
 	self: Profile,
 	path: PathLike,
@@ -156,18 +196,38 @@ function Profile.update(
 	return self._document:update(path, transform)
 end
 
+--[=[
+	Adds `amount`, 1 by default, to the number at `path`
+
+	@within Profile
+]=]
 function Profile.increment(self: Profile, path: PathLike, amount: number?): Document.TxResult
 	return self._document:increment(path, amount)
 end
 
+--[=[
+	Subtracts `amount`, 1 by default, from the number at `path`
+
+	@within Profile
+]=]
 function Profile.decrement(self: Profile, path: PathLike, amount: number?): Document.TxResult
 	return self._document:decrement(path, amount)
 end
 
+--[=[
+	Adds `value` to the end of the list at `path`
+
+	@within Profile
+]=]
 function Profile.append(self: Profile, path: PathLike, value: unknown): Document.TxResult
 	return self._document:append(path, value)
 end
 
+--[=[
+	Inserts `value` into the list at `path` at `index`
+
+	@within Profile
+]=]
 function Profile.insert(
 	self: Profile,
 	path: PathLike,
@@ -177,14 +237,29 @@ function Profile.insert(
 	return self._document:insert(path, index, value)
 end
 
+--[=[
+	Removes the value at `path`
+
+	@within Profile
+]=]
 function Profile.remove(self: Profile, path: PathLike): Document.TxResult
 	return self._document:remove(path)
 end
 
+--[=[
+	Empties the table at `path`, or everything with no path
+
+	@within Profile
+]=]
 function Profile.clear(self: Profile, path: PathLike?): Document.TxResult
 	return self._document:clear(path)
 end
 
+--[=[
+	Copies the fields of `partial` into the table at `path`
+
+	@within Profile
+]=]
 function Profile.merge(
 	self: Profile,
 	path: PathLike?,
@@ -193,10 +268,20 @@ function Profile.merge(
 	return self._document:merge(path, partial)
 end
 
+--[=[
+	Runs the custom op `name` with the given arguments as its own transaction
+
+	@within Profile
+]=]
 function Profile.op(self: Profile, name: string, ...: any): Document.TxResult
 	return self._document:op(name, ...)
 end
 
+--[=[
+	Calls back with the new and old value after each commit that changes `path`
+
+	@within Profile
+]=]
 function Profile.observe(
 	self: Profile,
 	path: PathLike,
@@ -205,6 +290,11 @@ function Profile.observe(
 	return self._document:observe(path, callback)
 end
 
+--[=[
+	Calls back with the commit record after every commit
+
+	@within Profile
+]=]
 function Profile.onCommit(
 	self: Profile,
 	callback: (record: Document.CommitRecord) -> ()
@@ -374,6 +464,11 @@ function Profile.recordReceipt(self: Profile, purchaseId: string)
 	self._metaVersion += 1
 end
 
+--[=[
+	The sequence number of the last mailbox message applied to this profile
+
+	@within Profile
+]=]
 function Profile.mailboxCursor(self: Profile): number
 	return self._mailboxCursor
 end

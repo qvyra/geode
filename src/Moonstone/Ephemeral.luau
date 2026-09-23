@@ -85,12 +85,22 @@ function Ephemeral.hashMap(name: string, options: Options?): HashMap
 	)
 end
 
+--[=[
+	Reads the value stored at `key`
+
+	@within HashMap
+]=]
 function HashMap.get(self: HashMap, key: string): Types.Result<unknown>
 	return run(self._scheduler, "read", function()
 		return self._map:get(key)
 	end)
 end
 
+--[=[
+	Writes `value` to `key` for `ttl` seconds, after checking it against the schema
+
+	@within HashMap
+]=]
 function HashMap.set(self: HashMap, key: string, value: unknown, ttl: number): Types.Result<nil>
 	local invalid = check(self._schema, self.name, value)
 	if invalid then
@@ -131,18 +141,33 @@ function HashMap.update(
 	return result
 end
 
+--[=[
+	Removes `key` from the map
+
+	@within HashMap
+]=]
 function HashMap.remove(self: HashMap, key: string): Types.Result<nil>
 	return run(self._scheduler, "save", function()
 		return self._map:remove(key)
 	end)
 end
 
+--[=[
+	Up to `limit` entries of the map
+
+	@within HashMap
+]=]
 function HashMap.list(self: HashMap, limit: number?): Types.Result<{ Types.HashMapEntry }>
 	return run(self._scheduler, "background", function()
 		return self._map:list(limit)
 	end)
 end
 
+--[=[
+	Stops it and removes it from the registry tooling reads
+
+	@within HashMap
+]=]
 function HashMap.destroy(self: HashMap)
 	self._handle:unregister()
 end
@@ -181,12 +206,23 @@ function Ephemeral.sortedMap(name: string, options: Options?): SortedMap
 	)
 end
 
+--[=[
+	Reads the entry at `key` along with its sort key
+
+	@within SortedMap
+]=]
 function SortedMap.get(self: SortedMap, key: string): Types.Result<Types.SortedEntry?>
 	return run(self._scheduler, "read", function()
 		return self._map:get(key)
 	end)
 end
 
+--[=[
+	Writes `value` to `key` for `ttl` seconds, with an optional sort key. The schema checks it
+	first
+
+	@within SortedMap
+]=]
 function SortedMap.set(
 	self: SortedMap,
 	key: string,
@@ -203,6 +239,12 @@ function SortedMap.set(
 	end)
 end
 
+--[=[
+	Changes the value and sort key at `key` atomically with `transform`. A value the schema
+	refuses cancels the update
+
+	@within SortedMap
+]=]
 function SortedMap.update(
 	self: SortedMap,
 	key: string,
@@ -229,12 +271,22 @@ function SortedMap.update(
 	return result
 end
 
+--[=[
+	Removes `key` from the map
+
+	@within SortedMap
+]=]
 function SortedMap.remove(self: SortedMap, key: string): Types.Result<nil>
 	return run(self._scheduler, "save", function()
 		return self._map:remove(key)
 	end)
 end
 
+--[=[
+	Entries between the bounds of `range` (both exclusive), in sort order
+
+	@within SortedMap
+]=]
 function SortedMap.getRange(
 	self: SortedMap,
 	range: Types.SortedRange
@@ -244,6 +296,11 @@ function SortedMap.getRange(
 	end)
 end
 
+--[=[
+	Stops it and removes it from the registry tooling reads
+
+	@within SortedMap
+]=]
 function SortedMap.destroy(self: SortedMap)
 	self._handle:unregister()
 end
@@ -282,6 +339,11 @@ function Ephemeral.queue(name: string, options: QueueOptions?): Queue
 	)
 end
 
+--[=[
+	Adds `value` to the queue for `ttl` seconds, with an optional priority
+
+	@within Queue
+]=]
 function Queue.add(self: Queue, value: unknown, ttl: number, priority: number?): Types.Result<nil>
 	local invalid = check(self._schema, self.name, value)
 	if invalid then
@@ -292,18 +354,33 @@ function Queue.add(self: Queue, value: unknown, ttl: number, priority: number?):
 	end)
 end
 
+--[=[
+	Reads items and hides them from other readers until the invisibility timeout
+
+	@within Queue
+]=]
 function Queue.read(self: Queue, options: Types.QueueReadOptions): Types.Result<Types.QueueRead>
 	return run(self._scheduler, "read", function()
 		return self._queue:read(options)
 	end)
 end
 
+--[=[
+	Removes the items of an earlier read by its `id`. A stale id does nothing
+
+	@within Queue
+]=]
 function Queue.remove(self: Queue, id: string): Types.Result<nil>
 	return run(self._scheduler, "save", function()
 		return self._queue:remove(id)
 	end)
 end
 
+--[=[
+	Unregisters it, so tooling stops listing it
+
+	@within Queue
+]=]
 function Queue.destroy(self: Queue)
 	self._handle:unregister()
 end

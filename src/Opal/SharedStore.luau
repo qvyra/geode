@@ -511,6 +511,11 @@ function SharedStore.transact(
 end
 
 -- Single-op shortcuts, one transaction each
+--[=[
+	Sets `path` to `value` as its own transaction in `key`, run inside UpdateAsync. Yields
+
+	@within SharedStore
+]=]
 function SharedStore.set(
 	self: SharedStore,
 	key: string,
@@ -522,6 +527,12 @@ function SharedStore.set(
 	end)
 end
 
+--[=[
+	Replaces the value at `path` with what `transform` returns, as its own transaction in `key`, run
+	inside UpdateAsync. Yields
+
+	@within SharedStore
+]=]
 function SharedStore.update(
 	self: SharedStore,
 	key: string,
@@ -533,6 +544,11 @@ function SharedStore.update(
 	end)
 end
 
+--[=[
+	Adds `amount` (1 by default) to the number at `path` in `key`, inside UpdateAsync. Yields
+
+	@within SharedStore
+]=]
 function SharedStore.increment(
 	self: SharedStore,
 	key: string,
@@ -544,6 +560,12 @@ function SharedStore.increment(
 	end)
 end
 
+--[=[
+	Subtracts `amount` (1 by default) from the number at `path` in `key`, inside UpdateAsync.
+	Yields
+
+	@within SharedStore
+]=]
 function SharedStore.decrement(
 	self: SharedStore,
 	key: string,
@@ -555,6 +577,11 @@ function SharedStore.decrement(
 	end)
 end
 
+--[=[
+	Adds `value` to the end of the list at `path` in `key`, run inside UpdateAsync. Yields
+
+	@within SharedStore
+]=]
 function SharedStore.append(
 	self: SharedStore,
 	key: string,
@@ -566,6 +593,11 @@ function SharedStore.append(
 	end)
 end
 
+--[=[
+	Inserts `value` into the list at `path` at `index` in `key`, run inside UpdateAsync. Yields
+
+	@within SharedStore
+]=]
 function SharedStore.insert(
 	self: SharedStore,
 	key: string,
@@ -578,18 +610,34 @@ function SharedStore.insert(
 	end)
 end
 
+--[=[
+	Removes the value at `path` in `key`, run inside UpdateAsync. Yields
+
+	@within SharedStore
+]=]
 function SharedStore.remove(self: SharedStore, key: string, path: PathLike): WriteResult
 	return self:transact(key, function(tx)
 		tx:remove(path)
 	end)
 end
 
+--[=[
+	Empties the table at `path` in `key`, or the whole value when there's no path. Runs inside
+	UpdateAsync and yields
+
+	@within SharedStore
+]=]
 function SharedStore.clear(self: SharedStore, key: string, path: PathLike?): WriteResult
 	return self:transact(key, function(tx)
 		tx:clear(path)
 	end)
 end
 
+--[=[
+	Copies the fields of `partial` into the table at `path` in `key`, run inside UpdateAsync. Yields
+
+	@within SharedStore
+]=]
 function SharedStore.merge(
 	self: SharedStore,
 	key: string,
@@ -602,6 +650,12 @@ function SharedStore.merge(
 end
 
 -- `...: any` since op arguments are whatever the op declares
+--[=[
+	Runs the custom op `name` with the given arguments as its own transaction in `key`, run inside
+	UpdateAsync. Yields
+
+	@within SharedStore
+]=]
 function SharedStore.op(self: SharedStore, key: string, name: string, ...: any): WriteResult
 	local args = table.pack(...)
 	return self:transact(key, function(tx)

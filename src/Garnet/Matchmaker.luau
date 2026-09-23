@@ -461,6 +461,11 @@ function Matchmaker.start(self: Matchmaker)
 	end)
 end
 
+--[=[
+	Stops taking part in matching and gives up the matcher lock if this server held it
+
+	@within Matchmaker
+]=]
 function Matchmaker.stop(self: Matchmaker)
 	self._running = false
 	local lock = self._lock
@@ -472,6 +477,11 @@ function Matchmaker.stop(self: Matchmaker)
 	end
 end
 
+--[=[
+	Stops it and drops it from the registry that tooling reads
+
+	@within Matchmaker
+]=]
 function Matchmaker.destroy(self: Matchmaker)
 	self:stop()
 	self._handle:unregister()

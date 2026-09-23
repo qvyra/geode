@@ -199,6 +199,11 @@ function Document.clearReadOnly(self: Document)
 	self._readOnly = nil
 end
 
+--[=[
+	Whether writes are refused right now
+
+	@within Document
+]=]
 function Document.isReadOnly(self: Document): boolean
 	return self._readOnly ~= nil
 end
@@ -336,12 +341,22 @@ function Document.runHeld(self: Document, outcome: Transaction.Outcome?)
 	end
 end
 
+--[=[
+	Sets `path` to `value` as its own transaction
+
+	@within Document
+]=]
 function Document.set(self: Document, path: PathLike, value: unknown): TxResult
 	return self:transact(function(tx)
 		tx:set(path, value)
 	end)
 end
 
+--[=[
+	Replaces the value at `path` with what `transform` returns, as its own transaction
+
+	@within Document
+]=]
 function Document.update(
 	self: Document,
 	path: PathLike,
@@ -352,48 +367,88 @@ function Document.update(
 	end)
 end
 
+--[=[
+	Adds `amount`, 1 by default, to the number at `path`
+
+	@within Document
+]=]
 function Document.increment(self: Document, path: PathLike, amount: number?): TxResult
 	return self:transact(function(tx)
 		tx:increment(path, amount)
 	end)
 end
 
+--[=[
+	Subtracts `amount`, 1 by default, from the number at `path`
+
+	@within Document
+]=]
 function Document.decrement(self: Document, path: PathLike, amount: number?): TxResult
 	return self:transact(function(tx)
 		tx:decrement(path, amount)
 	end)
 end
 
+--[=[
+	Adds `value` to the end of the list at `path`
+
+	@within Document
+]=]
 function Document.append(self: Document, path: PathLike, value: unknown): TxResult
 	return self:transact(function(tx)
 		tx:append(path, value)
 	end)
 end
 
+--[=[
+	Inserts `value` into the list at `path` at `index`
+
+	@within Document
+]=]
 function Document.insert(self: Document, path: PathLike, index: number, value: unknown): TxResult
 	return self:transact(function(tx)
 		tx:insert(path, index, value)
 	end)
 end
 
+--[=[
+	Removes the value at `path`
+
+	@within Document
+]=]
 function Document.remove(self: Document, path: PathLike): TxResult
 	return self:transact(function(tx)
 		tx:remove(path)
 	end)
 end
 
+--[=[
+	Empties the table at `path`, or everything with no path
+
+	@within Document
+]=]
 function Document.clear(self: Document, path: PathLike?): TxResult
 	return self:transact(function(tx)
 		tx:clear(path)
 	end)
 end
 
+--[=[
+	Copies the fields of `partial` into the table at `path`
+
+	@within Document
+]=]
 function Document.merge(self: Document, path: PathLike?, partial: { [string]: unknown }): TxResult
 	return self:transact(function(tx)
 		tx:merge(path, partial)
 	end)
 end
 
+--[=[
+	Runs the custom op `name` with the given arguments as its own transaction
+
+	@within Document
+]=]
 function Document.op(self: Document, name: string, ...: any): TxResult
 	local args = table.pack(...)
 	return self:transact(function(tx)

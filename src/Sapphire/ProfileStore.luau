@@ -1356,6 +1356,11 @@ function ProfileStore.get(self: ProfileStore, key: string): Profile.Profile?
 	return self._open[key]
 end
 
+--[=[
+	How many profiles this server holds open in the store
+
+	@within ProfileStore
+]=]
 function ProfileStore.openCount(self: ProfileStore): number
 	local count = 0
 	for _ in self._open do

@@ -284,6 +284,11 @@ function t.json(): Schema
 end
 
 -- codecs build their nodes here, so a codec and its schema always match
+--[=[
+	A schema that stores values through `codec`
+
+	@within t
+]=]
 function t.fromCodec(codec: Codec): Schema
 	return node({ kind = "codec", codec = table.freeze(codec) })
 end

@@ -258,6 +258,11 @@ function Replicator.untrack(self: Replicator, owner: number)
 	end
 end
 
+--[=[
+	Stops the replicator and takes it out of the registry that tooling reads
+
+	@within Replicator
+]=]
 function Replicator.destroy(self: Replicator)
 	for owner in self._owners do
 		self:untrack(owner)
