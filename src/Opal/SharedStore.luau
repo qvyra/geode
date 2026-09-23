@@ -330,7 +330,8 @@ function SharedStore.get(self: SharedStore, key: string, path: PathLike?): ReadR
 			end,
 		})
 		if not fetched.ok then
-			if cached == nil then
+			-- a placeholder from observe holds the template, not anything that was read
+			if cached == nil or cached.revision < 0 then
 				return { ok = false, error = fetched.error }
 			end
 			-- serve stale rather than nothing while the DS is struggling
@@ -437,6 +438,9 @@ function SharedStore.transact(
 				end)
 				local resumed, txResult = coroutine.resume(thread)
 				if coroutine.status(thread) ~= "dead" then
+					-- If the yield resumes later it finishes on this throwaway document. Its held
+					-- callbacks never run, so nothing acts as if it committed
+					final = nil
 					outcome = writeFailure(
 						"error",
 						"a shared store transaction yielded. Its body and every custom guard, bundle and reaction must be synchronous"
@@ -505,7 +509,19 @@ function SharedStore.transact(
 		end
 	end
 	if document then
-		document:runHeld()
+		if written == nil then
+			-- The scratch document may have committed in memory, but nothing reached the DataStore
+			local failed = outcome
+			document:runHeld({
+				committed = false,
+				record = nil,
+				error = if failed and not failed.ok
+					then { kind = "error", message = failed.error.message }
+					else nil,
+			})
+		else
+			document:runHeld()
+		end
 	end
 	return outcome or writeFailure("error", "the transform never ran")
 end
