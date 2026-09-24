@@ -104,6 +104,7 @@ export type PlayerData = typeof(setmetatable({} :: Fields, PlayerData))
 local KICK_MESSAGE = "Couldn't load your data, please rejoin"
 local RETRY_DELAY = 2
 local RELEASE_TRIES = 3
+local MAX_RELEASE_DELAY = 30
 
 -- Load failures that can clear up on their own. Retrying anything else is pointless
 local RETRYABLE: { [string]: boolean } = {
@@ -266,17 +267,22 @@ end
 
 function PlayerData._release(self: PlayerData, entry: Entry, profile: Profile.Profile)
 	local clock = self._services.clock
-	for attempt = 1, RELEASE_TRIES do
+	local attempt = 0
+	-- Keep trying until the release lands or the session ends some other way. Giving up leaves
+	-- the profile open here and the player can't load it on this server again
+	while true do
+		attempt += 1
 		local result = profile:release()
-		if result.ok or result.error.kind == "lost" then
+		if result.ok or result.error.kind == "lost" or profile:state() ~= "active" then
 			return
 		end
-		if attempt < RELEASE_TRIES then
-			clock:wait(RETRY_DELAY * attempt)
+		if attempt == RELEASE_TRIES then
+			self._report(
+				`releasing the data of player {entry.userId} keeps failing, still retrying: {result.error.message}`
+			)
 		end
+		clock:wait(math.min(RETRY_DELAY * attempt, MAX_RELEASE_DELAY))
 	end
-	-- autosave keeps the data safe, shutdown releases it eventually
-	self._report(`releasing the data of player {entry.userId} keeps failing, autosave will retry`)
 end
 
 -- Public API
