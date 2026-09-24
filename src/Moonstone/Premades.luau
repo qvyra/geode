@@ -92,6 +92,7 @@ type PresenceFields = {
 	_ttl: number,
 	_heartbeat: number,
 	_tracked: { [number]: number },
+	_generation: number,
 	_meter: Meter,
 	_handle: Registry.Handle,
 }
@@ -121,6 +122,7 @@ function Premades.presence(options: PresenceOptions?): Presence
 			_ttl = ttl,
 			_heartbeat = heartbeat,
 			_tracked = {},
+			_generation = 0,
 			_meter = meter(services.clock),
 			_handle = nil :: any,
 		} :: PresenceFields,
@@ -147,7 +149,9 @@ end
 	Marks a player as on this server and keeps the entry alive until `clear`
 ]=]
 function Presence.set(self: Presence, userId: number): Types.Result<nil>
-	local generation = (self._tracked[userId] or 0) + 1
+	-- only grows, so a heartbeat from before a clear never matches a later set
+	self._generation += 1
+	local generation = self._generation
 	self._tracked[userId] = generation
 	local result = self:_write(userId)
 	local clock = self._services.clock
@@ -386,10 +390,12 @@ end
 ]=]
 function Lock.renew(self: Lock): boolean
 	local lease = self._mutex._lease
+	local expiresAt = 0
 	local renewed = self:_change(function(state: LockState, now: number): LockState
-		self._expiresAt = now + lease
-		return { holder = state.holder, token = state.token, expiresAt = now + lease }
+		expiresAt = now + lease
+		return { holder = state.holder, token = state.token, expiresAt = expiresAt }
 	end)
+	self._expiresAt = if renewed then expiresAt else 0
 	return renewed
 end
 
