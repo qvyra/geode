@@ -127,6 +127,52 @@ return function(spec: Spec.Api)
 				Replicator.parseVisibility({ coins = "friends" })
 			end).toThrow("must be")
 		end)
+
+		it("refuses a stricter path under a shared one", function()
+			expect(function()
+				Replicator.parseVisibility({ stats = "public", ["stats.secret"] = "private" })
+			end).toThrow("would send it anyway")
+			expect(function()
+				Replicator.parseVisibility({ stats = "public", ["stats.mine"] = "owner" })
+			end).toThrow("would send it anyway")
+			expect(#Replicator.parseVisibility({ stats = "owner", ["stats.level"] = "public" })).toBe(
+				2
+			)
+		end)
+
+		it("answers one snapshot per cooldown however often a client asks", function()
+			local w = world()
+			w.server:join(1)
+			local received = 0
+			w.server:client(1).remote(Replicator.REMOTE):onEvent(function(changes: { any })
+				received += #changes
+			end)
+			local client = GeodeClient.start(w.server:client(1))
+			w.replicator:track(1, load(w.universe, w.store, 1), VISIBILITY)
+			w.universe.clock:advance(0.1)
+			local before = received
+			for _ = 1, 50 do
+				client:resync()
+			end
+			w.universe.clock:advance(0.1)
+			expect(received - before <= 3).toBe(true)
+		end)
+
+		it("doesn't flicker subscribers through nil on a resync", function()
+			local w = world()
+			w.server:join(1)
+			local client = GeodeClient.start(w.server:client(1))
+			w.replicator:track(1, load(w.universe, w.store, 1), VISIBILITY)
+			w.universe.clock:advance(2)
+			local seen = 0
+			client:observe("coins", function()
+				seen += 1
+			end)
+			client:resync()
+			w.universe.clock:advance(0.1)
+			expect(seen).toBe(0)
+			expect(client:atom("coins"):get()).toBe(0)
+		end)
 	end)
 
 	describe("client atoms", function()
@@ -159,6 +205,29 @@ return function(spec: Spec.Api)
 			expect(seen).toEqual({ 3 })
 			expect(worth:get()).toBe(6)
 			expect(worths).toEqual({ 3, 6 })
+		end)
+
+		it("keep a computed atom alive after its compute failed once", function()
+			local w = world()
+			w.server:join(1)
+			local client = GeodeClient.start(w.server:client(1))
+			local profile = load(w.universe, w.store, 1)
+			local coins = client:atom("coins")
+			local doubled = client:computed(function()
+				local value = coins:get()
+				if value == nil then
+					return 0
+				end
+				assert(value ~= 1, "odd")
+				return value * 2
+			end)
+			w.replicator:track(1, profile, VISIBILITY)
+			w.universe.clock:advance(0.1)
+			profile:set("coins", 1)
+			w.universe.clock:advance(0.1)
+			profile:set("coins", 4)
+			w.universe.clock:advance(0.1)
+			expect(doubled:get()).toBe(8)
 		end)
 
 		it("drive Charm atoms through the adapter", function()
@@ -212,6 +281,23 @@ return function(spec: Spec.Api)
 			w.universe.clock:advance(0.1)
 			expect(profile:get("coins")).toBe(5)
 			expect(sources).toEqual({ 1 })
+		end)
+
+		it("let optional trailing arguments be left out", function()
+			registerOps()
+			local w = world()
+			w.server:join(1)
+			local profile = load(w.universe, w.store, 1)
+			RemoteOps.define("addCoins", {
+				store = w.store,
+				args = { Schema.integer(), Schema.optional(Schema.string()) },
+				services = services(w.server),
+			})
+			local client = GeodeClient.start(w.server:client(1))
+			client:op("addCoins", 2)
+			client:op("addCoins", 2, "note", "extra")
+			w.universe.clock:advance(0.1)
+			expect(profile:get("coins")).toBe(2)
 		end)
 
 		it("check the attempt limit before the arguments", function()

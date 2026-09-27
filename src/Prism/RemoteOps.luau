@@ -92,7 +92,8 @@ local function handle(
 		return "limited"
 	end
 
-	if args.n ~= #defined.args then
+	-- fewer args is fine when the missing ones are optional, the schemas decide
+	if args.n > #defined.args then
 		return "invalid"
 	end
 	for index, schema in defined.args do
@@ -123,6 +124,12 @@ local function dispatcherFor(services: Types.Services, report: (message: string)
 	end
 	local dispatcher: Dispatcher = { ops = {}, report = report, listeners = {} }
 	dispatchers[services] = dispatcher
+	-- forget a player's attempts when they leave, otherwise this grows for the server's lifetime
+	services.players:onLeave(function(userId: number)
+		for _, defined in dispatcher.ops do
+			defined.attempts[userId] = nil
+		end
+	end)
 	services.remote(RemoteOps.REMOTE):onEvent(function(userId: number, name: unknown, ...: unknown)
 		local outcome: Outcome = handle(services, dispatcher, userId, name, table.pack(...))
 		for _, listener in dispatcher.listeners do

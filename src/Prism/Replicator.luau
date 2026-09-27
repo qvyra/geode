@@ -33,6 +33,7 @@ type Fields = {
 	_owners: { [number]: Owned },
 	_viewers: { [number]: boolean },
 	_queues: { [number]: { Change } },
+	_lastSnapshot: { [number]: number },
 	_flushing: boolean,
 	_report: (message: string) -> (),
 	_connections: { Types.Connection },
@@ -47,6 +48,10 @@ export type Replicator = typeof(setmetatable({} :: Fields, Replicator))
 Replicator.REMOTE = "GeodeReplication"
 
 local VISIBILITY: { [string]: boolean } = { private = true, owner = true, public = true }
+local STRICTNESS: { [string]: number } = { public = 0, owner = 1, private = 2 }
+
+-- min seconds between two snapshots for one client
+local RESYNC_COOLDOWN = 1
 
 --[=[
 	Checks a visibility map and returns it as a list, skipping private paths
@@ -55,12 +60,31 @@ function Replicator.parseVisibility(
 	map: { [string]: string }
 ): { { path: string, visibility: Visibility } }
 	local paths = {}
+	local parsed: { [string]: Path.Path } = {}
 	for path, visibility in map do
 		assert(type(path) == "string", "visibility is keyed by path")
 		assert(
 			VISIBILITY[visibility],
 			`{path} must be "private", "owner" or "public", got {tostring(visibility)}`
 		)
+		parsed[path] = Path.parse(path)
+	end
+	-- a shared path sends everything under it, so nothing below may be stricter
+	for outer, outerPath in parsed do
+		for inner, innerPath in parsed do
+			if
+				inner ~= outer
+				and Path.startsWith(innerPath, outerPath)
+				and STRICTNESS[map[inner]] > STRICTNESS[map[outer]]
+			then
+				error(
+					`{inner} is {map[inner]} but sits under {outer}, which is {map[outer]} and would send it anyway`,
+					2
+				)
+			end
+		end
+	end
+	for path, visibility in map do
 		if visibility ~= "private" then
 			table.insert(
 				paths,
@@ -90,6 +114,7 @@ function Replicator.new(
 			_owners = {},
 			_viewers = {},
 			_queues = {},
+			_lastSnapshot = {},
 			_flushing = false,
 			_report = reportError or function(message: string)
 				warn(message)
@@ -118,6 +143,14 @@ function Replicator.new(
 			end
 			local kind = (request :: { kind: unknown }).kind
 			if kind == "ready" or kind == "resync" then
+				-- each snapshot sends everything this player may see, so cap how often a
+				-- client can ask
+				local now = services.clock:now()
+				local last = self._lastSnapshot[userId]
+				if last and now - last < RESYNC_COOLDOWN then
+					return
+				end
+				self._lastSnapshot[userId] = now
 				self:_snapshot(userId)
 			end
 		end)
@@ -127,6 +160,7 @@ function Replicator.new(
 		services.players:onLeave(function(userId: number)
 			self._viewers[userId] = nil
 			self._queues[userId] = nil
+			self._lastSnapshot[userId] = nil
 		end)
 	)
 	return self
@@ -169,6 +203,7 @@ end
 
 function Replicator._snapshot(self: Replicator, viewer: number)
 	self._viewers[viewer] = true
+	self._queues[viewer] = {}
 	self:_push(viewer, { op = "reset" })
 	for owner, owned in self._owners do
 		for _, entry in owned.paths do

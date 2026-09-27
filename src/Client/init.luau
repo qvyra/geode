@@ -84,33 +84,35 @@ function GeodeClient._apply(self: GeodeClient, changes: unknown)
 	if type(changes) ~= "table" then
 		return
 	end
+	-- Staged per player, committed once at the end. Otherwise a resync sending the same values
+	-- makes subscribers see them vanish and come back
+	local staged: { [number]: unknown } = {}
+	local function stage(owner: number): unknown
+		if staged[owner] == nil then
+			local existing: unknown = self._owners[owner]
+			staged[owner] = if existing ~= nil then self._owners[owner]:snapshot() else {}
+		end
+		return staged[owner]
+	end
 	for _, change in changes :: { any } do
 		if change.op == "reset" then
 			for owner in self._owners do
-				self._owners[owner]:transact(function(tx)
-					tx:set({}, {})
-				end)
+				staged[owner] = {}
+			end
+			for owner in staged do
+				staged[owner] = {}
 			end
 		elseif change.op == "drop" then
-			local document = self._owners[change.owner]
-			if document then
-				document:transact(function(tx)
-					tx:set({}, {})
-				end)
-			end
+			staged[change.owner] = {}
 		elseif change.op == "set" then
-			local path = Path.parse(change.path)
-			self:_owner(change.owner):transact(function(tx)
-				-- parents of a nested visible path may never have been sent
-				for depth = 1, #path - 1 do
-					local parent = table.move(path, 1, depth, 1, {})
-					if type(tx:get(parent)) ~= "table" then
-						tx:set(parent, {})
-					end
-				end
-				tx:set(path, change.value)
-			end)
+			staged[change.owner] =
+				Tree.set(stage(change.owner), Path.parse(change.path), change.value)
 		end
+	end
+	for owner, state in staged do
+		self:_owner(owner):transact(function(tx)
+			tx:set({}, state)
+		end)
 	end
 	if not self._ready then
 		self._ready = true
@@ -202,11 +204,7 @@ function GeodeClient.computed<T>(_self: GeodeClient, compute: () -> T): Atom<T>
 		table.insert(tracking, reads)
 		local ok, result = pcall(compute)
 		table.remove(tracking)
-		if not ok then
-			error(result, 0)
-		end
-		local old = value
-		value = result
+		-- subscribe even if compute failed, so a later change can revive the atom
 		for source in reads do
 			table.insert(
 				connections,
@@ -215,6 +213,11 @@ function GeodeClient.computed<T>(_self: GeodeClient, compute: () -> T): Atom<T>
 				end)
 			)
 		end
+		if not ok then
+			error(result, 0)
+		end
+		local old = value
+		value = result
 		if not Tree.equal(old, value) then
 			for _, callback in table.clone(subscribers) do
 				callback(value, old)
