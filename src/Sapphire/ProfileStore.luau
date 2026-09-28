@@ -310,8 +310,8 @@ function ProfileStore.new(options: Options): ProfileStore
 		_report = report,
 	}
 	local store = setmetatable(self, ProfileStore)
-	store._handoff:onRequest(function(key: string)
-		store:_releaseRequested(key)
+	store._handoff:onRequest(function(key: string, _from: string, session: string?)
+		store:_releaseRequested(key, session)
 	end)
 	store._handoff:on("rollback", function(message: Handoff.Message)
 		store:_rollbackRequested(message)
@@ -516,7 +516,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		end
 		if not requested then
 			requested = true
-			self._handoff:request(key)
+			self._handoff:request(key, holder.session)
 		end
 		tries += 1
 		-- Wakes early on the holder's release announcement. The handoff key backs that message
@@ -524,7 +524,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		self._handoff:wait(
 			key,
 			math.min(RETRY_BASE * 2 ^ (tries - 1), RETRY_MAX),
-			holder.jobId,
+			holder.session,
 			waited < config.stealAfter
 		)
 	end
@@ -616,7 +616,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	end
 	profile.released:connect(function()
 		services.clock:spawn(function()
-			self._handoff:announce(key, profile:revision())
+			self._handoff:announce(key, profile:revision(), owner.session)
 		end)
 	end)
 	self:_deliverMail(key, profile)
@@ -632,13 +632,18 @@ end
 
 -- Another server wants `key`. Its player has moved on, so release it and kick them if they're
 -- somehow still here
-function ProfileStore._releaseRequested(self: ProfileStore, key: string)
+function ProfileStore._releaseRequested(self: ProfileStore, key: string, session: string?)
 	local open: unknown = self._open[key]
 	if open == nil then
 		return
 	end
 	local profile = self._open[key]
 	if not profile:isActive() then
+		return
+	end
+	-- A late request may name a session this server already dropped and replaced. Only the
+	-- session it names gets released
+	if session ~= nil and profile:sessionId() ~= session then
 		return
 	end
 	local services = self._services

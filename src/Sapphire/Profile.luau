@@ -465,6 +465,15 @@ function Profile.recordReceipt(self: Profile, purchaseId: string)
 end
 
 --[=[
+	The id of the session that loaded this profile. Every load gets a new one
+
+	@within Profile
+]=]
+function Profile.sessionId(self: Profile): string
+	return self._backend.owner.session
+end
+
+--[=[
 	The sequence number of the last mailbox message applied to this profile
 
 	@within Profile

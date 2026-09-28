@@ -29,7 +29,7 @@ type Fields = {
 	_subscribed: boolean,
 	_connection: Types.Connection?,
 	_sleepers: { [string]: { Sleeper } },
-	_onRequest: ((key: string, from: string) -> ())?,
+	_onRequest: ((key: string, from: string, session: string?) -> ())?,
 	_handlers: { [string]: (message: Message) -> () },
 }
 
@@ -70,7 +70,10 @@ end
 --[=[
 	Sets what runs when another server asks for a key this server may hold
 ]=]
-function Handoff.onRequest(self: Handoff, handler: (key: string, from: string) -> ())
+function Handoff.onRequest(
+	self: Handoff,
+	handler: (key: string, from: string, session: string?) -> ()
+)
 	self._onRequest = handler
 end
 
@@ -103,7 +106,8 @@ function Handoff._receive(self: Handoff, data: unknown)
 	if message.kind == "request" then
 		local handler = self._onRequest
 		if handler then
-			handler(message.key, message.from)
+			local session = if type(message.session) == "string" then message.session else nil
+			handler(message.key, message.from, session)
 		end
 	elseif message.kind == "released" then
 		self:_wake(message.key)
@@ -138,15 +142,16 @@ function Handoff.send(self: Handoff, kind: string, key: string, fields: { [strin
 end
 
 --[=[
-	Asks whoever holds `key` to release it
+	Asks the holder of `key` to let it go. `session` pins the lease in question, so a late
+	request can't release a newer session of the same key
 ]=]
-function Handoff.request(self: Handoff, key: string)
+function Handoff.request(self: Handoff, key: string, session: string)
 	if not self.enabled then
 		return
 	end
 	self._services.messaging:publish(
 		self._topic,
-		{ kind = "request", key = key, from = self._services.jobId }
+		{ kind = "request", key = key, from = self._services.jobId, session = session }
 	)
 end
 
@@ -154,15 +159,17 @@ end
 	Tells waiting servers that this server released `key`. Best effort, since a failure only
 	costs speed
 ]=]
-function Handoff.announce(self: Handoff, key: string, revision: number)
+function Handoff.announce(self: Handoff, key: string, revision: number, session: string)
 	if not self.enabled then
 		return
 	end
 	local services = self._services
 	services.messaging:publish(self._topic, { kind = "released", key = key, from = services.jobId })
-	services
-		.hashMap(MAP_NAME)
-		:set(self._mapKeyPrefix .. key, { jobId = services.jobId, revision = revision }, KEY_TTL)
+	services.hashMap(MAP_NAME):set(
+		self._mapKeyPrefix .. key,
+		{ jobId = services.jobId, revision = revision, session = session },
+		KEY_TTL
+	)
 end
 
 function Handoff._wake(self: Handoff, key: string)
@@ -207,12 +214,14 @@ function Handoff._park(self: Handoff, key: string, seconds: number): boolean
 	return sleeper.woken
 end
 
+-- Matches the session, not the server, so an older release by this same server doesn't
+-- look like news
 function Handoff._releasedBy(self: Handoff, key: string, holder: string): boolean
 	local result = self._services.hashMap(MAP_NAME):get(self._mapKeyPrefix .. key)
 	if not result.ok or type(result.value) ~= "table" then
 		return false
 	end
-	return (result.value :: { jobId: unknown }).jobId == holder
+	return (result.value :: { session: unknown }).session == holder
 end
 
 --[=[
