@@ -50,6 +50,8 @@ export type Ticket = {
 	createdAt: number,
 	matchId: string?,
 	reservedCode: string?,
+	-- set by cancel. The ticket lingers for a second and must not be matched in that time
+	cancelled: boolean?,
 }
 
 export type Match = {
@@ -81,6 +83,8 @@ type Fields = {
 	_mutex: Premades.Mutex,
 	_lock: Premades.Lock?,
 	_running: boolean,
+	-- bumped on every start so a loop left over from a quick stop/start exits by itself
+	_loop: number,
 	_onMatch: ((match: Match) -> ())?,
 	_report: (message: string) -> (),
 	_handle: Registry.Handle,
@@ -93,6 +97,7 @@ export type Matchmaker = typeof(setmetatable({} :: Fields, Matchmaker))
 
 -- GetRangeAsync max
 local PAGE = 200
+local MAX_PAGES = 5
 
 --[=[
 	Creates a matchmaker for one mode and region. Call `start` on every server that should take
@@ -139,6 +144,7 @@ function Matchmaker.new(options: Options): Matchmaker
 			}),
 			_lock = nil,
 			_running = false,
+			_loop = 0,
 			_onMatch = options.onMatch,
 			_report = options.reportError or function(message: string)
 				warn(message)
@@ -203,8 +209,11 @@ function Matchmaker.cancel(self: Matchmaker, ticketId: string): Types.Result<boo
 					return nil, nil
 				end
 				cancelled = true
-				-- Expire it at once. A removed ticket can't be told apart from one that never was
-				return current, sortKey
+				-- Mark it and let it expire. Removing it now could race a claim
+				-- that's already reading it, and the mark makes every claim refuse it
+				local ticket = table.clone(current :: Ticket)
+				ticket.cancelled = true
+				return ticket, sortKey
 			end, 1)
 		end,
 	})
@@ -229,7 +238,7 @@ function Matchmaker.status(self: Matchmaker, ticketId: string): Types.Result<Sta
 		return { ok = false, error = result.error }
 	end
 	local entry = result.value
-	if entry == nil or type(entry.value) ~= "table" then
+	if entry == nil or type(entry.value) ~= "table" or (entry.value :: Ticket).cancelled then
 		return { ok = true, value = { state = "gone", ticket = nil } }
 	end
 	local ticket = entry.value :: Ticket
@@ -318,7 +327,11 @@ function Matchmaker._claim(
 					ticketId,
 					function(current: unknown, sortKey: Types.SortKey?)
 						changed = false
-						if type(current) ~= "table" or (current :: Ticket).matchId ~= expected then
+						if
+							type(current) ~= "table"
+							or (current :: Ticket).matchId ~= expected
+							or (current :: Ticket).cancelled
+						then
 							return nil, nil
 						end
 						local ticket = table.clone(current :: Ticket)
@@ -353,22 +366,37 @@ end
 	tick, so call it directly only in tests or custom loops
 ]=]
 function Matchmaker.runOnce(self: Matchmaker): { Match }
-	local range = self._scheduler:submit({
-		priority = "read",
-		run = function()
-			return self._map:getRange({ count = PAGE })
-		end,
-	})
-	if not range.ok then
-		self._report(`matchmaker {self.name} couldn't read its queue: {range.error.message}`)
-		return {}
-	end
+	-- Matched tickets linger until they expire, so page past them. The bound carries key and
+	-- sortKey both: a key-only bound ranks as "no sort key" (found this in testing)
 	local tickets: { Ticket } = {}
-	for _, entry in range.value do
-		local ticket = entry.value
-		if type(ticket) == "table" and (ticket :: Ticket).matchId == nil then
-			table.insert(tickets, ticket :: Ticket)
+	local lower: Types.SortedBound? = nil
+	for _ = 1, MAX_PAGES do
+		local bound = lower
+		local range = self._scheduler:submit({
+			priority = "read",
+			run = function()
+				return self._map:getRange({ count = PAGE, lower = bound })
+			end,
+		})
+		if not range.ok then
+			self._report(`matchmaker {self.name} couldn't read its queue: {range.error.message}`)
+			return {}
 		end
+		for _, entry in range.value do
+			local ticket = entry.value
+			if
+				type(ticket) == "table"
+				and (ticket :: Ticket).matchId == nil
+				and not (ticket :: Ticket).cancelled
+			then
+				table.insert(tickets, ticket :: Ticket)
+			end
+		end
+		local last = range.value[#range.value]
+		if #range.value < PAGE or #tickets >= PAGE or last == nil then
+			break
+		end
+		lower = { key = last.key, sortKey = last.sortKey }
 	end
 
 	local matches = {}
@@ -450,9 +478,11 @@ function Matchmaker.start(self: Matchmaker)
 		return
 	end
 	self._running = true
+	self._loop += 1
+	local loop = self._loop
 	local clock = self._services.clock
 	clock:spawn(function()
-		while self._running do
+		while self._running and self._loop == loop do
 			if self:_elected() then
 				self:runOnce()
 			end
