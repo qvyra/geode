@@ -131,6 +131,8 @@ type Fields = {
 	_owners: { [string]: number },
 	_handoff: Handoff.Handoff,
 	_audit: Types.DataStore?,
+	-- rollbacks sent to another server and waiting on its answer, by request id
+	_pendingRollbacks: { [string]: { thread: thread, done: boolean, ok: boolean, message: string? } },
 	_veinHandle: VeinRegistry.Handle,
 	_report: (message: string) -> (),
 }
@@ -305,6 +307,7 @@ function ProfileStore.new(options: Options): ProfileStore
 		_loading = {},
 		_owners = {},
 		_handoff = Handoff.new(services, options.name, options.handoff ~= false, report),
+		_pendingRollbacks = {},
 		_audit = if options.audit then services.dataStore(`{options.name}_audit`, scope) else nil,
 		_veinHandle = nil :: any,
 		_report = report,
@@ -315,6 +318,9 @@ function ProfileStore.new(options: Options): ProfileStore
 	end)
 	store._handoff:on("rollback", function(message: Handoff.Message)
 		store:_rollbackRequested(message)
+	end)
+	store._handoff:on("rollbackDone", function(message: Handoff.Message)
+		store:_rollbackAnswered(message)
 	end)
 	store._handoff:on("op", function(message: Handoff.Message)
 		store:_opRequested(message)
@@ -1059,7 +1065,10 @@ function ProfileStore.version(
 			error = { kind = "notFound", message = `version {versionId} of {key} holds no profile` },
 		}
 	end
-	if info.updatedTime < erased.value * 1000 then
+	-- Versions from before the latest erasure lack the marker or carry an older one. Comparing
+	-- markers instead of timestamps means server and DS clocks don't have to agree
+	local versionErasedAt = (read.value.value :: Record.Record).meta.erasedAt
+	if erased.value > 0 and versionErasedAt ~= erased.value then
 		return {
 			ok = false,
 			error = {
@@ -1081,6 +1090,8 @@ function ProfileStore.version(
 	end
 	return { ok = true, value = data }
 end
+
+local ROLLBACK_ANSWER_TIMEOUT = 10
 
 local function rollbackFailure(message: string): RollbackResult
 	return { ok = false, message = message, via = nil }
@@ -1147,17 +1158,19 @@ function ProfileStore.rollback(
 		local now = self._services.clock:now()
 		local nobody = { jobId = "", session = "" }
 		if Record.leaseState(record, now, self._config.leaseTimeout, nobody) == "held" then
-			local sent = self._handoff:send("rollback", key, { version = versionId, note = note })
-			if not sent then
+			local holder = (record.meta.lease :: Record.Lease).jobId
+			if holder == self._services.jobId then
+				-- This server holds the lease but hasn't opened the profile yet, or is releasing it
 				return rollbackFailure(
-					`profile {key} is held by server {(record.meta.lease :: Record.Lease).jobId} and the rollback couldn't be sent there`
+					`profile {key} is being loaded or released on this server, try again`
 				)
 			end
-			return { ok = true, message = nil, via = "holder" }
+			return self:_rollbackThroughHolder(key, holder, versionId, note)
 		end
 	end
 
-	local loaded = self:load(key)
+	local userIds = if peek.value.info then peek.value.info.userIds else nil
+	local loaded = self:load(key, { userIds = userIds })
 	if not loaded.ok then
 		return rollbackFailure(loaded.error.message)
 	end
@@ -1170,17 +1183,88 @@ function ProfileStore.rollback(
 end
 
 function ProfileStore._rollbackRequested(self: ProfileStore, message: Handoff.Message)
-	local open: unknown = self._open[message.key]
-	if open == nil or type(message.version) ~= "string" then
+	if message.to ~= self._services.jobId or type(message.version) ~= "string" then
 		return
 	end
 	local note = if type(message.note) == "string" then message.note else nil
+	local function answer(ok: boolean, text: string?)
+		self._handoff:send(
+			"rollbackDone",
+			message.key,
+			{ id = message.id, ok = ok, message = text }
+		)
+	end
+	local open: unknown = self._open[message.key]
+	if open == nil then
+		answer(false, `profile {message.key} was released before the rollback arrived`)
+		return
+	end
 	self._services.clock:spawn(function()
 		local result = self:rollback(message.key, message.version :: string, note)
 		if not result.ok then
 			self._report(`a rollback of {message.key} sent here failed: {result.message}`)
 		end
+		answer(result.ok, result.message)
 	end)
+end
+
+-- Sends a rollback to the server holding the profile and waits for its answer. A holder that
+-- crashed or never heard it doesn't answer, and the rollback is reported as not applied
+function ProfileStore._rollbackThroughHolder(
+	self: ProfileStore,
+	key: string,
+	holder: string,
+	versionId: string,
+	note: string?
+): RollbackResult
+	-- The answer comes back on the handoff topic, which this store may not listen to yet
+	self._handoff:start()
+	local clock = self._services.clock
+	local id = self._services.guid()
+	local pending =
+		{ thread = coroutine.running(), done = false, ok = false, message = nil :: string? }
+	self._pendingRollbacks[id] = pending
+	local sent = self._handoff:send(
+		"rollback",
+		key,
+		{ id = id, to = holder, version = versionId, note = note }
+	)
+	if not sent then
+		self._pendingRollbacks[id] = nil
+		return rollbackFailure(
+			`profile {key} is held by server {holder} and the rollback couldn't be sent there`
+		)
+	end
+	clock:delay(ROLLBACK_ANSWER_TIMEOUT, function()
+		if not pending.done then
+			pending.done = true
+			pending.message = `server {holder} holds profile {key} but didn't answer the rollback`
+			self._pendingRollbacks[id] = nil
+			clock:resume(pending.thread)
+		end
+	end)
+	coroutine.yield()
+	return {
+		ok = pending.ok,
+		message = pending.message,
+		via = if pending.ok then "holder" else nil,
+	}
+end
+
+function ProfileStore._rollbackAnswered(self: ProfileStore, message: Handoff.Message)
+	local id = message.id
+	if type(id) ~= "string" then
+		return
+	end
+	local pending = self._pendingRollbacks[id]
+	if pending == nil or pending.done then
+		return
+	end
+	self._pendingRollbacks[id] = nil
+	pending.done = true
+	pending.ok = message.ok == true
+	pending.message = if type(message.message) == "string" then message.message else nil
+	self._services.clock:resume(pending.thread)
 end
 
 --[=[
@@ -1299,11 +1383,10 @@ function ProfileStore.auditLog(
 			error = { kind = "invalidValue", message = `{self.name} doesn't keep an audit log` },
 		}
 	end
-	local open: unknown = self._open[key]
+	-- Start from the stored revision. An open profile can be ahead with unsaved commits,
+	-- and those have no batch
 	local revision: number
-	if open ~= nil then
-		revision = self._open[key]:revision()
-	else
+	do
 		local read = self._dataStore:get(key)
 		if not read.ok then
 			return { ok = false, error = read.error }
@@ -1340,13 +1423,31 @@ end
 -- already gone by now
 function ProfileStore._eraseAudit(self: ProfileStore, key: string)
 	local audit = self._audit :: Types.DataStore
+	local queueKey = `audit/{self.name}/{key}`
+	-- Wait out audit writes already queued for this key, so none lands after the removals
+	self._scheduler:submit({
+		priority = "background",
+		key = queueKey,
+		write = true,
+		run = function()
+			return { ok = true, value = nil }
+		end,
+	})
 	local log = self:auditLog(key, math.huge)
 	if not log.ok then
 		self._report(`couldn't read the audit log of {key} to erase it: {log.error.message}`)
 		return
 	end
 	for _, batch in log.value do
-		audit:remove(self:_auditKey(key, batch.to))
+		self._scheduler:submit({
+			priority = "background",
+			budget = "standardRemove",
+			key = queueKey,
+			write = true,
+			run = function()
+				return audit:remove(self:_auditKey(key, batch.to))
+			end,
+		})
 	end
 end
 
