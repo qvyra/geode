@@ -197,7 +197,15 @@ function MockDataStore.update(
 		return Errors.ok({ value = current.value, info = current.info, cancelled = true })
 	end
 
-	local writeError, stored = self:_write(key, nextValue, options)
+	-- no metadata given: keep what the key had
+	local writeOptions = options
+	if current.info and (options == nil or options.metadata == nil) then
+		writeOptions = {
+			userIds = options and options.userIds,
+			metadata = current.info.metadata,
+		}
+	end
+	local writeError, stored = self:_write(key, nextValue, writeOptions)
 	if writeError or stored == nil then
 		return Errors.failWith(writeError :: Types.AdapterError)
 	end

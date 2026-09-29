@@ -100,7 +100,12 @@ function RealDataStore.update(
 				return nil
 			end
 			local userIds = options and options.userIds
+			-- Leaving metadata out keeps what the key had, same as the mocks. Not verified yet
+			-- whether UpdateAsync clears it when the transform returns none
 			local metadata = options and options.metadata
+			if metadata == nil and keyInfo then
+				metadata = keyInfo:GetMetadata()
+			end
 			return nextValue, userIds, metadata
 		end)
 	end)

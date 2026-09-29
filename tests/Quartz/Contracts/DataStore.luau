@@ -44,6 +44,20 @@ return function(spec: Spec.Api, label: string, make: Fixture.MakeFixture)
 			end)
 		end)
 
+		it("keeps metadata when an update leaves it out", function()
+			local fixture = make()
+			local store = fixture.services.dataStore("Players")
+			fixture.clock:run(function()
+				unwrap(store:set("p1", 1, { metadata = { tag = "a" } :: { [string]: unknown } }))
+				unwrap(store:update("p1", function(current: unknown)
+					return (current :: number) + 1, { userIds = { 7 } }
+				end))
+				local info = unwrap(store:get("p1")).info :: Types.KeyInfo
+				expect(info.metadata).toEqual({ tag = "a" })
+				expect(info.userIds).toEqual({ 7 })
+			end)
+		end)
+
 		it("updates against the latest value", function()
 			local fixture = make()
 			local store = fixture.services.dataStore("Players")

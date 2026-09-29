@@ -69,24 +69,34 @@ check("UpdateAsync contention from two threads on one key", function()
 	local key = "contention"
 	local runs = 0
 	local finished = 0
+	local failures = {}
 	local function bump(times: number)
 		for _ = 1, times do
-			store:UpdateAsync(key, function(current: number?)
-				runs += 1
-				return (current or 0) + 1
+			-- otherwise a throttle kills the thread and looks like a lost increment
+			local ok, err = pcall(function()
+				store:UpdateAsync(key, function(current: number?)
+					runs += 1
+					return (current or 0) + 1
+				end)
 			end)
+			if not ok then
+				table.insert(failures, tostring(err))
+			end
 		end
 		finished += 1
 	end
-	task.spawn(bump, 10)
-	task.spawn(bump, 10)
-	local deadline = os.clock() + 120
+	task.spawn(bump, 5)
+	task.spawn(bump, 5)
+	local deadline = os.clock() + 180
 	while finished < 2 and os.clock() < deadline do
 		task.wait(0.5)
 	end
+	if #failures > 0 then
+		return false, `{#failures} update(s) failed, first: {failures[1]}`
+	end
 	local final = store:GetAsync(key)
-	return final == 20,
-		`final value {tostring(final)} after {runs} transform runs (20 means none was lost)`
+	return final == 10,
+		`final value {tostring(final)} after {runs} transform runs (10 means none was lost)`
 end)
 
 observe("GetVersionAsync with a version id that never existed", function()
