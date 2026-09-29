@@ -395,6 +395,8 @@ interface Profile extends Writable {
 	readonly sessionLost: Signal<[reason: string]>;
 	readonly saved: Signal<[revision: number]>;
 	revision(): number;
+	sessionId(): string;
+	mailboxCursor(): number;
 	state(): ProfileState;
 	isActive(): boolean;
 	isSaved(): boolean;
@@ -742,6 +744,7 @@ interface Ticket {
 	createdAt: number;
 	matchId?: string;
 	reservedCode?: string;
+	cancelled?: boolean;
 }
 
 interface Match {

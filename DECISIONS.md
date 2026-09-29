@@ -328,3 +328,28 @@ For rollback, the blunt option was writing the old version straight to the key a
 For the audit log it came down to one key per commit or one key per save. It's one batch per save, keyed by the batch's last revision and holding its first, so a reader starts at the current revision and steps back batch by batch. That keeps the cost at one write per save, not one per commit. History and rollback refuse every version from before `meta.erasedAt`, and erasure removes the audit batches it can reach.
 
 **Commits:** 7dbaf39
+
+## 27. Typings build on the roblox-ts type packages
+
+**Date:** 2026-09-29
+
+The hand-written typings need Roblox types like Player and Enum, and Luau functions that return several values need roblox-ts's LuaTuple, which the compiler only recognizes from its own package. A local LuaTuple would compile but break destructuring in real roblox-ts projects, and structural stand-ins for the Roblox types would drift from the real ones.
+
+So the typings depend on @rbxts/types and @rbxts/compiler-types, pinned to exact versions as development dependencies. The check suite compiles the typings without the default library, the way roblox-ts does, and skips checking the libraries themselves, which don't build cleanly against the newest TypeScript. A usage file that never runs is compiled alongside, so a typing change that breaks ordinary code fails the check.
+
+**Commits:** 5dd2ede
+
+## 28. Review follow-ups that change behavior
+
+**Date:** 2026-09-29
+
+A review of the new stores, replication and tooling turned up places where the code did something other than what its design promised. For each one the question was whether to patch the symptom where it showed up or change the rules so the whole class of problem couldn't happen. Where a rule was missing, the rule changed:
+
+- A visibility map that puts a stricter path under a more open one is refused when the store is made, since a shared path always sends everything under it
+- Release requests and handoff keys name the session they're about, so a late message can't affect a newer session of the same key
+- A rollback sent to the holding server waits for an answer and reports failure when none comes
+- A release in the beginner layer retries until it lands, since giving up left the profile open and locked the player out of that server
+
+The rest, in the shared store, the client, the premades and the matchmaker, were plain bug fixes with tests.
+
+**Commits:** c881919, 8d062bc, 01120ae, bf18b5f, 311b4e6, e8c875b, 0c4c4e6
