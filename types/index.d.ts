@@ -124,12 +124,15 @@ interface Document extends Writable {
 	setReadOnly(reason: string): void;
 	clearReadOnly(): void;
 	isReadOnly(): boolean;
+	addStage(stage: (tx: Transaction) => void): void;
+	runHeld(outcome?: Outcome): void;
 }
 
 interface DocumentOptions {
 	data?: unknown;
 	revision?: number;
 	ops?: string[];
+	stages?: ((tx: Transaction) => void)[];
 	clock?: Clock;
 	reportError?: (message: string) => void;
 	holdDeferred?: boolean;
@@ -148,11 +151,22 @@ interface Issue {
 	message: string;
 }
 
-type ValidationResult = { ok: true } | { ok: false; issues: Issue[] };
+interface ValidationResult {
+	ok: boolean;
+	issues: Issue[];
+	/** More issues existed than the limit allowed */
+	truncated: boolean;
+}
+
+interface ValidateOptions {
+	root?: string;
+	limit?: number;
+}
 
 interface NumberOptions {
 	min?: number;
 	max?: number;
+	integer?: boolean;
 }
 
 interface LengthOptions {
@@ -168,11 +182,13 @@ interface SchemaBuilders {
 	literal(this: void, value: string | number | boolean): Schema;
 	enum(this: void, values: (string | number)[]): Schema;
 	array(this: void, item: Schema, options?: LengthOptions): Schema;
-	map(this: void, value: Schema, options?: { key?: Schema; maxSize?: number }): Schema;
-	struct(this: void, fields: Record<string, Schema>, options?: { strict?: boolean }): Schema;
+	map(this: void, value: Schema, options?: { key?: Schema; maxEntries?: number }): Schema;
+	/** Unknown keys are refused unless `extra` is set */
+	struct(this: void, fields: Record<string, Schema>, options?: { extra?: boolean }): Schema;
 	optional(this: void, inner: Schema): Schema;
 	union(this: void, options: Schema[]): Schema;
 	json(this: void): Schema;
+	fromCodec(this: void, codec: unknown): Schema;
 }
 
 interface CodecSet {
@@ -193,19 +209,26 @@ interface CodecSet {
 }
 
 interface SizeBudget {
-	soft: number;
-	hard: number;
+	soft?: number;
+	hard?: number;
 }
 
 interface SchemaTools {
-	validate(
+	validate(this: void, schema: Schema, value: unknown, options?: ValidateOptions): ValidationResult;
+	encode(this: void, schema: Schema, value: unknown): unknown;
+	decode(
 		this: void,
 		schema: Schema,
+		encoded: unknown,
+		options?: ValidateOptions,
+	): LuaTuple<[boolean, unknown]>;
+	measure(this: void, json: { encode(value: unknown): string }, value: unknown): number;
+	checkSize(
+		this: void,
+		json: { encode(value: unknown): string },
 		value: unknown,
-		options?: { root?: string },
-	): ValidationResult;
-	encode(this: void, schema: Schema, value: unknown): unknown;
-	decode(this: void, schema: Schema, encoded: unknown): LuaTuple<[boolean, unknown]>;
+		budget: SizeBudget,
+	): { size: number; level: "ok" | "soft" | "hard" };
 	checkStorable(this: void, value: unknown, root?: string): ValidationResult;
 }
 
@@ -239,6 +262,12 @@ interface GuardContext {
 	userId?: number;
 	ops: { name: string; args: unknown[] }[];
 	opNames: Record<string, boolean>;
+	now: number;
+	diff: DiffEntry[];
+	/** The draft state that would be committed */
+	state: unknown;
+	get(this: void, path?: Path): unknown;
+	getBefore(this: void, path?: Path): unknown;
 }
 
 /** A rule built with Geode.guard. Its fields are internal */
@@ -350,6 +379,10 @@ interface Services {
 interface ClientServices {
 	readonly userId: number;
 	readonly clock: Clock;
+	remote(
+		this: void,
+		name: string,
+	): { fire(...args: unknown[]): void; onEvent(handler: (...args: unknown[]) => void): Connection };
 }
 
 type Priority = "release" | "save" | "load" | "read" | "background";
@@ -386,7 +419,8 @@ type SessionLostPolicy = "kick" | "none" | ((profile: Profile, reason: string) =
 type ProfileState = "active" | "releasing" | "released" | "lost";
 
 type SaveResult =
-	{ ok: true } | { ok: false; error: { kind: "adapter" | "lost" | "tooLarge"; message: string } };
+	| { ok: true }
+	| { ok: false; error: { kind: "adapter" | "lost" | "tooLarge" | "closed"; message: string } };
 
 interface Profile extends Writable {
 	readonly key: string;
@@ -671,6 +705,7 @@ interface PremadeOptions {
 }
 
 interface Presence {
+	readonly name: string;
 	set(userId: number): Result<undefined>;
 	clear(userId: number): Result<undefined>;
 	where(userId: number): Result<{ jobId: string; placeId: number } | undefined>;
@@ -687,12 +722,14 @@ interface Lock {
 }
 
 interface Mutex {
+	readonly name: string;
 	acquire(key: string, wait?: number): Result<Lock | undefined>;
 	estimatedCost(): number;
 	destroy(): void;
 }
 
 interface Counter {
+	readonly name: string;
 	increment(key: string, delta?: number): Result<number>;
 	get(key: string): Result<number>;
 	estimatedCost(): number;
@@ -700,6 +737,7 @@ interface Counter {
 }
 
 interface RateLimiter {
+	readonly name: string;
 	allow(key: string, cost?: number): Result<boolean>;
 	estimatedCost(): number;
 	destroy(): void;
@@ -712,6 +750,7 @@ interface Claim {
 }
 
 interface JobQueue {
+	readonly name: string;
 	push(job: unknown, priority?: number): Result<undefined>;
 	claim(count?: number, wait?: number): Result<Claim | undefined>;
 	estimatedCost(): number;
@@ -839,8 +878,29 @@ interface VeinSnapshot {
 	missing: string[];
 }
 
+interface MockClock extends Clock {
+	advance(seconds: number): void;
+}
+
 interface Testing {
-	universe(this: void, options?: { messagingLatency?: number }): unknown;
+	/** A universe of mock servers. See the Luau docs for its full shape */
+	universe(
+		this: void,
+		options?: {
+			clock?: MockClock;
+			messagingLatency?: number;
+			limits?: {
+				keyLength?: number;
+				nameLength?: number;
+				valueSize?: number;
+				keyThroughput?: boolean;
+			};
+		},
+	): {
+		readonly clock: MockClock;
+		server(options?: { jobId?: string; placeId?: number; studio?: boolean }): Services;
+	};
+	clock(this: void, start?: number): MockClock;
 }
 
 interface Geode {
@@ -849,6 +909,7 @@ interface Geode {
 
 	readonly Raw: {
 		services(this: void): Services;
+		fromRoblox(this: void, roblox: unknown): Services;
 		clock(this: void): Clock;
 		scheduler(this: void, options: SchedulerOptions): Scheduler;
 		classifyError(
@@ -859,7 +920,12 @@ interface Geode {
 		document(this: void, options?: DocumentOptions): Document;
 		guards(
 			this: void,
-			options?: { guards?: Guard[]; clock?: Clock; reportError?: (message: string) => void },
+			options?: {
+				guards?: Guard[];
+				clock?: Clock;
+				players?: Services["players"];
+				reportError?: (message: string) => void;
+			},
 		): GuardSet;
 		facets(
 			this: void,
