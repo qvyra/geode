@@ -69,14 +69,13 @@ local function compareEntries(a: Types.SortedEntry, b: Types.SortedEntry): numbe
 	return if a.key < b.key then -1 else 1
 end
 
--- Unverified what a bound with only a key or only a sort key compares against. The missing
--- field just isn't compared here
+-- From a live sorted map: a key-only bound sits where that key with no sort key would, after
+-- everything that has a sort key. A sort-key-only bound leaves out every item with that sort
+-- key, on either side of the range. Not in the docs
 local function compareToBound(entry: Types.SortedEntry, bound: Types.SortedBound): number
-	if bound.sortKey ~= nil then
-		local bySortKey = compareSortKeys(entry.sortKey, bound.sortKey)
-		if bySortKey ~= 0 or bound.key == nil then
-			return bySortKey
-		end
+	local bySortKey = compareSortKeys(entry.sortKey, bound.sortKey)
+	if bySortKey ~= 0 or bound.key == nil then
+		return bySortKey
 	end
 	if bound.key == nil or entry.key == bound.key then
 		return 0

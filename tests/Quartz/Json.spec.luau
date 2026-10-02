@@ -22,6 +22,15 @@ return function(spec: Spec.Api)
 			expect(Json.encode(string.char(1))).toBe('"\\u0001"')
 		end)
 
+		it("writes DEL and non-ASCII text raw, like HttpService", function()
+			expect(Json.encode(string.char(127))).toBe('"' .. string.char(127) .. '"')
+			local text = utf8.char(0xE9, 0x1F600)
+			expect(Json.encode(text)).toBe('"' .. text .. '"')
+			expect(Json.encode({ 0.1, 1 / 3, 1e20, 123456789012 })).toBe(
+				"[0.1,0.3333333333333333,100000000000000000000,123456789012]"
+			)
+		end)
+
 		it("encodes arrays and objects that a JSON parser reads back", function()
 			local nested: { unknown } = { 1, 2, { deep = "x" } }
 			local value: { [string]: unknown } = { list = nested, empty = {}, flag = false }

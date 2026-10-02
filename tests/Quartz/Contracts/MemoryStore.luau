@@ -2,6 +2,7 @@
 
 local Fixture = require("./Fixture")
 local Spec = require("../../_lib/Spec")
+local Types = require("../../../src/Quartz/Types")
 
 local unwrap = Fixture.unwrap
 
@@ -105,6 +106,37 @@ return function(spec: Spec.Api, label: string, make: Fixture.MakeFixture)
 			end)
 		end)
 
+		it("places bounds that hold only a key or only a sort key", function()
+			local fixture = make()
+			local map = fixture.services.sortedMap("Bounds")
+			fixture.clock:run(function()
+				unwrap(map:set("a", 1, 60, 5))
+				unwrap(map:set("b", 1, 60, 1))
+				unwrap(map:set("c", 1, 60, 9))
+				unwrap(map:set("d", 1, 60))
+				unwrap(map:set("e", 1, 60, 5))
+				local function keys(range: Types.SortedRange): { string }
+					local found = {}
+					for _, entry in unwrap(map:getRange(range)) do
+						table.insert(found, entry.key)
+					end
+					return found
+				end
+				-- Only a key: the bound sits where that key without a sort key would
+				expect(keys({ count = 10, lower = { key = "a" } })).toEqual({ "d" })
+				expect(keys({ count = 10, upper = { key = "d" } })).toEqual({ "b", "a", "e", "c" })
+				-- Only a sort key: that whole sort-key group is left out.
+				-- Roblox doesn't document this one
+				expect(keys({ count = 10, lower = { sortKey = 5 } })).toEqual({ "c", "d" })
+				expect(keys({ count = 10, upper = { sortKey = 5 } })).toEqual({ "b" })
+				expect(keys({ count = 10, lower = { key = "a", sortKey = 5 } })).toEqual({
+					"e",
+					"c",
+					"d",
+				})
+			end)
+		end)
+
 		it("gets, updates sort keys and expires", function()
 			local fixture = make()
 			local map = fixture.services.sortedMap("Ladder")
@@ -157,6 +189,22 @@ return function(spec: Spec.Api, label: string, make: Fixture.MakeFixture)
 				local read = unwrap(queue:read({ count = 1 }))
 				fixture.clock:wait(11)
 				unwrap(queue:remove(read.id :: string))
+				expect(#unwrap(queue:read({ count = 1 })).items).toBe(1)
+			end)
+		end)
+
+		it("ignores an old read id once the items were read again", function()
+			local fixture = make()
+			local queue = fixture.services.queue("Jobs", 5)
+			fixture.clock:run(function()
+				unwrap(queue:add("job", 120))
+				local first = unwrap(queue:read({ count = 1 }))
+				fixture.clock:wait(6)
+				local second = unwrap(queue:read({ count = 1 }))
+				expect(#second.items).toBe(1)
+				expect(second.id ~= first.id).toBe(true)
+				unwrap(queue:remove(first.id :: string))
+				fixture.clock:wait(6)
 				expect(#unwrap(queue:read({ count = 1 })).items).toBe(1)
 			end)
 		end)

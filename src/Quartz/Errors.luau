@@ -80,6 +80,11 @@ function Errors.classify(raw: unknown, service: Types.ErrorSource?): AdapterErro
 	local message = tostring(raw)
 	local code = tonumber(string.match(message, "^(%d%d%d):"))
 	if code then
+		-- Unknown version ids come back as a 502 "version is not valid". Found in testing,
+		-- Roblox doesn't document it. Retrying could never succeed
+		if code == 502 and string.find(string.lower(message), "version is not valid", 1, true) then
+			return { kind = "notFound", code = code, message = message }
+		end
 		return { kind = CODE_KINDS[code] or "unknown", code = code, message = message }
 	end
 	if string.find(message, THROTTLE_NAME) then

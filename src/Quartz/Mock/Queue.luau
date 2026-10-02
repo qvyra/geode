@@ -144,8 +144,8 @@ function MockQueue.remove(self: MockQueue, id: string): Types.Result<nil>
 	if err then
 		return Errors.failWith(err)
 	end
-	-- Past the invisibility timeout the read no longer owns its items, so removing does nothing.
-	-- Unverified what an old id does once the same items were read again
+	-- After the invisibility timeout the read no longer owns its items and removing does
+	-- nothing, also once the same items were read again under a new id
 	local now = self._context.shared.clock:now()
 	for index = #self._items, 1, -1 do
 		local item = self._items[index]

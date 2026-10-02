@@ -3,7 +3,8 @@
 -- Plain Luau JSON encoder for where HttpService isn't around. Output is for size estimates:
 -- same shape as HttpService, no byte-for-byte promise. HttpService lets inf and NaN through,
 -- so validation rejects them before they get here.
--- Not checked yet: how HttpService:JSONEncode formats floats and escapes non-ASCII text
+-- Checked against HttpService: floats print the same and non-ASCII is left alone. Only
+-- control chars below 32 get escaped. DEL goes out raw, which surprised me
 
 local Types = require("./Types")
 
@@ -20,7 +21,7 @@ local ESCAPES: { [string]: string } = {
 }
 
 local function encodeString(text: string): string
-	local escaped = string.gsub(text, '[%c"\\]', function(char: string): string
+	local escaped = string.gsub(text, '[\0-\31"\\]', function(char: string): string
 		return ESCAPES[char] or string.format("\\u%04x", string.byte(char))
 	end)
 	return `"{escaped}"`

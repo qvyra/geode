@@ -35,6 +35,14 @@ return function(spec: Spec.Api)
 			expect(Errors.classify("402: shutting down").kind).toBe("unavailable")
 		end)
 
+		it("doesn't retry a version id GetVersionAsync doesn't know", function()
+			local err = Errors.classify(
+				"502: API Services rejected request with error. Error code: 25 Reason: The provided version is not valid."
+			)
+			expect(err.kind).toBe("notFound")
+			expect(Errors.classify("502: API rejected request").kind).toBe("internal")
+		end)
+
 		it("matches throttles reported by name", function()
 			expect(Errors.classify("KeyThrottled: too many requests to this key").kind).toBe(
 				"throttled"
