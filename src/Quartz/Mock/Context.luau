@@ -32,6 +32,8 @@ export type StoredVersion = {
 export type DataStoreEntry = {
 	createdTime: number,
 	versions: { StoredVersion },
+	-- Versions a later write in the same hour replaced. They read as empty, not unknown
+	replaced: { [string]: boolean }?,
 }
 
 export type MemoryItem = {

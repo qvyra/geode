@@ -39,6 +39,23 @@ end
 
 --// helpers
 
+local HOUR_MILLIS = 3600 * 1000
+
+-- One version per key per UTC hour. A later write in the same hour replaces it and the old
+-- id reads as nil after that. Checked on live keys, Roblox doesn't document this
+local function keepVersion(entry: DataStoreEntry, stored: StoredVersion)
+	local versions = entry.versions
+	local last = versions[#versions]
+	if last and last.createdTime // HOUR_MILLIS == stored.createdTime // HOUR_MILLIS then
+		local replaced = entry.replaced or {}
+		entry.replaced = replaced
+		replaced[last.version] = true
+		versions[#versions] = stored
+	else
+		table.insert(versions, stored)
+	end
+end
+
 local function latest(entry: DataStoreEntry?): StoredVersion?
 	if entry == nil then
 		return nil
@@ -119,7 +136,7 @@ function MockDataStore._write(
 			then Values.clone(options.metadata) :: { [string]: unknown }
 			else {},
 	}
-	table.insert(entry.versions, stored)
+	keepVersion(entry, stored)
 	return nil, stored
 end
 
@@ -233,7 +250,7 @@ function MockDataStore.remove(self: MockDataStore, key: string): Types.Result<Ty
 
 	local previous = readOf(entry, current)
 	local shared = self._context.shared
-	table.insert(entry.versions, {
+	keepVersion(entry, {
 		version = Context.nextId(shared),
 		value = nil,
 		createdTime = Context.nowMillis(shared),
@@ -339,8 +356,14 @@ function MockDataStore.getVersion(
 			end
 		end
 	end
-	-- unverified whether GetVersionAsync returns nil or throws for a version that never existed
-	return Errors.ok({ value = nil, info = nil })
+	if entry and entry.replaced and entry.replaced[version] then
+		return Errors.ok({ value = nil, info = nil })
+	end
+	return Errors.failWith(
+		Errors.classify(
+			"502: API Services rejected request with error. Error code: 25 Reason: The provided version is not valid."
+		)
+	)
 end
 
 return MockDataStore

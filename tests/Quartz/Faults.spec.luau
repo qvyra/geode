@@ -148,7 +148,8 @@ return function(spec: Spec.Api)
 			server:clearFaults()
 			universe.clock:run(function()
 				expect(unwrap(store:get("a")).value).toBeNil()
-				expect(#unwrap(store:listVersions("a"))).toBe(3)
+				-- all three writes landed in one hour, which keeps a single version
+				expect(#unwrap(store:listVersions("a"))).toBe(1)
 			end)
 		end)
 

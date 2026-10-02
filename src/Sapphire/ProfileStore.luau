@@ -994,8 +994,10 @@ function ProfileStore._erasedAt(self: ProfileStore, key: string): Types.Result<n
 end
 
 --[=[
-	The stored versions of `key`, newest last by default. Versions from before an erasure are left
-	out, since they hold data the player asked to have removed
+	The stored versions of `key`, newest last by default. Roblox keeps one version per key for
+	each UTC hour, holding the last write of that hour, so history moves in hourly steps.
+	The Roblox docs don't spell this out, we found it in testing. Versions from before an
+	erasure are left out, since they hold data the player asked to have removed
 
 	@within ProfileStore
 ]=]

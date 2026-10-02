@@ -32,16 +32,20 @@ end
 
 local opRegistered = false
 
+-- No autosaves while the clock jumps hours ahead, so each version comes from a known save
+local QUIET = { autosaveInterval = 100000, leaseTimeout = 200000 }
+
 return function(spec: Spec.Api)
 	local describe, it, expect = spec.describe, spec.it, spec.expect
 
 	describe("history", function()
 		it("lists versions and reads what each one held", function()
 			local universe = Universe.new()
-			local store = Helpers.store(universe:server())
+			local store = Helpers.store(universe:server(), QUIET)
 			local profile = load(universe, store, "p1")
+			-- An hour apart: DS keeps one version per key per UTC hour. Found that out in testing
 			for coins = 1, 3 do
-				universe.clock:advance(1)
+				universe.clock:advance(3600)
 				profile:set("coins", coins)
 				run(universe, function()
 					return profile:save()
@@ -114,7 +118,7 @@ return function(spec: Spec.Api)
 
 		it("loads, applies and releases when nobody holds the profile", function()
 			local universe = Universe.new()
-			local store = Helpers.store(universe:server())
+			local store = Helpers.store(universe:server(), QUIET)
 			local profile = load(universe, store, "p1")
 			profile:set("coins", 10)
 			run(universe, function()
@@ -123,6 +127,8 @@ return function(spec: Spec.Api)
 			local target = unwrap(run(universe, function()
 				return store:history("p1")
 			end))
+			-- A later write in the same hour would overwrite the version this rolls back to
+			universe.clock:advance(3600)
 			profile:set("coins", 20)
 			run(universe, function()
 				return profile:release()

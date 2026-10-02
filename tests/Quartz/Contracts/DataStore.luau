@@ -109,26 +109,25 @@ return function(spec: Spec.Api, label: string, make: Fixture.MakeFixture)
 			end)
 		end)
 
-		it("lists versions in both directions and fetches old ones", function()
+		it("keeps one version per hour, holding the latest write", function()
 			local fixture = make()
 			local store = fixture.services.dataStore("Players")
 			fixture.clock:run(function()
 				local first = unwrap(store:set("p1", 1))
 				fixture.clock:wait(1)
-				unwrap(store:set("p1", 2))
+				local second = unwrap(store:set("p1", 2))
 				fixture.clock:wait(1)
 				unwrap(store:set("p1", 3))
 
-				local ascending = unwrap(store:listVersions("p1"))
-				expect(#ascending).toBe(3)
-				expect(ascending[1].version).toBe(first)
+				local versions = unwrap(store:listVersions("p1", { ascending = false }))
+				expect(#versions).toBe(1)
+				expect(unwrap(store:getVersion("p1", versions[1].version)).value).toBe(3)
 
-				local descending: { Types.VersionInfo } =
-					unwrap(store:listVersions("p1", { ascending = false, limit = 2 }))
-				expect(#descending).toBe(2)
-				expect(descending[1].createdTime >= descending[2].createdTime).toBe(true)
-
-				expect(unwrap(store:getVersion("p1", first)).value).toBe(1)
+				-- Ids that later writes replaced read as nil, an id that never existed is refused.
+				-- Not documented anywhere, found both in testing
+				expect(unwrap(store:getVersion("p1", first)).value).toBeNil()
+				expect(unwrap(store:getVersion("p1", second)).value).toBeNil()
+				expect(errorKind(store:getVersion("p1", "not-a-real-version-id"))).toBe("notFound")
 			end)
 		end)
 
