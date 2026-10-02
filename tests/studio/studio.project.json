@@ -22,7 +22,10 @@
 					"studio": {
 						"$className": "Folder",
 						"Checks": {
-							"$path": "Checks.server.luau"
+							"$path": "Checks.luau"
+						},
+						"Run": {
+							"$path": "Run.server.luau"
 						}
 					}
 				}
