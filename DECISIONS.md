@@ -353,3 +353,36 @@ A review of the new stores, replication and tooling turned up places where the c
 The rest, in the shared store, the client, the premades and the matchmaker, were plain bug fixes with tests.
 
 **Commits:** c881919, 8d062bc, 01120ae, bf18b5f, 311b4e6, e8c875b, 0c4c4e6
+
+## 29. Live testing settled the undocumented behavior
+
+**Date:** 2026-10-05
+
+**Revises:** entries 8 and 26
+
+Wherever Roblox's documentation was silent, the mocks had a guess, each marked for a check against live services. Entry 8 also left the real services to a Studio check that hadn't run yet. The guesses could have stayed until a bug report proved one wrong.
+
+Went with running the checks and the adapter contract suites against live services and matching the mocks to what happened:
+
+- A sorted map bound holding only a key now sits where that key with no sort key would
+- RemoveAsync with an old read id does nothing
+- The JSON encoder writes DEL raw, like HttpService
+- An unknown version id counts as not found instead of a retryable internal error
+- A key keeps one version per UTC hour, so the history and rollback from entry 26 move in hourly steps and a later write in the same hour replaces the version before it
+- UpdateAsync clears metadata a transform leaves out, which the adapter already carries forward
+
+Every answer has a contract test that runs against both the mocks and live services. The last live run passed all 32 checks with 8 observations recorded, and nothing contradicted an earlier decision.
+
+**Commits:** 3369f40, 1886f30, af6da69
+
+## 30. Live checks run headlessly through Open Cloud
+
+**Date:** 2026-10-05
+
+The live checks needed Studio, a Rojo connection and someone pressing Run, which meant they would only ever run by hand. They now go through Open Cloud Luau Execution against a dedicated test place, both locally and in CI.
+
+`lune run live` builds the check place and uploads it as a saved version, so the published game never changes. Each group of checks runs as its own execution task, since a task stops after five minutes. Execution tasks reach DataStore, MemoryStore and MessagingService, so every check runs there except the teleport contract, which is reported as observed. The runner fails on any failed check, failed task or timeout.
+
+In CI it runs on pull requests from the repository and on demand, never on pull requests from forks, with read-only repository access and the key in a secret.
+
+**Commits:** 7b06ab1, e5ad2ce, a3d448a
