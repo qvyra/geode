@@ -18,7 +18,7 @@ local ROBLOX_TYPES_PATH = `.cache/globalTypes-{LUAU_LSP_VERSION}.d.luau`
 local CSPELL_LIST_PATH = ".cache/cspell-files.txt"
 
 -- These folders alias @lune to the typedefs for one Lune version
-local LUNE_LUAURC_PATHS = { "tests/.luaurc", ".lune/.luaurc" }
+local LUNE_LUAURC_PATHS = { "tests/.luaurc", ".lune/.luaurc", "scripts/.luaurc" }
 
 if not fs.isDir(".cache") then
 	fs.writeDir(".cache")
@@ -95,7 +95,8 @@ local STEPS: { Step } = {
 	{ name = "selene tests", program = "selene", args = { "." }, cwd = "tests" },
 	{ name = "selene studio", program = "selene", args = { "." }, cwd = "tests/studio" },
 	{ name = "selene example", program = "selene", args = { "." }, cwd = "example" },
-	{ name = "selene scripts", program = "selene", args = { "." }, cwd = ".lune" },
+	{ name = "selene lune", program = "selene", args = { "." }, cwd = ".lune" },
+	{ name = "selene scripts", program = "selene", args = { "." }, cwd = "scripts" },
 	{
 		name = "luau-lsp src",
 		program = "luau-lsp",
@@ -120,7 +121,7 @@ local STEPS: { Step } = {
 	{
 		name = "luau-lsp scripts",
 		program = "luau-lsp",
-		args = { "analyze", "--platform=standard", ".lune" },
+		args = { "analyze", "--platform=standard", ".lune", "scripts" },
 	},
 	{ name = "tests", program = "lune", args = { "run", "test" } },
 	prettier(),
