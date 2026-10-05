@@ -1,0 +1,32 @@
+name: Live checks
+
+# Runs the Studio checks against live Roblox services through Open Cloud. Pull requests from
+# forks never run it, since the API key must not reach code from outside the repository
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time, since every run uploads a version of the same test place
+concurrency:
+  group: live-checks
+  cancel-in-progress: false
+
+jobs:
+  live:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: CompeyDev/setup-rokit@v0.2.1
+        with:
+          cache: true
+
+      - run: lune run live
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}

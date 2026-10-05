@@ -16,6 +16,22 @@ Each line starts with one of three labels:
 - `[FAIL]` it didn't, with what was seen instead
 - `[OBSERVED]` the line records what Roblox did, for behavior the code depends on or that can't run here
 
+## Running it without Studio
+
+`lune run live` runs the same checks headlessly through Open Cloud, locally or in CI. It builds this place with Rojo, uploads it to the test place as a **saved** version, runs each group of checks (services, contracts, profile) as a Luau Execution task against that version, and prints every result. It exits non-zero when a check fails, when a task fails, or when a task doesn't finish in time. Observed results are listed apart and never fail the run.
+
+Uploading a saved version doesn't publish it, so the live game never changes. DataStore, MemoryStore and MessagingService all work inside an execution task. ReserveServer doesn't, so the teleport contract shows as observed there too.
+
+### Setup
+
+1. In the Creator Dashboard, create an API key with these permissions, restricted to the test experience only:
+   - **universe-places**: `write`, to upload the place version
+   - **universe.place.luau-execution-session**: `read` and `write`, to run tasks and read their results and logs
+2. Put the key in the `ROBLOX_API_KEY` environment variable. Locally that's your shell, in GitHub it's a repository secret with the same name. The runner never prints it.
+3. The test experience's ids live in `tests/studio/live.json`: universe `10771072774`, place `125801576807131`. Change them there to point at another test place.
+
+The `Live checks` workflow runs it on pull requests from this repository and on demand. Pull requests from forks skip it, since a fork could read the secret.
+
 ## What it touches
 
 Every DataStore uses the name `GeodeStudioCheck` or starts with `GeodeStudioCheck_`, under scopes starting with `geode-check`. MemoryStore structures and topics start with `GeodeStudioCheck-`. Each run, and each contract test inside it, adds a fresh id to all of them, so no check reads what another one wrote and none touches real game data. MemoryStore entries expire within a few minutes. DataStore keys stay behind and count toward the experience's storage, so run it in a test experience.
