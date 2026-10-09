@@ -36,11 +36,12 @@
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
 		"@rbxts/compiler-types": "3.0.0-types.0",
-		"@rbxts/types": "1.0.953",
-		"cspell": "10.3.3",
-		"eslint": "10.11.0",
-		"prettier": "3.9.8",
+		"@rbxts/types": "1.0.956",
+		"cspell": "10.3.6",
+		"eslint": "10.12.0",
+		"moonwave": "1.4.2",
+		"prettier": "3.9.9",
 		"typescript": "6.0.3",
-		"typescript-eslint": "8.70.0"
+		"typescript-eslint": "8.71.1"
 	}
 }

@@ -1,0 +1,9 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"paths": {
+			"@rbxts/geode": ["./types/index.d.ts"]
+		}
+	},
+	"include": ["types/**/*.ts", ".cache/doc-samples/**/*.ts"]
+}
