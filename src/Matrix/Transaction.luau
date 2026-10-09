@@ -59,6 +59,12 @@ type Fields = {
 	_provenance: { [string]: SourceKind },
 }
 
+--[=[
+	@class Transaction
+
+	The draft a transaction body and its bundles, reactions and guards work on. Nothing becomes
+	visible until the document commits it
+]=]
 local Transaction = {}
 Transaction.__index = Transaction
 
@@ -138,6 +144,7 @@ end
 	Registers an op once for the whole game. A store has to list it in its `ops` before the op
 	can run there
 
+	@function op
 	@within Geode
 	@param name string
 	@param handler OpHandler

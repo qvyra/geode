@@ -98,11 +98,6 @@ local function throttleError(service: string, method: string): Types.AdapterErro
 	return Errors.classify(`Request was throttled (injected {service}.{method})`)
 end
 
---[=[
-	Runs every matching rule for one call. Latency waits on the clock, an error ends the call,
-	and a foreign write is handed back for the adapter to apply. So is a landed error, which the
-	adapter reports after its write went through
-]=]
 function Faults.apply(
 	self: Faults,
 	clock: Types.Clock,

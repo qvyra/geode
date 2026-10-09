@@ -41,10 +41,6 @@ local function fill(data: unknown, template: unknown): unknown
 	return result
 end
 
---[=[
-	A copy of `data` with every key the template has and the data lacks filled in, at any depth.
-	Missing data as a whole becomes a copy of the template
-]=]
 function Reconcile.fill(data: unknown, template: unknown): unknown
 	return fill(data, template)
 end

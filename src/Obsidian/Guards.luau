@@ -604,6 +604,11 @@ type Fields = {
 	_report: (message: string) -> (),
 }
 
+--[=[
+	@class GuardSet
+
+	Guards attached to a document. Made with `Geode.Raw.guards`
+]=]
 local GuardSet = {}
 GuardSet.__index = GuardSet
 
@@ -613,7 +618,7 @@ export type GuardSet = typeof(setmetatable({} :: Fields, GuardSet))
 	A group of guards attached to one document. `broken` fires on every violation with full
 	details, regardless of the action
 
-	@within Raw
+	@within GuardSet
 	@param options GuardSetOptions?
 	@return GuardSet
 ]=]

@@ -83,32 +83,32 @@ local QuartzRaw = Quartz.Raw
 	@within Geode
 	@readonly
 ]=]
+--[=[
+	@function document
+	@within Raw
+	@param options DocumentOptions?
+	@return Document -- in-memory state with the full transaction pipeline
+]=]
+--[=[
+	@function guards
+	@within Raw
+	@param options GuardSetOptions?
+	@return GuardSet -- attach it to a document as its last stage
+]=]
+--[=[
+	@function facets
+	@within Raw
+	@param options FacetSetOptions
+	@return FacetSet -- attach it to a document before any guard set
+]=]
 Geode.Raw = table.freeze({
 	services = QuartzRaw.services,
 	fromRoblox = QuartzRaw.fromRoblox,
 	classifyError = QuartzRaw.classifyError,
 	clock = QuartzRaw.clock,
 	scheduler = QuartzRaw.scheduler,
-	--[=[
-		@function document
-		@within Raw
-		@param options DocumentOptions?
-		@return Document -- in-memory state with the full transaction pipeline
-	]=]
 	document = Matrix.Document.new,
-	--[=[
-		@function guards
-		@within Raw
-		@param options GuardSetOptions?
-		@return GuardSet -- attach it to a document as its last stage
-	]=]
 	guards = Obsidian.guardSet,
-	--[=[
-		@function facets
-		@within Raw
-		@param options FacetSetOptions
-		@return FacetSet -- attach it to a document before any guard set
-	]=]
 	facets = Facet.set,
 })
 
@@ -153,34 +153,10 @@ Geode.schema = Obsidian.schema
 ]=]
 Geode.guard = Obsidian.guard
 
---[=[
-	@function bundle
-	@within Geode
-	@param fields { PathLike }
-	@param normalize (tx: Transaction) -> ()
-	@param options BundleOptions?
-	@return Bundle
-]=]
 Geode.bundle = Facet.bundle
 
---[=[
-	@function react
-	@within Geode
-	@param deps { PathLike }
-	@param run (tx: Transaction) -> ()
-	@param options ReactionOptions
-	@return Reaction
-]=]
 Geode.react = Facet.react
 
---[=[
-	@function derive
-	@within Geode
-	@param name string
-	@param deps { PathLike }
-	@param compute (state: unknown) -> unknown
-	@return Derived
-]=]
 Geode.derive = Facet.derive
 
 --[=[
@@ -273,26 +249,8 @@ Geode.Matchmaker = Garnet
 ]=]
 Geode.Ranked = Topaz
 
---[=[
-	@function replicator
-	@within Geode
-	@param services Services?
-	@return Replicator
-
-	The replicator that sends player data to clients. `Geode.players` uses it for the
-	`replicate` option
-]=]
 Geode.replicator = Prism.replicator
 
---[=[
-	@function remoteOp
-	@within Geode
-	@param name string
-	@param options RemoteOpOptions
-
-	Lets clients ask for a registered op on their own profile, behind an attempt rate limit and
-	argument checks
-]=]
 Geode.remoteOp = Prism.remoteOp
 
 --[=[
@@ -313,16 +271,6 @@ Geode.Client = GeodeClient
 ]=]
 Geode.Vein = Vein
 
---[=[
-	@function receipts
-	@within Geode
-	@param store ProfileStore
-	@param handlers { [number]: ReceiptHandler }
-	@param options ReceiptOptions?
-	@return (info: ReceiptInfo) -> ProductPurchaseDecision
-
-	Builds a ProcessReceipt callback. Each purchase is granted exactly once
-]=]
 Geode.receipts = Sapphire.receipts
 
 --[=[
@@ -340,34 +288,10 @@ Geode.receipts = Sapphire.receipts
 ]=]
 Geode.erase = Sapphire.erase
 
---[=[
-	@function players
-	@within Geode
-	@param options PlayerDataOptions
-	@return PlayerData
-
-	Player data with joins, leaves, shutdown, session loss and purchases handled for you. See
-	Polish
-]=]
 Geode.players = Polish.players
 
---[=[
-	@function setup
-	@within Geode
-	@param options SetupOptions
-
-	Sets the defaults every `Geode.players` store made afterwards starts from
-]=]
 Geode.setup = Polish.setup
 
---[=[
-	@function op
-	@within Geode
-	@param name string
-	@param handler OpHandler
-
-	Registers a custom op for the whole game. See Transaction.register
-]=]
 Geode.op = Matrix.Transaction.register
 
 return table.freeze(Geode)

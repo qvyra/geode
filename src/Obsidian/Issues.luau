@@ -88,10 +88,8 @@ function Issues.result(self: Issues): Result
 	}
 end
 
---[=[
-	Appends a table key to a path: `.name` for plain identifiers, `[3]` for array indices and
-	`["odd key"]` for everything else
-]=]
+-- Appends a table key to a path: `.name` for plain identifiers, `[3]` for array indices and
+-- `["odd key"]` for everything else
 function Issues.child(path: string, key: unknown): string
 	if type(key) == "number" then
 		return `{path}[{key}]`

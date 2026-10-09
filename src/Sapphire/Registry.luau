@@ -24,9 +24,6 @@ function Registry.add(store: Erasable, services: unknown)
 	table.insert(entries, { store = store, services = services })
 end
 
---[=[
-	Registered stores, all of them or only those created with `services`
-]=]
 function Registry.all(services: unknown?): { Erasable }
 	local found = {}
 	for _, entry in entries do
@@ -42,20 +39,13 @@ export type EraseReport = {
 	failures: { { store: string, message: string } },
 }
 
---[=[
-	Erases a player's data from every profile store on this server. Yields. A server elsewhere that
-	still holds one of the profiles loses its session on its next save instead of writing the data
-	back
-
-	Erasure is immediate for live reads. Roblox keeps older versions of each key readable for 30
-	days and RemoveVersionAsync is deprecated, so those can't be purged early. A player who joins
-	again starts over from the template
-
-	@within Geode
-	@param userId number
-	@param services Services? -- only stores created with these services. All stores when nil
-	@return EraseReport
-]=]
+-- Erases a player's data from every profile store on this server. Yields. A server elsewhere
+-- that still holds one of the profiles loses its session on its next save instead of
+-- writing the data back
+--
+-- Live reads see the erasure at once. Roblox keeps older versions of each key readable for
+-- 30 days and RemoveVersionAsync is deprecated, so those can't be purged early. A player
+-- who joins again starts over from the template
 function Registry.erase(userId: number, services: unknown?): EraseReport
 	local report: EraseReport = { erased = 0, failures = {} }
 	for _, store in Registry.all(services) do

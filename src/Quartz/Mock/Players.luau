@@ -99,9 +99,6 @@ end
 
 --// test controls
 
---[=[
-	Brings a player into the server and returns the player object handlers receive
-]=]
 function MockPlayers.join(self: MockPlayers, userId: number, name: string?): MockPlayer
 	local existing = self._present[userId]
 	if existing then
@@ -124,10 +121,6 @@ function MockPlayers.leave(self: MockPlayers, userId: number)
 	fire(self, self._leaveHandlers, userId, player)
 end
 
---[=[
-	Runs the ProcessReceipt callback as a purchase would and returns its decision, or nil when
-	no callback is set. Yields while the callback runs
-]=]
 function MockPlayers.purchase(self: MockPlayers, info: unknown): unknown
 	local callback = self._processReceipt
 	if callback == nil then

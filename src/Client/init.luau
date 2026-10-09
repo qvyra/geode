@@ -33,6 +33,12 @@ type Fields = {
 	_readyWaiters: { thread },
 }
 
+--[=[
+	@class GeodeClient
+
+	Client side of Geode: atoms over the data the server shares with this player. Start it
+	with `Geode.Client.start` from a LocalScript
+]=]
 local GeodeClient = {}
 GeodeClient.__index = GeodeClient
 

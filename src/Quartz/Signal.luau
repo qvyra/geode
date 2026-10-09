@@ -20,9 +20,6 @@ Signal.__index = Signal
 
 export type Signal = typeof(setmetatable({} :: Fields, Signal))
 
---[=[
-	@param reportError ((message: string) -> ())? -- where handler errors go, defaults to warn
-]=]
 function Signal.new(reportError: ((message: string) -> ())?): Signal
 	local self: Fields = {
 		_handlers = {},

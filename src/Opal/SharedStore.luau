@@ -83,6 +83,11 @@ type Fields = {
 	_cache: { [string]: Cached },
 }
 
+--[=[
+	@class SharedStore
+
+	A store any server may write. Made with `Geode.Shared.store`
+]=]
 local SharedStore = {}
 SharedStore.__index = SharedStore
 
@@ -110,6 +115,7 @@ end
 	Every write runs inside an UpdateAsync transform, so custom guards, bundles and reactions on a
 	shared store must be synchronous. One that yields fails the write with an error
 
+	@function store
 	@within Shared
 	@param options SharedStoreOptions
 	@return SharedStore

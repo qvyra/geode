@@ -121,6 +121,7 @@ end
 --[=[
 	Reports everything in `value` that a DataStore couldn't store faithfully
 
+	@function checkStorable
 	@within Schema
 	@param value unknown
 	@param root string? -- name used at the start of every path, defaults to "data"

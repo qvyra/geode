@@ -125,9 +125,6 @@ local BUDGET_TYPES: { [string]: { [string]: { Types.BudgetType } } } = {
 	},
 }
 
---[=[
-	The current budget, refilled for the time since it was last read
-]=]
 function Context.budget(context: Context, budgetType: Types.BudgetType): number
 	local state = context.budgets[budgetType]
 	if state == nil or budgetType == "orderedList" then
@@ -171,10 +168,6 @@ function Context.nowMillis(shared: Shared): number
 	return math.floor(shared.clock:now() * 1000)
 end
 
---[=[
-	Runs at the start of every mock call. Refuses calls from a crashed server, then applies any
-	injected faults
-]=]
 function Context.enter(
 	context: Context,
 	service: string,
@@ -211,10 +204,7 @@ function Context.checkKey(shared: Shared, key: string): Types.AdapterError?
 	return nil
 end
 
---[=[
-	Counts `value` against the throughput of `id`, a store qualified key. Does nothing unless
-	the universe turns on `keyThroughput` and provides a `measure`
-]=]
+-- Off unless the universe sets `keyThroughput` and a `measure`. `id` is store qualified
 function Context.useThroughput(
 	shared: Shared,
 	id: string,
@@ -244,9 +234,6 @@ function Context.useThroughput(
 	return nil
 end
 
---[=[
-	Checks a DataStore's name and scope against their length cap
-]=]
 function Context.checkStoreName(shared: Shared, name: string, scope: string): Types.AdapterError?
 	local limit = shared.limits.nameLength
 	if #name > limit then

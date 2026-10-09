@@ -33,17 +33,11 @@ local function copyInto(value: unknown, path: string, seen: { [any]: boolean }):
 	return true, copy
 end
 
---[=[
-	Deep copies a storable value. Returns false and a reason for functions, threads, userdata
-	and cycles
-]=]
+-- deep copy. false + reason for functions, threads, userdata and cycles
 function Values.copy(value: unknown): (boolean, unknown)
 	return copyInto(value, "value", {})
 end
 
---[=[
-	Copies a value that is already known to be storable
-]=]
 function Values.clone(value: unknown): unknown
 	local ok, result = Values.copy(value)
 	assert(ok, result)

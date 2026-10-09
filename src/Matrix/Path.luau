@@ -25,9 +25,7 @@ local function checkSegment(segment: unknown, source: unknown): Segment
 	error(`path {Path.describe(source)} has a {typeof(segment)} segment`, 0)
 end
 
---[=[
-	Turns either path form into the list form. An empty string or list means the root
-]=]
+-- Turns either path form into the list form. An empty string or list means the root
 function Path.parse(path: PathLike?): Path
 	if path == nil or path == "" then
 		return {}
@@ -48,9 +46,6 @@ function Path.parse(path: PathLike?): Path
 	return parsed
 end
 
---[=[
-	Readable form, same style as schema issues: `inventory[3].pos`
-]=]
 function Path.format(path: Path): string
 	local parts = {}
 	for _, segment in path do
@@ -79,9 +74,6 @@ function Path.describe(path: unknown): string
 	return tostring(path)
 end
 
---[=[
-	Whether `prefix` is `path` or one of its ancestors
-]=]
 function Path.startsWith(path: Path, prefix: Path): boolean
 	if #prefix > #path then
 		return false
@@ -94,9 +86,6 @@ function Path.startsWith(path: Path, prefix: Path): boolean
 	return true
 end
 
---[=[
-	Whether a change at one path can change the value at the other
-]=]
 function Path.related(a: Path, b: Path): boolean
 	return Path.startsWith(a, b) or Path.startsWith(b, a)
 end

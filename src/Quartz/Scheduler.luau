@@ -91,6 +91,12 @@ type Fields = {
 	_timerToken: number,
 }
 
+--[=[
+	@class Scheduler
+
+	Runs every DataStore request in priority order within the request budgets. Made with
+	`Geode.Raw.scheduler`
+]=]
 local Scheduler = {}
 Scheduler.__index = Scheduler
 
@@ -122,7 +128,7 @@ local DEFAULTS = {
 --[=[
 	Creates a scheduler
 
-	@within Raw
+	@within Scheduler
 	@param options Options
 	@return Scheduler
 

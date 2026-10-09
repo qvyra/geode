@@ -34,6 +34,11 @@ local FEATURES: { { name: string, kinds: { string } } } = {
 	{ name = "Replicator", kinds = { "replicator" } },
 }
 
+--[=[
+	@class Vein
+
+	The registry of what's running right now, plus the telemetry bus. Meant for tooling
+]=]
 local Vein = {}
 
 --[=[

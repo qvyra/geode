@@ -18,9 +18,7 @@ local signal = Signal.new(function(message: string)
 end)
 
 -- fields typed loosely, Luau won't match a literal record against a map of unknowns
---[=[
-	Publishes a message of `kind` with `fields`. Costs next to nothing when nobody listens
-]=]
+-- Sends a message of `kind` with `fields`. Cheap when nothing listens
 function Bus.publish(kind: string, fields: { [string]: any }?, at: number?)
 	if signal:handlerCount() == 0 then
 		return
@@ -32,9 +30,6 @@ function Bus.publish(kind: string, fields: { [string]: any }?, at: number?)
 	signal:fire(table.freeze(message))
 end
 
---[=[
-	Calls back with every message from now on
-]=]
 function Bus.subscribe(callback: (message: Message) -> ()): Types.Connection
 	return signal:connect(callback)
 end

@@ -43,10 +43,6 @@ local function asAdapter<T>(adapter: unknown): T
 	return adapter :: any
 end
 
---[=[
-	Builds services from explicit Roblox objects. Tests hand in fakes here to exercise the real
-	adapters outside Roblox
-]=]
 function RealServices.fromRoblox(roblox: Roblox): Types.Services
 	local cache: { [string]: unknown } = {}
 	local function memo<T>(id: string, make: () -> T): T
@@ -196,13 +192,6 @@ end
 
 local liveClient: Types.ClientServices? = nil
 
---[=[
-	What client code gets on a live Roblox client: the local player's id, a real clock and remotes
-	that wait for the server to create them
-
-	@within Raw
-	@return ClientServices
-]=]
 function RealServices.client(): Types.ClientServices
 	if liveClient == nil then
 		local replicatedStorage = game:GetService("ReplicatedStorage")
@@ -220,12 +209,6 @@ end
 
 local live: Types.Services? = nil
 
---[=[
-	The services of the running game, built once on first use
-
-	@within Raw
-	@return Services
-]=]
 function RealServices.live(): Types.Services
 	if live == nil then
 		live = RealServices.fromRoblox({

@@ -139,12 +139,6 @@ local function dispatcherFor(services: Types.Services, report: (message: string)
 	return dispatcher
 end
 
---[=[
-	Lets clients request the op `name`. It must already be registered with Geode.op and enabled
-	on the store. Requests run on the asking player's own profile, with a player source
-
-	@within Geode
-]=]
 function RemoteOps.define(name: string, options: Options)
 	local limit = options.rateLimit or DEFAULT_LIMIT
 	assert(
@@ -170,9 +164,6 @@ function RemoteOps.define(name: string, options: Options)
 	}
 end
 
---[=[
-	Calls back with every remote op request on `services` and how it ended
-]=]
 function RemoteOps.onRequest(
 	services: Types.Services,
 	listener: (userId: number, name: string, outcome: Outcome) -> ()

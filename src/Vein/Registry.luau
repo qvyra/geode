@@ -21,10 +21,8 @@ local Registry = {}
 
 local entries: { Entry } = {}
 
---[=[
-	Adds a running piece. `describe` is called whenever tooling asks for details, so it can report
-	live numbers like an estimated quota cost
-]=]
+-- `describe` runs whenever tooling asks for details, so it can report live numbers like an
+-- estimated quota cost
 function Registry.register(kind: string, name: string, describe: Describe?): Handle
 	local entry: Entry = { kind = kind, name = name, describe = describe }
 	table.insert(entries, entry)
@@ -40,9 +38,6 @@ function Registry.register(kind: string, name: string, describe: Describe?): Han
 	}
 end
 
---[=[
-	Everything registered, oldest first
-]=]
 function Registry.list(): { Entry }
 	return table.clone(entries)
 end

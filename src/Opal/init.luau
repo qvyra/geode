@@ -4,14 +4,10 @@ local SharedStore = require("@self/SharedStore")
 
 --[=[
 	@class Shared
+
+	Stores any server may write. Every write runs the whole pipeline inside UpdateAsync
 ]=]
 local Shared = {
-	--[=[
-		@function store
-		@within Shared
-		@param options SharedStoreOptions
-		@return SharedStore
-	]=]
 	store = SharedStore.new,
 }
 

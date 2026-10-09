@@ -40,6 +40,11 @@ type Fields = {
 	_handle: Registry.Handle,
 }
 
+--[=[
+	@class Replicator
+
+	Sends player data to clients by visibility. `Geode.replicator` returns the one for a game
+]=]
 local Replicator = {}
 Replicator.__index = Replicator
 

@@ -90,6 +90,11 @@ type Fields = {
 	_handle: Registry.Handle,
 }
 
+--[=[
+	@class Matchmaker
+
+	Matchmaking across servers. Made with `Geode.Matchmaker.new`
+]=]
 local Matchmaker = {}
 Matchmaker.__index = Matchmaker
 

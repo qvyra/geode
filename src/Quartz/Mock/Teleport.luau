@@ -33,9 +33,6 @@ function MockTeleport.reserveServer(
 	return Errors.ok({ code = `reserved-{placeId}-{id}`, serverId = `server-{id}` })
 end
 
---[=[
-	Records the teleport in the universe for tests to assert on. Nobody actually moves
-]=]
 function MockTeleport.teleport(
 	self: MockTeleport,
 	placeId: number,

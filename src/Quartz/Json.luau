@@ -78,18 +78,12 @@ local function encodeValue(value: unknown, parts: { string })
 	end
 end
 
---[=[
-	Encodes a storable value. Errors on anything JSON can't hold
-]=]
 function Json.encode(value: unknown): string
 	local parts = {}
 	encodeValue(value, parts)
 	return table.concat(parts)
 end
 
---[=[
-	The pure Luau encoder, wrapped as a Json adapter
-]=]
 function Json.adapter(): Types.Json
 	return {
 		encode = function(_self: Types.Json, value: unknown): string

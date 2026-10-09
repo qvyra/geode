@@ -93,9 +93,7 @@ local function numeric(
 	})
 end
 
---[=[
-	Builds the codec set over a datatype provider. Geode.codec uses the real globals
-]=]
+-- Builds the codec set over a datatype provider. Geode.codec uses the real globals
 function Codecs.build(datatypes: () -> Datatypes): CodecSet
 	local set = {} :: CodecSet
 
@@ -211,9 +209,7 @@ function Codecs.build(datatypes: () -> Datatypes): CodecSet
 	return table.freeze(set)
 end
 
---[=[
-	The datatypes of the running Roblox game. Only valid inside Roblox
-]=]
+-- The datatypes of the running Roblox game. Only valid inside Roblox
 function Codecs.liveDatatypes(): Datatypes
 	return {
 		vector3 = Vector3.new,

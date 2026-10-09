@@ -36,6 +36,7 @@ end
 --[=[
 	Measures a value and compares it to a budget
 
+	@function checkSize
 	@within Schema
 	@return SizeReport
 ]=]

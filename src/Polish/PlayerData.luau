@@ -96,6 +96,12 @@ type Fields = {
 	_connections: { Types.Connection },
 }
 
+--[=[
+	@class PlayerData
+
+	Player data with joins, leaves, shutdown, session loss and purchases taken care of.
+	Create one with `Geode.players`
+]=]
 local PlayerData = {}
 PlayerData.__index = PlayerData
 

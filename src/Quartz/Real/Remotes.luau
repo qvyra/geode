@@ -20,9 +20,6 @@ local function folderOn(replicatedStorage: Instance): Instance
 	return folder :: Instance
 end
 
---[=[
-	The server's end of the remote called `name`, created if it doesn't exist yet
-]=]
 function RealRemotes.server(
 	replicatedStorage: Instance,
 	playersService: Players,
@@ -57,9 +54,6 @@ function RealRemotes.server(
 	}
 end
 
---[=[
-	The client's end of the remote called `name`. Yields until the server creates it
-]=]
 function RealRemotes.client(replicatedStorage: Instance, name: string): Types.ClientRemote
 	local remote = replicatedStorage:WaitForChild(FOLDER):WaitForChild(name) :: RemoteEvent
 	return {

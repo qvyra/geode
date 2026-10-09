@@ -75,6 +75,12 @@ export type StructOptions = {
 	extra: boolean?,
 }
 
+--[=[
+	@class t
+
+	Schema builders. Each one describes a shape and its limits, and stores and guards check values
+	against it
+]=]
 local t = {}
 
 local function node(fields: Schema): Schema

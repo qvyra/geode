@@ -53,6 +53,11 @@ type Fields = {
 	_handle: Registry.Handle,
 }
 
+--[=[
+	@class Leaderboard
+
+	A leaderboard from `Geode.Ranked.allTime` or `Geode.Ranked.windowed`
+]=]
 local Leaderboard = {}
 Leaderboard.__index = Leaderboard
 
@@ -70,6 +75,11 @@ local MAX_TOP = 100
 -- ordered UpdateAsync both reads and writes, so it waits on both budgets
 local ORDERED_UPDATE_BUDGET: { Types.BudgetType } = { "orderedRead", "orderedWrite" }
 
+--[=[
+	@class Ranked
+
+	Leaderboards, all-time and windowed
+]=]
 local Ranked = {}
 
 local function combine(mode: Mode, current: number?, score: number): number?

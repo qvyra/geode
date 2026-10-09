@@ -87,6 +87,12 @@ type Fields = {
 	_held: { Held },
 }
 
+--[=[
+	@class Document
+
+	In-memory state with the full transaction pipeline. Profiles and shared stores are built on it,
+	and `Geode.Raw.document` makes a bare one
+]=]
 local Document = {}
 Document.__index = Document
 
@@ -95,7 +101,7 @@ export type Document = typeof(setmetatable({} :: Fields, Document))
 --[=[
 	Creates a document holding a frozen copy of `options.data`
 
-	@within Raw
+	@within Document
 	@param options DocumentOptions?
 	@return Document
 ]=]

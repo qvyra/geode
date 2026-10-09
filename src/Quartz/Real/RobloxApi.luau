@@ -16,9 +16,6 @@ export type RobloxApi = {
 
 local RobloxApi = {}
 
---[=[
-	The real globals. Only call this inside Roblox
-]=]
 function RobloxApi.live(): RobloxApi
 	return {
 		budgetTypes = {

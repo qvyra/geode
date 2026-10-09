@@ -42,6 +42,7 @@ end
 	A ProcessReceipt callback granting developer products to profiles of `store`. Assign it to
 	MarketplaceService.ProcessReceipt. Yields while saving
 
+	@function receipts
 	@within Geode
 	@param store ProfileStore
 	@param handlers { [number]: Handler } -- keyed by product id

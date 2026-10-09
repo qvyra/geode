@@ -29,13 +29,6 @@ local function resume(thread: thread)
 	end
 end
 
---[=[
-	Creates a clock frozen at `start` seconds
-
-	@within Testing
-	@param start number? -- defaults to 0
-	@return MockClock
-]=]
 function MockClock.new(start: number?): MockClock
 	local self: Fields = {
 		_now = start or 0,
@@ -61,10 +54,7 @@ function MockClock._schedule(self: MockClock, seconds: number, thread: thread?, 
 	})
 end
 
---[=[
-	Yields until the clock is `seconds` past now. Only works in a thread the clock started,
-	since nothing else would resume it
-]=]
+-- Only works inside a thread the clock started. Nothing else would ever resume it
 function MockClock.wait(self: MockClock, seconds: number)
 	local thread = coroutine.running()
 	if not self._owned[thread] then
@@ -84,10 +74,8 @@ function MockClock.delay(self: MockClock, seconds: number, fn: () -> ())
 	self:_schedule(seconds, nil, fn)
 end
 
---[=[
-	Resumes a thread parked with coroutine.yield on the next step, the way task.defer does.
-	From then on it counts as a clock thread and may wait
-]=]
+-- Like task.defer for a thread parked with coroutine.yield. It counts as a clock thread from
+-- then on, so it's allowed to wait
 function MockClock.resume(self: MockClock, thread: thread)
 	self._owned[thread] = true
 	self:_schedule(0, thread, nil)
@@ -113,9 +101,7 @@ function MockClock._popDue(self: MockClock, target: number): Sleeper?
 	return table.remove(self._sleepers, bestIndex)
 end
 
---[=[
-	Moves time forward, waking every sleeper that comes due, in order
-]=]
+-- wakes due sleepers in order
 function MockClock.advance(self: MockClock, seconds: number)
 	local target = self._now + seconds
 	while true do
@@ -133,19 +119,12 @@ function MockClock.advance(self: MockClock, seconds: number)
 	self._now = target
 end
 
---[=[
-	Number of threads and delayed calls still waiting
-]=]
 function MockClock.pending(self: MockClock): number
 	return #self._sleepers
 end
 
---[=[
-	Runs `fn` in a clock thread and jumps time from one wake up to the next until it returns.
-	Errors if `fn` ends up waiting on something the clock will never wake
-
-	@return T... -- what `fn` returned
-]=]
+-- Runs `fn` in a clock thread, jumping from one wake up to the next until it returns. Errors
+-- if `fn` waits on something the clock will never wake
 function MockClock.run<T...>(self: MockClock, fn: () -> T...): T...
 	local done = false
 	local results: { [number]: any, n: number }

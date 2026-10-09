@@ -60,9 +60,6 @@ local function copy(value: unknown): unknown
 	return result
 end
 
---[=[
-	A fresh record around `data`
-]=]
 function Record.new(data: unknown, now: number, schemaVersion: number): Record
 	return {
 		data = copy(data),
@@ -78,10 +75,6 @@ function Record.new(data: unknown, now: number, schemaVersion: number): Record
 	}
 end
 
---[=[
-	Whether a stored value has the record shape. Anything else in a profile key is treated as
-	corrupt and never overwritten
-]=]
 function Record.isRecord(value: unknown): boolean
 	if type(value) ~= "table" then
 		return false
@@ -96,25 +89,17 @@ function Record.isRecord(value: unknown): boolean
 		and (fields.lease == nil or type(fields.lease) == "table")
 end
 
---[=[
-	A deep copy, so a transform can edit it without touching what the DataStore handed over
-]=]
 function Record.copy(record: Record): Record
 	return copy(record) :: Record
 end
 
---[=[
-	Whether `owner` made the last write to `record`. When its lease is gone too, that write was a
-	release of ours that reported failure but landed, and nobody has touched the record since
-]=]
+-- Did `owner` make the last write? If its lease is gone as well, that write was a release
+-- of ours that reported failure but landed, and nobody has touched the record since
 function Record.lastWrittenBy(record: Record, owner: Owner): boolean
 	local last = record.meta.lastSession
 	return last ~= nil and last.session == owner.session and last.revision == record.meta.revision
 end
 
---[=[
-	Who holds the lease, from the point of view of `owner` at time `now`
-]=]
 function Record.leaseState(record: Record, now: number, timeout: number, owner: Owner): LeaseState
 	local lease = record.meta.lease
 	if lease == nil then

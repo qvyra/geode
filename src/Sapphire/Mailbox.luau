@@ -48,9 +48,7 @@ function Mailbox.isBuiltIn(op: string): boolean
 	return BUILT_IN[op] == true
 end
 
---[=[
-	The box as stored, or an empty one. Anything malformed reads as empty and is never written over
-]=]
+-- Stored box or an empty one. Malformed values read as empty and never get written over
 function Mailbox.read(value: unknown): Box?
 	if value == nil then
 		return { nextSeq = 1, items = {}, failed = {} }
@@ -69,18 +67,12 @@ function Mailbox.read(value: unknown): Box?
 	}
 end
 
---[=[
-	Appends a message to a box and returns it. The box is changed in place
-]=]
 function Mailbox.push(box: Box, op: string, args: { unknown }, now: number, id: string?): Box
 	table.insert(box.items, { seq = box.nextSeq, id = id, op = op, args = args, sentAt = now })
 	box.nextSeq += 1
 	return box
 end
 
---[=[
-	The sequence number of the message sent with `id`, if the box still holds it
-]=]
 function Mailbox.find(box: Box, id: string): number?
 	for _, message in box.items do
 		if message.id == id then
@@ -90,9 +82,6 @@ function Mailbox.find(box: Box, id: string): number?
 	return nil
 end
 
---[=[
-	Messages after `cursor`, oldest first
-]=]
 function Mailbox.pending(box: Box, cursor: number): { Message }
 	local pending = {}
 	for _, message in box.items do
@@ -106,10 +95,8 @@ function Mailbox.pending(box: Box, cursor: number): { Message }
 	return pending
 end
 
---[=[
-	Drops messages at or before `cursor` and archives the failed ones. Only call this with a cursor
-	that is already saved, so a crash can never lose a message that wasn't applied for good
-]=]
+-- Drops messages at or before `cursor` and archives the failures. Only pass a cursor that's
+-- already saved, otherwise a crash could lose a message that never applied for good
 function Mailbox.prune(box: Box, cursor: number, failures: { [number]: string }): Box
 	local kept = {}
 	local archived: { [number]: boolean } = {}
@@ -135,9 +122,6 @@ function Mailbox.prune(box: Box, cursor: number, failures: { [number]: string })
 	return box
 end
 
---[=[
-	Runs one message inside a transaction
-]=]
 function Mailbox.apply(tx: Transaction.Transaction, message: Message)
 	local args = message.args
 	local op = message.op

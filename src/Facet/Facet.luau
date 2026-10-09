@@ -279,6 +279,11 @@ type Fields = {
 	_maxDepth: number,
 }
 
+--[=[
+	@class FacetSet
+
+	Bundles, reactions and derived fields checked together. Made with `Geode.Raw.facets`
+]=]
 local FacetSet = {}
 FacetSet.__index = FacetSet
 
@@ -288,7 +293,7 @@ export type FacetSet = typeof(setmetatable({} :: Fields, FacetSet))
 	Validates bundles and reactions together and fixes their run order. Cycles, and reactions
 	that trigger themselves, error here rather than at runtime
 
-	@within Raw
+	@within FacetSet
 	@param options FacetSetOptions
 	@return FacetSet
 ]=]

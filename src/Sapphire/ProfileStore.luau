@@ -137,6 +137,12 @@ type Fields = {
 	_report: (message: string) -> (),
 }
 
+--[=[
+	@class ProfileStore
+
+	A store of session locked player profiles. Made with `Geode.Profile.store`, and reachable as
+	`PlayerData.store` from the beginner layer
+]=]
 local ProfileStore = {}
 ProfileStore.__index = ProfileStore
 

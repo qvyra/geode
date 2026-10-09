@@ -87,9 +87,6 @@ function MockRemotes._deliver(
 	end)
 end
 
---[=[
-	The server's end of the remote called `name`
-]=]
 function MockRemotes.server(self: MockRemotes, name: string): Types.ServerRemote
 	local channel = self:_channel(name)
 	return {
@@ -108,9 +105,6 @@ function MockRemotes.server(self: MockRemotes, name: string): Types.ServerRemote
 	}
 end
 
---[=[
-	The end of the remote called `name` that the client of `userId` holds
-]=]
 function MockRemotes.client(self: MockRemotes, userId: number, name: string): Types.ClientRemote
 	local channel = self:_channel(name)
 	local handlers = channel.clientHandlers[userId] or {}

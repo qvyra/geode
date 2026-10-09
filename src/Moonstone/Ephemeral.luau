@@ -22,6 +22,11 @@ export type QueueOptions = Options & {
 	invisibilityTimeout: number?,
 }
 
+--[=[
+	@class Ephemeral
+
+	MemoryStore hash maps, sorted maps and queues with validation and retries
+]=]
 local Ephemeral = {}
 
 local function resolve(options: Options?): (Types.Services, Scheduler.Scheduler)
@@ -61,6 +66,11 @@ type HashMapFields = {
 	_map: Types.HashMap,
 }
 
+--[=[
+	@class HashMap
+
+	A MemoryStore hash map from `Geode.Ephemeral.hashMap`
+]=]
 local HashMap = {}
 HashMap.__index = HashMap
 
@@ -182,6 +192,11 @@ type SortedMapFields = {
 	_map: Types.SortedMap,
 }
 
+--[=[
+	@class SortedMap
+
+	A MemoryStore sorted map from `Geode.Ephemeral.sortedMap`
+]=]
 local SortedMap = {}
 SortedMap.__index = SortedMap
 
@@ -315,6 +330,11 @@ type QueueFields = {
 	_queue: Types.Queue,
 }
 
+--[=[
+	@class Queue
+
+	A MemoryStore queue from `Geode.Ephemeral.queue`
+]=]
 local Queue = {}
 Queue.__index = Queue
 

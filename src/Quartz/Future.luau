@@ -31,9 +31,7 @@ function Future.isDone(self: Future): boolean
 	return self._done
 end
 
---[=[
-	Settles the future and wakes every waiter. Calling it again does nothing
-]=]
+-- settles once, later calls are ignored
 function Future.resolve(self: Future, value: unknown)
 	if self._done then
 		return
@@ -47,9 +45,6 @@ function Future.resolve(self: Future, value: unknown)
 	end
 end
 
---[=[
-	Returns the value, yielding until it arrives
-]=]
 function Future.await(self: Future): unknown
 	if not self._done then
 		table.insert(self._waiting, coroutine.running())

@@ -24,16 +24,10 @@ Tracker.__index = Tracker
 
 export type Tracker = typeof(setmetatable({} :: Fields, Tracker))
 
---[=[
-	What a request of `bytes` costs. Every request costs at least one kilobyte
-]=]
 function Throughput.kilobytes(bytes: number): number
 	return math.max(1, math.ceil(bytes / 1024))
 end
 
---[=[
-	A tracker for one key and one direction, with a limit in kilobytes per window
-]=]
 function Throughput.tracker(limit: number, window: number?): Tracker
 	return setmetatable(
 		{
@@ -54,11 +48,8 @@ function Tracker._expire(self: Tracker, now: number)
 	end
 end
 
---[=[
-	Whether `kilobytes` more fit in the window now. If not, also returns when the oldest use
-	leaves the window. A single request larger than the whole limit is let through once the
-	window is empty, since no amount of waiting would make room for it
-]=]
+-- When it doesn't fit, also returns when the oldest use leaves the window. A request bigger
+-- than the whole limit goes through once the window is empty, waiting longer would never help
 function Tracker.room(self: Tracker, now: number, kilobytes: number): (boolean, number?)
 	self:_expire(now)
 	if self._total == 0 or self._total + kilobytes <= self.limit then

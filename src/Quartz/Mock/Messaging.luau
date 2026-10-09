@@ -22,10 +22,6 @@ function MockMessaging.new(context: Context): MockMessaging
 	return setmetatable({ _context = context } :: Fields, MockMessaging)
 end
 
---[=[
-	Delivers to every live subscriber on every server, the sender included, after the universe's
-	messaging latency
-]=]
 function MockMessaging.publish(self: MockMessaging, topic: string, data: unknown): Types.Result<nil>
 	local err = Context.enter(self._context, SERVICE, topic, "publish", nil)
 	if err then

@@ -39,10 +39,8 @@ local function adopt(value: unknown, stack: { [unknown]: boolean }): unknown
 	return copy
 end
 
---[=[
-	Returns a deeply frozen version of `value`. Subtrees already in a tree are shared, everything
-	else is copied, so the caller's tables are never frozen or kept
-]=]
+-- Returns a deeply frozen version of `value`. Subtrees already in a tree are shared, everything
+-- else is copied, so the caller's tables are never frozen or kept
 function Tree.adopt(value: unknown): unknown
 	return adopt(value, {})
 end
@@ -81,10 +79,8 @@ local function setAt(node: unknown, path: Path, depth: number, value: unknown): 
 	return container
 end
 
---[=[
-	Returns a new root with `value` at `path`. Missing tables along the way are created. Writing
-	nil removes the key
-]=]
+-- Returns a new root with `value` at `path`. Missing tables along the way are created. Writing
+-- nil removes the key
 function Tree.set(root: unknown, path: Path, value: unknown): unknown
 	return setAt(root, path, 1, Tree.adopt(value))
 end
@@ -113,19 +109,14 @@ local function collect(old: unknown, new: unknown, path: Path, into: { DiffEntry
 	table.insert(into, { path = path, old = old, new = new })
 end
 
---[=[
-	Deep equality, short cutting on shared subtrees
-]=]
 function Tree.equal(a: unknown, b: unknown): boolean
 	local entries = {}
 	collect(a, b, {}, entries)
 	return #entries == 0
 end
 
---[=[
-	Every leaf that differs between two roots. Shared subtrees are skipped without walking them,
-	so cost scales with the change, not the data
-]=]
+-- Every leaf that differs between two roots. Shared subtrees are skipped without walking them,
+-- so cost scales with the change, not the data
 function Tree.diff(old: unknown, new: unknown): { DiffEntry }
 	local entries = {}
 	collect(old, new, {}, entries)

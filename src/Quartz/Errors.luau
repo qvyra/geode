@@ -64,18 +64,9 @@ Errors.THROTTLE_CODES = table.freeze({
 	remove = 306,
 } :: { [string]: number })
 
---[=[
-	Turns whatever a Roblox service threw into an `AdapterError`.
-
-	DataStore errors are matched by code or throttle name. MemoryStore and MessagingService
-	errors have no documented wording, so when nothing matches they count as a retryable
-	internal error. A DataStore error that matches nothing stays `unknown` and is never retried
-
-	@within Raw
-	@param raw unknown -- the value caught by pcall
-	@param service ErrorSource? -- which service threw it, defaults to "dataStore"
-	@return AdapterError
-]=]
+-- Raw service error -> AdapterError. DataStore errors match by code or throttle name.
+-- MS and messaging errors that match nothing count as retryable internal. An unmatched
+-- DataStore error stays `unknown` and isn't retried
 function Errors.classify(raw: unknown, service: Types.ErrorSource?): AdapterError
 	local message = tostring(raw)
 	local code = tonumber(string.match(message, "^(%d%d%d):"))

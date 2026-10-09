@@ -4,10 +4,7 @@ local Types = require("../Types")
 
 local RealClock = {}
 
---[=[
-	Clock backed by the task library and wall time. Wall time is used over os.clock because lease
-	timestamps get compared between servers
-]=]
+-- task library + wall time. Not os.clock, since lease timestamps get compared across servers
 function RealClock.new(): Types.Clock
 	local clock = {}
 

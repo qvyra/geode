@@ -27,6 +27,12 @@ type Fields = {
 	_observers: { PendingObserver },
 }
 
+--[=[
+	@class PlayerProfile
+
+	One player's data, usable from the moment they join. Until the profile loads, reads return the
+	template and writes are refused
+]=]
 local PlayerProfile = {}
 PlayerProfile.__index = PlayerProfile
 

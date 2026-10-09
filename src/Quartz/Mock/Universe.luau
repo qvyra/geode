@@ -55,20 +55,11 @@ export type MockServer = {
 	teleport: Types.Teleport,
 	remote: (name: string) -> Types.ServerRemote,
 
-	--[=[
-		What a client sees for a player on this server. Messages only arrive while that player is
-		on the server
-	]=]
+	-- the player must be on this server for messages to arrive
 	client: (self: MockServer, userId: number) -> Types.ClientServices,
 
-	--[=[
-		Adds a fault rule for calls made from this server
-	]=]
 	inject: (self: MockServer, rule: Faults.FaultRule) -> (),
-	--[=[
-		Caps a request budget for this server. Every matching call uses one, and the budget
-		refills at `refillPerSecond`. Budgets that were never set are unlimited
-	]=]
+	-- Each matching call uses one, refilled at `refillPerSecond`. Unset budgets are unlimited
 	setBudget: (
 		self: MockServer,
 		budgetType: Types.BudgetType,
@@ -76,26 +67,15 @@ export type MockServer = {
 		refillPerSecond: number?
 	) -> (),
 	clearFaults: (self: MockServer) -> (),
-	--[=[
-		Brings a player into this server. Join handlers each run in their own thread, so advance
-		the clock to let them finish
-	]=]
+	-- join handlers run in their own threads, advance the clock to let them finish
 	join: (self: MockServer, userId: number, name: string?) -> MockPlayers.MockPlayer,
 	leave: (self: MockServer, userId: number) -> (),
-	--[=[
-		Runs the ProcessReceipt callback like a purchase would and returns its decision. Yields
-	]=]
 	purchase: (self: MockServer, info: unknown) -> unknown,
-	--[=[
-		Kills the server. Its pending calls never return and its subscribers stop hearing
-		messages, like a process that died mid flight
-	]=]
+	-- pending calls never return and subscribers stop hearing messages, like a process that
+	-- died mid flight
 	crash: (self: MockServer) -> (),
 	isAlive: (self: MockServer) -> boolean,
-	--[=[
-		Starts a shutdown: every bindToClose callback runs in its own clock thread. Advance the
-		clock to let them finish
-	]=]
+	-- each bindToClose callback gets its own clock thread; advance the clock to let them finish
 	shutdown: (self: MockServer) -> (),
 }
 
@@ -114,13 +94,6 @@ export type Universe = typeof(setmetatable({} :: Fields, Universe))
 
 local DEFAULT_KEY_LENGTH = 50
 
---[=[
-	Creates an empty universe
-
-	@within Testing
-	@param options UniverseOptions?
-	@return Universe
-]=]
 function Universe.new(options: UniverseOptions?): Universe
 	local clock = options and options.clock or MockClock.new()
 	local limits = options and options.limits
@@ -161,10 +134,7 @@ local function asAdapter<T>(adapter: unknown): T
 	return adapter :: any
 end
 
---[=[
-	Adds a server to the universe. Adapters are created once per name, so faults and state
-	stick to them across calls
-]=]
+-- Adapters are made once per name, so faults and state stick to them across calls
 function Universe.server(self: Universe, options: ServerOptions?): MockServer
 	self._servers += 1
 	local context: Context.Context = {

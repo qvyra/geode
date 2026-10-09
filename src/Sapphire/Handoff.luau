@@ -67,9 +67,6 @@ function Handoff.new(
 	)
 end
 
---[=[
-	Sets what runs when another server asks for a key this server may hold
-]=]
 function Handoff.onRequest(
 	self: Handoff,
 	handler: (key: string, from: string, session: string?) -> ()
@@ -119,17 +116,12 @@ function Handoff._receive(self: Handoff, data: unknown)
 	end
 end
 
---[=[
-	Handles other message kinds on the same topic, e.g. rollbacks sent to the holder
-]=]
 function Handoff.on(self: Handoff, kind: string, handler: (message: Message) -> ())
 	self._handlers[kind] = handler
 end
 
---[=[
-	Sends a message of `kind` to every server listening on this store. False when handoff is off
-	or the publish failed
-]=]
+-- Sends a message of `kind` to every server listening on this store. False when handoff is off
+-- or the publish failed
 function Handoff.send(self: Handoff, kind: string, key: string, fields: { [string]: any }): boolean
 	if not self.enabled then
 		return false
@@ -141,10 +133,8 @@ function Handoff.send(self: Handoff, kind: string, key: string, fields: { [strin
 	return self._services.messaging:publish(self._topic, message).ok
 end
 
---[=[
-	Asks the holder of `key` to let it go. `session` pins the lease in question, so a late
-	request can't release a newer session of the same key
-]=]
+-- Asks the holder of `key` to let it go. `session` pins the lease in question, so a late
+-- request can't release a newer session of the same key
 function Handoff.request(self: Handoff, key: string, session: string)
 	if not self.enabled then
 		return
@@ -155,10 +145,7 @@ function Handoff.request(self: Handoff, key: string, session: string)
 	)
 end
 
---[=[
-	Tells waiting servers that this server released `key`. Best effort, since a failure only
-	costs speed
-]=]
+-- Tell waiting servers we let go of `key`. Best effort, a failure only costs speed
 function Handoff.announce(self: Handoff, key: string, revision: number, session: string)
 	if not self.enabled then
 		return
@@ -224,10 +211,8 @@ function Handoff._releasedBy(self: Handoff, key: string, holder: string): boolea
 	return (result.value :: { session: unknown }).session == holder
 end
 
---[=[
-	Waits up to `seconds` before the next acquire attempt on `key`. Returns early when the holder
-	announces its release, or when `checkKey` is set and the handoff key shows it did
-]=]
+-- Waits up to `seconds` before the next acquire attempt on `key`. Returns early when the holder
+-- announces its release, or when `checkKey` is set and the handoff key shows it did
 function Handoff.wait(
 	self: Handoff,
 	key: string,

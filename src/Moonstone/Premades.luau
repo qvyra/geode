@@ -97,6 +97,11 @@ type PresenceFields = {
 	_handle: Registry.Handle,
 }
 
+--[=[
+	@class Presence
+
+	Which server each player is on. Made with `Geode.Presence.new`
+]=]
 local Presence = {}
 Presence.__index = Presence
 
@@ -250,6 +255,11 @@ type MutexFields = {
 	_handle: Registry.Handle,
 }
 
+--[=[
+	@class Mutex
+
+	Locks shared by every server, with fencing tokens. Made with `Geode.Mutex.new`
+]=]
 local Mutex = {}
 Mutex.__index = Mutex
 
@@ -264,6 +274,11 @@ type LockFields = {
 	_expiresAt: number,
 }
 
+--[=[
+	@class Lock
+
+	A lock taken with `Mutex:acquire`
+]=]
 local Lock = {}
 Lock.__index = Lock
 
@@ -436,6 +451,11 @@ type CounterFields = {
 	_handle: Registry.Handle,
 }
 
+--[=[
+	@class Counter
+
+	Counters every server can change atomically. Made with `Geode.Counter.new`
+]=]
 local Counter = {}
 Counter.__index = Counter
 
@@ -538,6 +558,13 @@ type RateLimiterFields = {
 	_handle: Registry.Handle,
 }
 
+--[=[
+	A rate limit shared by every server. Made with `Geode.RateLimiter.new`
+
+	@class RateLimiter
+
+	A limit shared by every server. Made with `Geode.RateLimiter.new`
+]=]
 local RateLimiter = {}
 RateLimiter.__index = RateLimiter
 
@@ -643,6 +670,11 @@ type JobQueueFields = {
 	_handle: Registry.Handle,
 }
 
+--[=[
+	@class JobQueue
+
+	Jobs any server adds and one server at a time claims. Made with `Geode.JobQueue.new`
+]=]
 local JobQueue = {}
 JobQueue.__index = JobQueue
 
