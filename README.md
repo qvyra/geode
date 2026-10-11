@@ -65,7 +65,7 @@ DataStore is always the source of truth. MemoryStore and MessagingService only m
 - **Replication:** per path visibility, diffs batched once per frame, client atoms and rate limited remote ops
 - **History and tooling:** version history, rollback through the server holding a profile, an audit log and a telemetry bus
 
-The API reference lives in the Moonwave comments in `src`. [DECISIONS.md](DECISIONS.md) records why things are built the way they are, and `example/` holds a small game that uses most of it.
+The guides and the API reference are at [qvyra.github.io/geode](https://qvyra.github.io/geode). [DECISIONS.md](DECISIONS.md) records why things are built the way they are, and `example/` holds a small game that uses most of it.
 
 ## Development
 

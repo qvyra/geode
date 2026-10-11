@@ -1,0 +1,35 @@
+title = "Geode"
+gitRepoUrl = "https://github.com/qvyra/geode"
+gitSourceBranch = "main"
+changelog = true
+
+classOrder = [
+	{ section = "Start here", classes = ["Geode", "PlayerData", "PlayerProfile"] },
+	{ section = "Profiles", classes = ["Profile", "ProfileStore"] },
+	{ section = "Data and rules", classes = ["t", "Schema", "guard", "GuardSet", "FacetSet", "Document", "Transaction"] },
+	{ section = "Shared and ephemeral", classes = ["Shared", "SharedStore", "Ephemeral", "HashMap", "SortedMap", "Queue", "Presence", "Mutex", "Lock", "Counter", "RateLimiter", "JobQueue"] },
+	{ section = "Matchmaking and leaderboards", classes = ["Matchmaker", "Ranked", "Leaderboard"] },
+	{ section = "Replication", classes = ["Replicator", "GeodeClient"] },
+	{ section = "Tooling and testing", classes = ["Vein", "Testing", "Raw", "Scheduler"] },
+]
+
+[docusaurus]
+url = "https://qvyra.github.io"
+baseUrl = "/geode/"
+tagline = "A layered data framework for Roblox"
+
+[home]
+enabled = true
+includeReadme = false
+
+[[home.features]]
+title = "Player data in one call"
+description = "Profiles load on join, save on leave and survive server hops, with session leases that never let two servers write the same data."
+
+[[home.features]]
+title = "One write path"
+description = "Every change runs through one transaction pipeline, so guards, reactions, replication and history all see the same thing."
+
+[[home.features]]
+title = "Tested without Roblox"
+description = "Every service sits behind an adapter with an in-memory mock, virtual time and fault injection, and the same contracts run against live services."
