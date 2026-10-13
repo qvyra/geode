@@ -347,6 +347,27 @@ export type ClientServices = {
 	remote: (name: string) -> ClientRemote,
 }
 
+--// tooling bridge
+
+-- Answers one request from a Studio tool. Both sides cross a Bindable, so plain data only:
+-- arrays without holes, string-keyed tables
+export type BridgeHandler = (request: unknown) -> unknown
+
+export type BridgeConnection = {
+	publish: (self: BridgeConnection, message: unknown) -> (),
+	close: (self: BridgeConnection) -> (),
+}
+
+-- Where Studio tools reach a running game. Studio only
+export type ToolingBridge = {
+	isAvailable: (self: ToolingBridge) -> boolean,
+	open: (
+		self: ToolingBridge,
+		attributes: { [string]: string | number },
+		handler: BridgeHandler
+	) -> BridgeConnection,
+}
+
 export type Services = {
 	jobId: string,
 	placeId: number,
@@ -367,6 +388,7 @@ export type Services = {
 	teleport: Teleport,
 	-- created on first use, a game that never replicates has no remotes
 	remote: (name: string) -> ServerRemote,
+	bridge: ToolingBridge,
 }
 
 return nil

@@ -4,6 +4,7 @@
 -- `Services` value instead, which is how the same code runs on mocks in Lune
 
 local Errors = require("../Errors")
+local RealBridge = require("./Bridge")
 local RealClock = require("./Clock")
 local RealDataStore = require("./DataStore")
 local RealHashMap = require("./HashMap")
@@ -25,6 +26,7 @@ export type Roblox = {
 	playersService: Players,
 	marketplaceService: MarketplaceService,
 	replicatedStorage: Instance,
+	serverStorage: Instance,
 	runService: RunService,
 	bindToClose: (callback: () -> ()) -> (),
 	jobId: string,
@@ -181,6 +183,7 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 		end,
 		messaging = asAdapter(RealMessaging.new(roblox.messagingService)),
 		teleport = asAdapter(RealTeleport.new(roblox.teleportService, roblox.api)),
+		bridge = RealBridge.new(roblox.serverStorage, roblox.runService),
 		remote = function(name: string): Types.ServerRemote
 			return memo(`remote\0{name}`, function()
 				return RealRemotes.server(roblox.replicatedStorage, roblox.playersService, name)
@@ -220,6 +223,7 @@ function RealServices.live(): Types.Services
 			playersService = game:GetService("Players"),
 			marketplaceService = game:GetService("MarketplaceService"),
 			replicatedStorage = game:GetService("ReplicatedStorage"),
+			serverStorage = game:GetService("ServerStorage"),
 			runService = game:GetService("RunService"),
 			bindToClose = function(callback: () -> ())
 				game:BindToClose(callback)

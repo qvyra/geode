@@ -12,6 +12,7 @@ local MockHashMap = require("./HashMap")
 local MockMessaging = require("./Messaging")
 local MockOrderedDataStore = require("./OrderedDataStore")
 local MockQueue = require("./Queue")
+local MockBridge = require("./Bridge")
 local MockPlayers = require("./Players")
 local MockRemotes = require("./Remotes")
 local MockSortedMap = require("./SortedMap")
@@ -54,6 +55,10 @@ export type MockServer = {
 	messaging: Types.Messaging,
 	teleport: Types.Teleport,
 	remote: (name: string) -> Types.ServerRemote,
+	-- really a MockBridge, tests reach it through `tooling`
+	bridge: Types.ToolingBridge,
+	-- same bridge plus test controls (request, messages, attributes)
+	tooling: MockBridge.MockBridge,
 
 	-- the player must be on this server for messages to arrive
 	client: (self: MockServer, userId: number) -> Types.ClientServices,
@@ -152,6 +157,7 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 		return players:isPresent(userId)
 	end)
 	local studio: boolean = if options and options.studio then true else false
+	local bridge = MockBridge.new(studio)
 
 	local cache: { [string]: unknown } = {}
 	local function memo<T>(id: string, make: () -> T): T
@@ -213,6 +219,8 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 		end,
 		messaging = asAdapter(MockMessaging.new(context)),
 		teleport = asAdapter(MockTeleport.new(context)),
+		bridge = asAdapter(bridge),
+		tooling = bridge,
 		remote = function(name: string): Types.ServerRemote
 			return memo(`remote\0{name}`, function()
 				return remotes:server(name)
