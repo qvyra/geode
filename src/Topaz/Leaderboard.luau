@@ -5,6 +5,7 @@
 -- after the window closes. Top N reads are cached so a busy lobby doesn't burn quota
 
 local RealServices = require("../Quartz/Real/Services")
+local VeinBridge = require("../Vein/Bridge")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
 local Types = require("../Quartz/Types")
@@ -98,6 +99,7 @@ end
 local function new(name: string, options: Options?): Leaderboard
 	assert(type(name) == "string" and name ~= "", "a leaderboard needs a name")
 	local services = options and options.services or RealServices.live()
+	VeinBridge.ensure(services)
 	return setmetatable(
 		{
 			name = name,

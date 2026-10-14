@@ -8,6 +8,7 @@
 local Path = require("../Matrix/Path")
 local Profile = require("../Sapphire/Profile")
 local Registry = require("../Vein/Registry")
+local VeinBridge = require("../Vein/Bridge")
 local Tree = require("../Matrix/Tree")
 local Types = require("../Quartz/Types")
 
@@ -112,6 +113,7 @@ function Replicator.new(
 	services: Types.Services,
 	reportError: ((message: string) -> ())?
 ): Replicator
+	VeinBridge.ensure(services)
 	local self = setmetatable(
 		{
 			_services = services,

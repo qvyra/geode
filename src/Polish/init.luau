@@ -11,6 +11,7 @@ local Receipts = require("./Sapphire/Receipts")
 local RealServices = require("./Quartz/Real/Services")
 local Scheduler = require("./Quartz/Scheduler")
 local Types = require("./Quartz/Types")
+local Vein = require("./Vein")
 
 export type SetupOptions = {
 	-- services every store uses, live Roblox services by default
@@ -18,6 +19,8 @@ export type SetupOptions = {
 	-- where data lives in Studio (see ProfileStore), "mock" by default
 	studio: ProfileStore.StudioMode?,
 	reportError: ((message: string) -> ())?,
+	-- Let Studio development tools read the running game. On by default, Studio only
+	studioBridge: boolean?,
 }
 
 type Defaults = {
@@ -62,6 +65,7 @@ function Polish.setup(options: SetupOptions)
 			"Geode.setup was called after a store was made. Stores that already exist keep their old defaults"
 		)
 	end
+	Vein.setBridgeEnabled(options.studioBridge ~= false)
 	local services = options.services
 	defaults = {
 		services = services,
@@ -162,6 +166,7 @@ function Polish._reset()
 	storesMade = 0
 	warnedLateSetup = false
 	receiptsSet = false
+	Vein.setBridgeEnabled(true)
 end
 
 return Polish

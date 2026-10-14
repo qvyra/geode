@@ -10,6 +10,7 @@ local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
 local Path = require("../Matrix/Path")
 local RealServices = require("../Quartz/Real/Services")
+local VeinBridge = require("../Vein/Bridge")
 local Reconcile = require("../Sapphire/Reconcile")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
@@ -135,6 +136,7 @@ function SharedStore.new(options: Options): SharedStore
 		warn(message)
 	end
 	local services = options.services or RealServices.live()
+	VeinBridge.ensure(services)
 	local scope = options.scope or "global"
 
 	if options.schema then

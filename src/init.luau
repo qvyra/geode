@@ -26,6 +26,7 @@ local Sapphire = require("@self/Sapphire")
 local Scheduler = require("@self/Quartz/Scheduler")
 local Topaz = require("@self/Topaz")
 local Transaction = require("@self/Matrix/Transaction")
+local Version = require("@self/Version")
 
 export type Services = QuartzTypes.Services
 export type PlayerData = PlayerDataModule.PlayerData
@@ -72,7 +73,7 @@ local Geode = {}
 
 	Semantic version of the running Geode build
 ]=]
-Geode.version = "0.0.0"
+Geode.version = Version
 
 -- Raw gathers the low level pieces of every layer. Quartz can't see the layers above it, so
 -- the table gets built here

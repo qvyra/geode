@@ -7,6 +7,7 @@
 
 local Premades = require("../Moonstone/Premades")
 local RealServices = require("../Quartz/Real/Services")
+local VeinBridge = require("../Vein/Bridge")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
 local Types = require("../Quartz/Types")
@@ -119,6 +120,7 @@ function Matchmaker.new(options: Options): Matchmaker
 		"matchSize must be a whole number of at least 2"
 	)
 	local services = options.services or RealServices.live()
+	VeinBridge.ensure(services)
 	local scheduler = options.scheduler
 		or Scheduler.new({ clock = services.clock, budget = services.budget })
 	local mode = options.mode or "default"

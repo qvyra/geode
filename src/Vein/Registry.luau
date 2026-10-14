@@ -5,10 +5,17 @@
 
 export type Describe = () -> { [string]: unknown }
 
+-- what tooling can read from a store beyond its details: open keys and the data under one
+export type Tooling = {
+	keys: () -> { string },
+	inspect: (key: string) -> unknown,
+}
+
 export type Entry = {
 	kind: string,
 	name: string,
 	describe: Describe?,
+	tooling: Tooling?,
 }
 
 export type Handle = {
@@ -23,8 +30,13 @@ local entries: { Entry } = {}
 
 -- `describe` runs whenever tooling asks for details, so it can report live numbers like an
 -- estimated quota cost
-function Registry.register(kind: string, name: string, describe: Describe?): Handle
-	local entry: Entry = { kind = kind, name = name, describe = describe }
+function Registry.register(
+	kind: string,
+	name: string,
+	describe: Describe?,
+	tooling: Tooling?
+): Handle
+	local entry: Entry = { kind = kind, name = name, describe = describe, tooling = tooling }
 	table.insert(entries, entry)
 	Bus.publish("registered", { kind = kind, name = name })
 	return {

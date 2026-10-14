@@ -515,6 +515,16 @@ interface AuditBatch {
 	entries: AuditEntry[];
 }
 
+interface ProfileInspection {
+	/** The data in stored form, the way it crosses a Bindable */
+	data: unknown;
+	/** Path to codec name for every codec value in `data` */
+	codecs: Record<string, string>;
+	revision: number;
+	state: ProfileState;
+	session: string;
+}
+
 interface ProfileStore {
 	readonly name: string;
 	readonly scope: string;
@@ -523,6 +533,8 @@ interface ProfileStore {
 	load(key: string, options?: { userId?: number; userIds?: number[] }): LoadResult;
 	get(key: string): Profile | undefined;
 	openCount(): number;
+	openKeys(): string[];
+	inspect(key: string): ProfileInspection | undefined;
 	releaseAll(): number;
 	keyForUser(userId: number): string;
 	mail(key: string, op: string, ...args: unknown[]): Result<number>;
@@ -581,6 +593,8 @@ interface SetupOptions {
 	services?: Services;
 	studio?: StudioMode;
 	reportError?: (message: string) => void;
+	/** Let Studio development tools read the running game. On by default, Studio only */
+	studioBridge?: boolean;
 }
 
 // Shared stores
@@ -1022,6 +1036,7 @@ interface Geode {
 	readonly Vein: {
 		readonly VERSION: number;
 		snapshot(this: void): VeinSnapshot;
+		setBridgeEnabled(this: void, on: boolean): void;
 		subscribe(
 			this: void,
 			callback: (message: Readonly<Record<string, unknown>>) => void,

@@ -4,6 +4,7 @@
 -- Live values may hold Roblox datatypes. Stored values are plain JSON shaped data
 
 local Issues = require("./Issues")
+local Path = require("../Matrix/Path")
 local Schema = require("./Schema")
 local Storable = require("./Storable")
 
@@ -374,6 +375,47 @@ end
 	@within Schema
 	@return (boolean, unknown | ValidationResult) -- true and the value, or false and the issues
 ]=]
+local function collectCodecs(
+	schema: Schema,
+	encoded: unknown,
+	path: { string | number },
+	into: { [string]: string }
+)
+	local kind = schema.kind
+	if kind == "codec" and encoded ~= nil then
+		into[Path.format(path)] = (schema.codec :: Schema.Codec).name
+	elseif kind == "optional" then
+		collectCodecs(schema.item :: Schema, encoded, path, into)
+	elseif type(encoded) ~= "table" then
+		return
+	elseif kind == "struct" then
+		for name, field in schema.fields :: { [string]: Schema } do
+			local child = table.clone(path)
+			table.insert(child, name)
+			collectCodecs(field, (encoded :: { [string]: unknown })[name], child, into)
+		end
+	elseif kind == "array" or kind == "map" then
+		for key, value in encoded :: { [unknown]: unknown } do
+			local child = table.clone(path)
+			table.insert(child, key :: string | number)
+			collectCodecs(schema.item :: Schema, value, child, into)
+		end
+	end
+end
+
+--[=[
+	Where codec values sit in a stored value, as a map from path to codec name. Tools use it to
+	show stored data with its datatypes. Values under a union aren't listed, since the stored form
+	alone doesn't say which option they took
+
+	@within Schema
+]=]
+function Validate.codecPaths(schema: Schema, encoded: unknown): { [string]: string }
+	local found = {}
+	collectCodecs(schema, encoded, {}, found)
+	return found
+end
+
 function Validate.decode(schema: Schema, encoded: unknown, options: Options?): (boolean, unknown)
 	local issues = Issues.new(options and options.limit)
 	local value = decode(schema, encoded, options and options.root or "data", issues)

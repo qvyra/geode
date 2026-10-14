@@ -8,6 +8,7 @@ local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
 local Handoff = require("./Handoff")
 local Bus = require("../Vein/Bus")
+local VeinBridge = require("../Vein/Bridge")
 local VeinRegistry = require("../Vein/Registry")
 local Mailbox = require("./Mailbox")
 local Profile = require("./Profile")
@@ -85,6 +86,15 @@ export type LoadErrorKind =
 	| "alreadyLoaded"
 	| "newerData"
 	| "migrationFailed"
+
+export type Inspection = {
+	data: unknown,
+	-- path -> codec name, for every codec value in `data`
+	codecs: { [string]: string },
+	revision: number,
+	state: Profile.State,
+	session: string,
+}
 
 export type LoadResult =
 	-- `erasedAt` is set when the stored data had been erased and the profile starts over from the
@@ -202,6 +212,7 @@ local function studioServices(
 	mixed.players = services.players
 	mixed.marketplace = services.marketplace
 	mixed.lifecycle = services.lifecycle
+	mixed.bridge = services.bridge
 	return mixed, resolvedScope
 end
 
@@ -333,7 +344,15 @@ function ProfileStore.new(options: Options): ProfileStore
 	end)
 	store._veinHandle = VeinRegistry.register("profileStore", options.name, function()
 		return { scope = scope, open = store:openCount() }
-	end)
+	end, {
+		keys = function(): { string }
+			return store:openKeys()
+		end,
+		inspect = function(key: string): unknown
+			return store:inspect(key)
+		end,
+	})
+	VeinBridge.ensure(givenServices)
 	-- The registry holds stores loosely typed, see Registry.Erasable
 	Registry.add(store :: any, givenServices)
 	if options.bindToClose ~= false then
@@ -1468,6 +1487,46 @@ end
 ]=]
 function ProfileStore.get(self: ProfileStore, key: string): Profile.Profile?
 	return self._open[key]
+end
+
+--[=[
+	The keys of every profile this server holds open in the store, sorted
+
+	@within ProfileStore
+]=]
+function ProfileStore.openKeys(self: ProfileStore): { string }
+	local keys = {}
+	for key in self._open do
+		table.insert(keys, key)
+	end
+	table.sort(keys)
+	return keys
+end
+
+--[=[
+	What tooling may read about a profile open on this server: its data in stored form, where its
+	codec values sit, its revision, state and session. The stored form crosses a Bindable intact,
+	where live datatypes and some tables would not. Nil when the key isn't open here
+
+	@within ProfileStore
+]=]
+function ProfileStore.inspect(self: ProfileStore, key: string): Inspection?
+	local open: unknown = self._open[key]
+	if open == nil then
+		return nil
+	end
+	local profile = self._open[key]
+	local snapshot = profile:snapshot()
+	local schema = self._schema
+	local stored = if schema then Validate.encode(schema, snapshot) else snapshot
+	local codecs: { [string]: string } = if schema then Validate.codecPaths(schema, stored) else {}
+	return {
+		data = stored,
+		codecs = codecs,
+		revision = profile:revision(),
+		state = profile:state(),
+		session = profile:sessionId(),
+	}
 end
 
 --[=[

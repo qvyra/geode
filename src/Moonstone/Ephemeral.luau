@@ -5,6 +5,7 @@
 -- retry with backoff, and each structure registers itself for tooling
 
 local RealServices = require("../Quartz/Real/Services")
+local VeinBridge = require("../Vein/Bridge")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
 local Schema = require("../Obsidian/Schema")
@@ -31,6 +32,7 @@ local Ephemeral = {}
 
 local function resolve(options: Options?): (Types.Services, Scheduler.Scheduler)
 	local services = options and options.services or RealServices.live()
+	VeinBridge.ensure(services)
 	local scheduler = options and options.scheduler
 		or Scheduler.new({ clock = services.clock, budget = services.budget })
 	return services, scheduler
