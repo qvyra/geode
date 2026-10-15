@@ -12,16 +12,10 @@ With [Wally](https://wally.run), add Geode to `wally.toml` and run `wally instal
 
 ```toml
 [dependencies]
-Geode = "qvyra/geode@0.3.0"
+Geode = "qvyra/geode@0.4.0"
 ```
 
-With roblox-ts, install the package from npm:
-
-```sh
-npm install @rbxts/geode
-```
-
-The npm package ships hand-written typings for the whole API, so TypeScript code gets the same names and shapes as Luau code.
+A roblox-ts package is coming. Its typings already cover the whole API with the same names and shapes as Luau.
 
 ## Quick start
 
@@ -40,22 +34,6 @@ local PlayerData = Geode.players({
 PlayerData:onLoaded(function(player, profile)
 	profile:increment("coins", 100)
 end)
-```
-
-The same in TypeScript:
-
-```ts
-import Geode from "@rbxts/geode";
-
-const playerData = Geode.players({
-	name: "PlayerData",
-	template: { coins: 0, xp: 0, level: 1, inventory: [] },
-	replicate: { coins: "owner", level: "public" },
-});
-
-playerData.onLoaded((player, profile) => {
-	profile.increment("coins", 100);
-});
 ```
 
 `replicate` sends `coins` to its owner and `level` to everyone. Every other path stays on the server. On the client, those paths arrive as atoms:

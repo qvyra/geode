@@ -34,14 +34,16 @@ end)
 
 ## Install
 
-With [Wally](https://wally.run), add Geode to `wally.toml`:
+With [Wally](https://wally.run), add Geode to `wally.toml` and run `wally install`:
 
 ```toml
 [dependencies]
-Geode = "qvyra/geode@0.3.0"
+Geode = "qvyra/geode@0.4.0"
 ```
 
-With roblox-ts, install `@rbxts/geode` from npm. The package ships hand-written typings for the whole API.
+A roblox-ts package is coming. The typings for the whole API already live in `types/`.
+
+<!-- TODO: request the @rbxts/geode name from the roblox-ts organization before the first npm release -->
 
 ## The idea
 

@@ -1,6 +1,6 @@
 {
 	"name": "@rbxts/geode",
-	"version": "0.0.0",
+	"version": "0.4.0",
 	"description": "Layered data framework for Roblox: DataStore, MemoryStore and MessagingService behind one API",
 	"license": "MIT",
 	"type": "module",
@@ -40,8 +40,8 @@
 		"cspell": "10.3.6",
 		"eslint": "10.12.0",
 		"moonwave": "1.4.2",
-		"prettier": "3.9.9",
+		"prettier": "3.9.10",
 		"typescript": "6.0.3",
-		"typescript-eslint": "8.71.1"
+		"typescript-eslint": "8.71.2"
 	}
 }
