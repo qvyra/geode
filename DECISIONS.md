@@ -386,3 +386,17 @@ The live checks needed Studio, a Rojo connection and someone pressing Run, which
 In CI it runs on pull requests from the repository and on demand, never on pull requests from forks, with read-only repository access and the key in a secret.
 
 **Commits:** 7b06ab1, e5ad2ce, a3d448a
+
+## 31. Studio tools read the game through a bridge in ServerStorage
+
+**Date:** 2026-10-15
+
+**Context:** Studio development tools, such as an inspector plugin, need to see what Geode is doing in a playtest. A plugin runs in its own VM, so requiring the game's Geode would give it a fresh, empty copy, and reaching into internals would break the rule that tools only use public surfaces.
+
+**Options:** have the plugin require Geode's modules and read their state, or have Geode expose a versioned, read only bridge that the plugin finds in the DataModel.
+
+**Chosen:** the bridge. The first store made in a Studio playtest creates `ServerStorage.GeodeVein`, through a Quartz adapter like every other Roblox service, with a Request BindableFunction and a Telemetry BindableEvent. Its folder carries the bridge and Geode versions, so a tool can tell when either side is too old before reading anything.
+
+A Bindable copies tables and mangles mixed or sparse ones, so profile answers send the stored form with the path of each codec value, and the tool decodes them for display. Nothing outside Studio ever creates the bridge, and `Geode.setup({ studioBridge = false })` keeps it shut.
+
+**Commits:** 6a44bdb, ddb804b
