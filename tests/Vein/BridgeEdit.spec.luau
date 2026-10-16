@@ -207,6 +207,30 @@ return function(spec: Spec.Api)
 			expect(stored.meta.lease).toBeNil()
 		end)
 
+		it("releases a profile nobody holds even when a guard refuses the edit", function()
+			fresh()
+			local universe = Universe.new()
+			local server = universe:server({ jobId = "studio", studio = true })
+			local store = Helpers.store(server, {
+				studio = "real",
+				guards = { Guards.range("coins", { max = 100 }) },
+			}) :: Any
+			local answer = request(universe, server, {
+				kind = "apply",
+				store = Helpers.STORE,
+				key = "free",
+				op = "increment",
+				args = list("coins", 1000),
+				note = "too much",
+			})
+			expect(answer.ok).toBe(false)
+			expect(answer.error.kind).toBe("rejected")
+			expect(store:get("free")).toBeNil()
+			local stored = Helpers.stored(universe, "free") :: Any
+			expect(stored.meta.lease).toBeNil()
+			expect(stored.data.coins).toBe(0)
+		end)
+
 		it("won't reach a live holder from Studio on live data", function()
 			fresh()
 			local universe = Universe.new()
