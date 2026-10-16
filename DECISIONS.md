@@ -420,3 +420,13 @@ Tools showing guard events need to know who broke what and how. The message used
 The values are captured while the guard runs, because a rejected draft is gone by the time listeners hear about it. In the message they go out in stored form, so codec values survive a Bindable, and anything over 1 KB encoded is left out with only its size. A value that breaks its schema is sent as it is, since encoding it could produce garbage. None of this is built unless something listens to the bus, so games without tooling pay nothing extra.
 
 **Commits:** 58546b8, 201dad5
+
+## 34. Tools pick features from hello, not from version numbers
+
+**Date:** 2026-10-16
+
+The bridge is going to grow: writes, schema lookups, more telemetry. If tools compared version numbers to guess what a game supports, every new request would need a version bump and every tool a table of which version added what. Instead `hello` lists the bridge's features (`read`, `telemetry`, `guards`, more as they land), and a tool shows whatever the game offers.
+
+A protocol range stays, but only for what a feature list can't express: a change to a request or answer that old tools would misread. The folder carries `BridgeVersion` and `BridgeMinVersion`, and a tool can send its own protocol with `hello` to be turned away with a reason that says which side to update.
+
+**Commits:** 227adb0
