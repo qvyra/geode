@@ -194,4 +194,33 @@ return function(spec: Spec.Api)
 			expect(text).toBe("home")
 		end)
 	end)
+
+	describe("Validate.at", function()
+		local schema = t.struct({
+			coins = t.number(),
+			inventory = t.array(t.struct({ position = codec.Vector3 })),
+			pets = t.map(t.string()),
+			title = t.optional(t.string()),
+		})
+
+		it("walks struct fields, list items, map values and optionals", function()
+			local node, depth = Validate.at(schema, { "inventory", 2, "position" })
+			expect(node and node.kind).toBe("codec")
+			expect(depth).toBe(3)
+			local pet, petDepth = Validate.at(schema, { "pets", "rex" })
+			expect(pet and pet.kind).toBe("string")
+			expect(petDepth).toBe(2)
+			local title = Validate.at(schema, { "title" })
+			expect(title and title.kind).toBe("optional")
+		end)
+
+		it("stops at undeclared fields and inside values it doesn't look into", function()
+			local missing, depth = Validate.at(schema, { "nope" })
+			expect(missing).toBeNil()
+			expect(depth).toBe(1)
+			local leaf, leafDepth = Validate.at(schema, { "inventory", 1, "position", "X" })
+			expect(leaf and leaf.kind).toBe("codec")
+			expect(leafDepth).toBe(3)
+		end)
+	end)
 end

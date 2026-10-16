@@ -404,6 +404,41 @@ local function collectCodecs(
 end
 
 --[=[
+	The schema node at `path` and how many segments of it the schema describes. A path into an
+	undeclared struct field stops there, and so does one into a value the schema doesn't look
+	inside, like a codec or json value
+
+	@within Schema
+]=]
+function Validate.at(root: Schema, path: { string | number }): (Schema?, number)
+	local node = root
+	local depth = 0
+	while depth < #path do
+		if node.kind == "optional" then
+			node = node.item :: Schema
+			continue
+		end
+		local segment = path[depth + 1]
+		if node.kind == "struct" then
+			local field = (node.fields :: { [string]: Schema })[segment :: string]
+			if field == nil then
+				if node.extra then
+					return nil, depth
+				end
+				return nil, depth + 1
+			end
+			node = field
+		elseif node.kind == "array" or node.kind == "map" then
+			node = node.item :: Schema
+		else
+			return node, depth
+		end
+		depth += 1
+	end
+	return node, depth
+end
+
+--[=[
 	Where codec values sit in a stored value, as a map from path to codec name. Tools use it to
 	show stored data with its datatypes. Values under a union aren't listed, since the stored form
 	alone doesn't say which option they took
