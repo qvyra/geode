@@ -129,6 +129,10 @@ local function toSet(list: { unknown }?): { [string]: boolean }?
 	return set
 end
 
+-- Rate guards limit what players do. Reactions and bundles follow from a change that was already
+-- counted, and plugin edits come from a developer's tooling, so none of them count
+local RATE_SKIPS: { Transaction.SourceKind } = { "reaction", "bundle", "plugin" }
+
 local function make(
 	kind: GuardKind,
 	path: Path?,
@@ -336,7 +340,7 @@ function Guards.rate(
 		limit.count >= 1 and limit.window > 0,
 		"a rate guard needs a count of at least 1 and a window"
 	)
-	return make("rate", parsed, options, { "reaction", "bundle" }, function(ctx, state)
+	return make("rate", parsed, options, RATE_SKIPS, function(ctx, state)
 		if not touched(ctx, parsed) then
 			return {}
 		end
@@ -385,7 +389,7 @@ function Guards.rateValue(
 		return after - before
 	end
 
-	return make("rateValue", parsed, options, { "reaction", "bundle" }, function(ctx, state)
+	return make("rateValue", parsed, options, RATE_SKIPS, function(ctx, state)
 		if not touched(ctx, parsed) then
 			return {}
 		end
