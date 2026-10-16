@@ -261,9 +261,16 @@ return function(spec: Spec.Api)
 			expect(profile:get("coins")).toBe(4)
 		end)
 
-		it("report a holder that never answers", function()
+		it("report an unanswered edit as unknown, with the saved revision", function()
 			fresh()
 			local universe = Universe.new({ messagingLatency = 0.2 })
+			local holderStore =
+				Helpers.store(universe:server({ jobId = "holder" }), { handoff = true })
+			local profile = opened(universe, holderStore, "p1")
+			profile:increment("coins", 2)
+			universe.clock:run(function()
+				return profile:save()
+			end)
 			local asking =
 				Helpers.store(universe:server({ jobId = "asking" }), { handoff = true }) :: Any
 			local answer = universe.clock:run(function()
@@ -276,7 +283,43 @@ return function(spec: Spec.Api)
 				)
 			end)
 			expect(answer.ok).toBe(false)
-			expect(answer.error.kind).toBe("noAnswer")
+			expect(answer.error.kind).toBe("unknown")
+			local stored = Helpers.stored(universe, "p1") :: Any
+			expect(answer.revision).toBe(stored.meta.revision)
+		end)
+
+		it("apply an edit id once, and answer a repeat the same way", function()
+			fresh()
+			local universe = Universe.new()
+			local holderStore =
+				Helpers.store(universe:server({ jobId = "holder" }), { handoff = true }) :: Any
+			local profile = opened(universe, holderStore, "p1")
+			local message = {
+				key = "p1",
+				to = "holder",
+				id = "edit-1",
+				name = "increment",
+				args = list("coins", 4),
+				note = "test",
+			}
+			universe.clock:run(function()
+				holderStore:_editRequested(message)
+				holderStore:_editRequested(table.clone(message))
+			end)
+			expect(profile:get("coins")).toBe(4)
+			expect(holderStore._appliedEdits["edit-1"].ok).toBe(true)
+
+			universe.clock:run(function()
+				holderStore:_editRequested({
+					key = "p1",
+					to = "holder",
+					id = "edit-2",
+					name = "increment",
+					args = list("coins", 1),
+					note = "test",
+				})
+			end)
+			expect(profile:get("coins")).toBe(5)
 		end)
 	end)
 end

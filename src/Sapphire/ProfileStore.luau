@@ -154,6 +154,10 @@ type Fields = {
 	-- rollbacks sent to another server and waiting on its answer, by request id
 	_pendingRollbacks: { [string]: { thread: thread, done: boolean, ok: boolean, message: string? } },
 	_pendingEdits: { [string]: { thread: thread, done: boolean, answer: EditResult? } },
+	-- Answers to edits this server applied for other servers, by edit id, oldest first in
+	-- _appliedOrder. A repeat of the same id gets the same answer instead of a second edit
+	_appliedEdits: { [string]: EditResult },
+	_appliedOrder: { string },
 	_veinHandle: VeinRegistry.Handle,
 	_report: (message: string) -> (),
 }
@@ -339,6 +343,8 @@ function ProfileStore.new(options: Options): ProfileStore
 		_handoff = Handoff.new(services, options.name, options.handoff ~= false, report),
 		_pendingRollbacks = {},
 		_pendingEdits = {},
+		_appliedEdits = {},
+		_appliedOrder = {},
 		_audit = if options.audit then services.dataStore(`{options.name}_audit`, scope) else nil,
 		_veinHandle = nil :: any,
 		_report = report,
@@ -1166,6 +1172,8 @@ function ProfileStore.version(
 end
 
 local ROLLBACK_ANSWER_TIMEOUT = 10
+-- edit ids a holder remembers, so a message that arrives twice is only applied once
+local APPLIED_EDITS_KEPT = 200
 
 local function rollbackFailure(message: string): RollbackResult
 	return { ok = false, message = message, via = nil }
@@ -1524,10 +1532,15 @@ function ProfileStore._editThroughHolder(
 	coroutine.yield()
 	local answer = pending.answer
 	if answer == nil then
-		return editFailure(
-			"noAnswer",
-			`server {holder} holds profile {key} but didn't answer the edit`
+		-- The edit may still have landed on the holder, so this isn't a failure. The last saved
+		-- revision lets the tool look again before trying a second time
+		local result = editFailure(
+			"unknown",
+			`server {holder} holds profile {key} but didn't answer in time, `
+				.. "the edit may or may not have been applied"
 		)
+		result.revision = self:_savedRevision(key)
+		return result
 	end
 	if answer.ok then
 		answer.via = "holder"
@@ -1547,6 +1560,12 @@ function ProfileStore._editRequested(self: ProfileStore, message: Handoff.Messag
 			error = result.error,
 		})
 	end
+	local id = message.id :: string
+	local earlier = self._appliedEdits[id]
+	if earlier then
+		answer(earlier)
+		return
+	end
 	local note = if type(message.note) == "string" then message.note else ""
 	local open: unknown = self._open[message.key]
 	if open == nil then
@@ -1560,7 +1579,29 @@ function ProfileStore._editRequested(self: ProfileStore, message: Handoff.Messag
 		return
 	end
 	local args = if type(message.args) == "table" then message.args :: { unknown } else {}
-	answer(self:_editHere(message.key, message.name :: string, args, note))
+	local result = self:_editHere(message.key, message.name :: string, args, note)
+	self._appliedEdits[id] = result
+	table.insert(self._appliedOrder, id)
+	if #self._appliedOrder > APPLIED_EDITS_KEPT then
+		self._appliedEdits[table.remove(self._appliedOrder, 1) :: string] = nil
+	end
+	answer(result)
+end
+
+-- The revision of the last save of `key`, or nil when it can't be read
+function ProfileStore._savedRevision(self: ProfileStore, key: string): number?
+	local peek = self._scheduler:submit({
+		priority = "read",
+		budget = "standardRead",
+		key = self:_schedulerKey(key),
+		run = function()
+			return self._dataStore:get(key)
+		end,
+	})
+	if not peek.ok or not Record.isRecord(peek.value.value) then
+		return nil
+	end
+	return (peek.value.value :: Record.Record).meta.revision
 end
 
 function ProfileStore._editAnswered(self: ProfileStore, message: Handoff.Message)
