@@ -5,7 +5,14 @@ name: Live checks
 # Dependabot PRs skip it too: GitHub doesn't give them Actions secrets, so it could only fail
 
 on:
+  # Every run uploads a version of the test place, so only PRs that can change what the checks
+  # exercise trigger it
   pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - ".github/workflows/live.yml"
   workflow_dispatch:
 
 permissions:
