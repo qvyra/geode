@@ -1,10 +1,10 @@
 ---
-sidebar_position: 5
+sidebar_position: 8
 ---
 
 # Profiles and the beginner layer
 
-A profile is one player's data, held by one server at a time under a session lease. The beginner layer, `Geode.players`, loads and releases profiles for you. The profile store underneath is there when you need more control.
+A profile is one player's data, held by one server at a time under a session lease (a session lock). The beginner layer, `Geode.players`, loads and releases profiles for you. The profile store underneath is there when you need more control.
 
 ## Player data with Geode.players
 
@@ -131,7 +131,7 @@ local Profiles = Geode.Profile.store({
 })
 ```
 
-Missing template fields are filled in on load. Unknown fields are never removed without a migration.
+Missing template fields are filled in on load, which other libraries call reconciling. Unknown fields are never removed without a migration.
 
 ## Mail for offline players
 
@@ -148,4 +148,4 @@ PlayerData.store:mail(PlayerData.store:keyForUser(1001), "increment", "coins", 5
 
 ## How sessions stay safe
 
-Each profile record holds a session lease. Every save is an UpdateAsync that writes the data and renews the lease in one step, and only if the lease is still this server's. A server that finds the lease held elsewhere asks the holder to release it and waits for the release, so a player hopping servers usually waits only for the old server's final save. A server that stops renewing its lease loses it, and its next save refuses to write instead of overwriting newer data.
+Each profile record holds a session lease. Every save is an UpdateAsync that writes the data and renews the lease in one step, and only if the lease is still this server's. A server that finds the lease held elsewhere asks the holder to release it and waits for the release, so a player hopping servers usually waits only for the old server's final save. If the holder doesn't let go within `stealAfter` seconds, the store's `stealPolicy` decides what happens: take the lease anyway (`"steal"`, the default, sometimes called force loading), keep waiting (`"wait"`) or give up (`"fail"`). A server that stops renewing its lease loses it, and its next save refuses to write instead of overwriting newer data. [How it works](how-it-works) walks through it.
