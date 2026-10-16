@@ -44,6 +44,8 @@ export type Clock = {
 
 -- Mirrors the modern Enum.DataStoreRequestType items. UpdateAsync draws on read and write at
 -- once. OrderedList always reports 0 since it isn't metered, so it counts as unlimited
+-- TODO(verify): which budgets does each call really draw on? The mapping above follows the
+-- enum names - does UpdateAsync spend from both read and write, and RemoveAsync only from remove?
 export type BudgetType =
 	"standardRead"
 	| "standardWrite"

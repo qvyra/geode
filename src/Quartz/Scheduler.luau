@@ -36,6 +36,8 @@ export type Options = {
 	agingInterval: number?,
 	-- Min gap between two writes to one key. Off by default, Roblox limits throughput per key
 	-- rather than spacing writes
+	-- TODO(verify): is the old 6s cooldown between writes to one key really gone, or does it
+	-- still apply on top of the throughput window for some calls?
 	writeSpacing: number?,
 	-- per key throughput limits, on by default
 	keyThroughput: boolean?,

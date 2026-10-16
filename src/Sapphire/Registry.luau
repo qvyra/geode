@@ -46,6 +46,8 @@ export type EraseReport = {
 -- Live reads see the erasure at once. Roblox keeps older versions of each key readable for
 -- 30 days and RemoveVersionAsync is deprecated, so those can't be purged early. A player
 -- who joins again starts over from the template
+-- TODO(verify): do versions older than 30 days actually stop being readable, and is there any
+-- supported way to drop them sooner for an erasure request?
 function Registry.erase(userId: number, services: unknown?): EraseReport
 	local report: EraseReport = { erased = 0, failures = {} }
 	for _, store in Registry.all(services) do
