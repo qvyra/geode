@@ -409,7 +409,7 @@ A playtest with `studio = "real"` loads the same keys live servers hold. When a 
 
 Until that's settled, a profile store in Studio on live data never sends a release request and never steals. With the default steal policy the load fails at `stealAfter` and says why. With `stealPolicy = "wait"` it waits until the live server lets go on its own. `"scope"` mode keeps working as before: its records live in their own scope, and a live holder only releases on a request that names its own session.
 
-**Commits:** 4d3eb68
+**PR:** #6
 
 ## 33. guardBroken telemetry carries the whole violation, values capped
 
@@ -419,7 +419,7 @@ Tools showing guard events need to know who broke what and how. The message used
 
 The values are captured while the guard runs, because a rejected draft is gone by the time listeners hear about it. In the message they go out in stored form, so codec values survive a Bindable, and anything over 1 KB encoded is left out with only its size. A value that breaks its schema is sent as it is, since encoding it could produce garbage. None of this is built unless something listens to the bus, so games without tooling pay nothing extra.
 
-**Commits:** 58546b8, 201dad5
+**PR:** #8
 
 ## 34. Tools pick features from hello, not from version numbers
 
@@ -429,7 +429,7 @@ The bridge is going to grow: writes, schema lookups, more telemetry. If tools co
 
 A protocol range stays, but only for what a feature list can't express: a change to a request or answer that old tools would misread. The folder carries `BridgeVersion` and `BridgeMinVersion`, and a tool can send its own protocol with `hello` to be turned away with a reason that says which side to update.
 
-**Commits:** 227adb0
+**PR:** #9
 
 ## 35. Tools edit profiles only through the pipeline, with a note
 
@@ -443,4 +443,4 @@ Messages can arrive twice or not at all, so each edit sent to a holder carries a
 
 Values cross the bridge in stored form and are decoded with the schema where the op runs, so codec values survive the Bindable and the messaging hop. The `ops` request describes the built-in ops' arguments. Custom ops are listed without arguments, because they don't declare them yet. Studio on live data still never messages a live holder (entry 32), so in a playtest an edit to a profile held by a live server is refused. The bridge only exists in a running playtest, so nothing can edit from edit mode.
 
-**Commits:** ad2dae3, 802643f
+**PR:** #10
