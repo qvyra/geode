@@ -409,6 +409,51 @@ return function(spec: Spec.Api)
 			local real = Helpers.store(universe:server({ studio = true }), { studio = "real" })
 			expect(real.scope).toBe("global")
 		end)
+
+		it(
+			"on live data, fails instead of stealing and never asks the holder to release",
+			function()
+				local universe = Universe.new({ messagingLatency = 0.2 })
+				local live = Helpers.store(universe:server({ jobId = "live" }), { handoff = true })
+				local studio = Helpers.store(
+					universe:server({ jobId = "studio", studio = true }),
+					{ studio = "real", handoff = true }
+				)
+				local held = load(universe, live, "p1")
+				local result = universe.clock:run(function()
+					return studio:load("p1")
+				end)
+				expect(result.ok).toBe(false)
+				expect((result :: any).error.kind).toBe("leaseHeld")
+				expect(string.find((result :: any).error.message, "never steals", 1, true) ~= nil).toBe(
+					true
+				)
+				-- a release request would have made the live holder let go within a few seconds
+				expect(held:state()).toBe("active")
+			end
+		)
+
+		it("on live data, waits out the holder when the policy is wait", function()
+			local universe = Universe.new({ messagingLatency = 0.2 })
+			local live = Helpers.store(universe:server({ jobId = "live" }), { handoff = true })
+			local studio = Helpers.store(
+				universe:server({ jobId = "studio", studio = true }),
+				{ studio = "real", handoff = true, stealPolicy = "wait" }
+			)
+			local held = load(universe, live, "p1")
+			local result: any = nil
+			universe.clock:spawn(function()
+				result = studio:load("p1")
+			end)
+			universe.clock:advance(20)
+			expect(held:state()).toBe("active")
+			expect(result).toBeNil()
+			universe.clock:run(function()
+				return held:release()
+			end)
+			universe.clock:advance(10)
+			expect(result and result.ok).toBe(true)
+		end)
 	end)
 
 	describe("options", function()

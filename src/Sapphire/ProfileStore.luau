@@ -102,6 +102,11 @@ export type LoadResult =
 	{ ok: true, profile: Profile.Profile, erasedAt: number? }
 	| { ok: false, error: { kind: LoadErrorKind, message: string } }
 
+-- Why a Studio playtest on live data gave up on a held lease
+local STUDIO_LIVE_HELD = 'Studio with studio = "real" never steals a lease or asks for a release, '
+	.. "since it's not known whether Studio messages reach live servers. "
+	.. 'Use stealPolicy = "wait" to wait it out'
+
 type Config = {
 	autosaveInterval: number,
 	leaseTimeout: number,
@@ -113,6 +118,9 @@ type Config = {
 	loadTimeout: number,
 	schemaVersion: number,
 	receiptHistory: number,
+	-- A Studio playtest working on live data. It may not be able to reach live servers over
+	-- MessagingService, so it never asks a holder to release and never steals from one
+	liveFromStudio: boolean,
 }
 
 type Fields = {
@@ -275,6 +283,8 @@ function ProfileStore.new(options: Options): ProfileStore
 		loadTimeout = options.loadTimeout or DEFAULTS.loadTimeout,
 		schemaVersion = options.schemaVersion or 1,
 		receiptHistory = options.receiptHistory or DEFAULTS.receiptHistory,
+		liveFromStudio = (options.studio or DEFAULTS.studio) == "real"
+			and givenServices.lifecycle:isStudio(),
 	}
 	assert(config.autosaveInterval > 0, "autosaveInterval must be positive")
 	assert(
@@ -538,14 +548,24 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		local holder = attempt.holder :: Record.Lease
 		local waited = services.clock:now() - started
 		if waited >= config.stealAfter then
-			if config.stealPolicy == "fail" then
-				return loadFailure("leaseHeld", `profile {key} is in use on server {holder.jobId}`)
-			elseif config.stealPolicy == "steal" then
+			-- Studio on live data turns a steal into a failure, see liveFromStudio
+			local policy: StealPolicy = if config.liveFromStudio
+					and config.stealPolicy == "steal"
+				then "fail"
+				else config.stealPolicy
+			if policy == "fail" then
+				return loadFailure(
+					"leaseHeld",
+					if config.liveFromStudio
+						then `profile {key} is in use on server {holder.jobId}. {STUDIO_LIVE_HELD}`
+						else `profile {key} is in use on server {holder.jobId}`
+				)
+			elseif policy == "steal" then
 				force = true
 				continue
 			end
 		end
-		if not requested then
+		if not requested and not config.liveFromStudio then
 			requested = true
 			self._handoff:request(key, holder.session)
 		end
