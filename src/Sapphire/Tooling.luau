@@ -64,32 +64,17 @@ for _, spec in BUILT_IN do
 	SPECS[spec.name] = spec
 end
 
--- The schema node at `path`, unwrapping optionals on the way. Nil past what the schema declares
--- TODO: switch to Validate.at once it's public, it walks the same way
+-- The schema node at `path` with optionals unwrapped. Nil past what the schema declares, so a
+-- path that goes inside a codec or json value has no node
 local function nodeAt(root: Schema, path: Path.Path): Schema?
-	local node = root
-	local depth = 0
-	while true do
-		while node.kind == "optional" do
-			node = node.item :: Schema
-		end
-		if depth >= #path then
-			return node
-		end
-		local segment = path[depth + 1]
-		if node.kind == "struct" then
-			local field = (node.fields :: { [string]: Schema })[segment :: string]
-			if field == nil then
-				return nil
-			end
-			node = field
-		elseif node.kind == "array" or node.kind == "map" then
-			node = node.item :: Schema
-		else
-			return nil
-		end
-		depth += 1
+	local node, depth = Validate.at(root, path)
+	if node == nil or depth < #path then
+		return nil
 	end
+	while node.kind == "optional" do
+		node = node.item :: Schema
+	end
+	return node
 end
 
 local function describe(node: Schema): { [string]: unknown }
