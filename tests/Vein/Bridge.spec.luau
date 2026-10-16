@@ -56,6 +56,38 @@ return function(spec: Spec.Api)
 			end
 		)
 
+		it("lists what it can do and the protocols it speaks", function()
+			fresh()
+			local universe = Universe.new()
+			local server = universe:server({ studio = true })
+			Helpers.store(server, { studio = "real" })
+			local attributes = server.tooling:attributes() :: Any
+			expect(attributes.BridgeMinVersion).toBe(VeinBridge.MIN_VERSION)
+			local hello = server.tooling:request({ kind = "hello" }) :: Any
+			expect(hello.minBridge).toBe(VeinBridge.MIN_VERSION)
+			expect(table.find(hello.features, "read")).never.toBeNil()
+			expect(table.find(hello.features, "guards")).never.toBeNil()
+		end)
+
+		it("refuses tools that speak a protocol outside its range", function()
+			fresh()
+			local universe = Universe.new()
+			local server = universe:server({ studio = true })
+			Helpers.store(server, { studio = "real" })
+			local ok =
+				server.tooling:request({ kind = "hello", protocol = VeinBridge.VERSION }) :: Any
+			expect(ok.error).toBeNil()
+			local tooNew =
+				server.tooling:request({ kind = "hello", protocol = VeinBridge.VERSION + 1 }) :: Any
+			expect(string.find(tooNew.error, "update Geode", 1, true) ~= nil).toBe(true)
+			local tooOld = server.tooling:request({
+				kind = "hello",
+				protocol = VeinBridge.MIN_VERSION - 1,
+			}) :: Any
+			expect(tooOld.error).never.toBeNil()
+			expect(tooOld.features).toBeNil()
+		end)
+
 		it("never opens outside Studio", function()
 			fresh()
 			local universe = Universe.new()

@@ -13,8 +13,22 @@ local Version = require("../Version")
 
 local Bridge = {}
 
--- bump whenever a request or answer changes shape, tools check it before reading anything
+-- The protocol this bridge speaks. Bump it when a request or answer changes shape in a way old
+-- tools can't read. New requests that old tools never send don't need a bump, they show up in
+-- FEATURES instead
 Bridge.VERSION = 1
+-- The oldest protocol a tool can still use with this bridge
+Bridge.MIN_VERSION = 1
+
+-- What this bridge can do. Tools decide what to show from this, not from version numbers
+Bridge.FEATURES = table.freeze({
+	-- snapshot, profiles and profile requests
+	"read",
+	-- every telemetry message forwarded on the Telemetry event
+	"telemetry",
+	-- guardBroken telemetry
+	"guards",
+})
 
 type Opened = {
 	connection: Types.BridgeConnection,
@@ -42,7 +56,25 @@ local function answer(request: unknown): unknown
 	local fields = request :: { [string]: unknown }
 	local kind = fields.kind
 	if kind == "hello" then
-		return { bridge = Bridge.VERSION, geode = Version, bus = Bus.VERSION }
+		local protocol = fields.protocol
+		local refused: string? = nil
+		if protocol ~= nil and (type(protocol) ~= "number" or protocol < Bridge.MIN_VERSION) then
+			refused =
+				`this game's Geode needs a tool on bridge protocol {Bridge.MIN_VERSION} or newer`
+		elseif protocol ~= nil and protocol > Bridge.VERSION then
+			refused =
+				`this game's Geode only speaks bridge protocol up to {Bridge.VERSION}, update Geode`
+		end
+		if refused then
+			return { error = refused, bridge = Bridge.VERSION, minBridge = Bridge.MIN_VERSION }
+		end
+		return {
+			bridge = Bridge.VERSION,
+			minBridge = Bridge.MIN_VERSION,
+			geode = Version,
+			bus = Bus.VERSION,
+			features = table.clone(Bridge.FEATURES),
+		}
 	elseif kind == "snapshot" then
 		return Snapshot.take()
 	elseif kind == "profiles" then
@@ -72,6 +104,7 @@ function Bridge.ensure(services: Types.Services)
 	end
 	local connection = services.bridge:open({
 		BridgeVersion = Bridge.VERSION,
+		BridgeMinVersion = Bridge.MIN_VERSION,
 		GeodeVersion = Version,
 	}, answer)
 	opened[services] = {
