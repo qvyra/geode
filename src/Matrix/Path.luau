@@ -60,6 +60,83 @@ function Path.format(path: Path): string
 	return table.concat(parts)
 end
 
+-- Reads back what Path.format wrote, like `inventory[3].name` or `["odd key"]`. Nil when the
+-- text isn't in that form, e.g. a custom guard's free-form path
+function Path.parseFormatted(text: string): Path?
+	if text == "" then
+		return {}
+	end
+	local parsed: Path = {}
+	local index = 1
+	local length = #text
+	while index <= length do
+		local char = string.sub(text, index, index)
+		if char == "[" then
+			local number, after = string.match(text, "^%[(%d+)%]()", index)
+			if number then
+				table.insert(parsed, tonumber(number) :: number)
+				index = after :: number
+				continue
+			end
+			if string.sub(text, index + 1, index + 1) ~= '"' then
+				return nil
+			end
+			-- a %q string: walk to the closing quote, honouring escapes
+			local cursor = index + 2
+			local chunks = {}
+			while cursor <= length do
+				local c = string.sub(text, cursor, cursor)
+				if c == "\\" then
+					local nextChar = string.sub(text, cursor + 1, cursor + 1)
+					local digits = string.match(text, "^%d%d?%d?", cursor + 1)
+					if digits then
+						table.insert(chunks, string.char(tonumber(digits) :: number))
+						cursor += 1 + #digits
+					elseif nextChar == "n" or nextChar == "\n" then
+						table.insert(chunks, "\n")
+						cursor += 2
+					elseif nextChar == "r" then
+						table.insert(chunks, "\r")
+						cursor += 2
+					elseif nextChar == "t" then
+						table.insert(chunks, "\t")
+						cursor += 2
+					else
+						table.insert(chunks, nextChar)
+						cursor += 2
+					end
+				elseif c == '"' then
+					break
+				else
+					table.insert(chunks, c)
+					cursor += 1
+				end
+			end
+			if string.sub(text, cursor, cursor + 1) ~= '"]' then
+				return nil
+			end
+			table.insert(parsed, table.concat(chunks))
+			index = cursor + 2
+		else
+			if char == "." then
+				if #parsed == 0 then
+					return nil
+				end
+				index += 1
+			elseif #parsed > 0 then
+				return nil
+			end
+			local name, after = string.match(text, "^([%a_][%w_]*)()", index)
+			if not name then
+				return nil
+			end
+			table.insert(parsed, name)
+			index = after :: number
+		end
+	end
+	return parsed
+end
+
 function Path.describe(path: unknown): string
 	if type(path) == "string" then
 		return string.format("%q", path)
