@@ -154,7 +154,6 @@ type Fields = {
 	-- rollbacks sent to another server and waiting on its answer, by request id
 	_pendingRollbacks: { [string]: { thread: thread, done: boolean, ok: boolean, message: string? } },
 	_pendingEdits: { [string]: { thread: thread, done: boolean, answer: EditResult? } },
-	_studioMode: StudioMode,
 	_veinHandle: VeinRegistry.Handle,
 	_report: (message: string) -> (),
 }
@@ -340,7 +339,6 @@ function ProfileStore.new(options: Options): ProfileStore
 		_handoff = Handoff.new(services, options.name, options.handoff ~= false, report),
 		_pendingRollbacks = {},
 		_pendingEdits = {},
-		_studioMode = options.studio or DEFAULTS.studio,
 		_audit = if options.audit then services.dataStore(`{options.name}_audit`, scope) else nil,
 		_veinHandle = nil :: any,
 		_report = report,
@@ -1466,7 +1464,7 @@ function ProfileStore._toolEdit(
 					`profile {key} is being loaded or released here, try again`
 				)
 			end
-			if self._studioMode == "real" and self._services.lifecycle:isStudio() then
+			if self._config.liveFromStudio then
 				return editFailure(
 					"unreachable",
 					`profile {key} is open on live server {holder}. Studio on live data never sends `
