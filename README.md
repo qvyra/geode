@@ -4,10 +4,12 @@ A data framework for Roblox. Geode puts DataStoreService, MemoryStoreService and
 
 > Geode is in early development. The API can still change before 1.0.
 
+Geode is an independent project. It shares no code with ProfileStore, ProfileService or Lapis. If you're coming from one of them, [this guide](https://qvyra.github.io/geode/docs/coming-from-profilestore) maps what you know.
+
 ## Features
 
 - **Player data in one call:** profiles load on join, autosave, and save and release on leave or shutdown
-- **Session locking:** the lease lives in the DataStore record, so two servers never write the same profile
+- **Session locking:** a session lease lives in the DataStore record, so two servers never write the same profile
 - **Fast server hops:** the old server is asked to release instead of waiting out the lease
 - **Purchases granted once:** each grant and its receipt are saved together
 - **Migrations and schemas,** including Roblox datatypes, with size budgets that never trim data

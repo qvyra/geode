@@ -8,6 +8,8 @@ Geode is a data framework for Roblox. It puts DataStoreService, MemoryStoreServi
 
 > Geode is in early development. The API can still change before 1.0.
 
+Geode is an independent project. It shares no code with ProfileStore, ProfileService or Lapis. If you're coming from one of them, [Coming from ProfileStore, ProfileService or Lapis](coming-from-profilestore) maps what you know.
+
 ## What it does
 
 - Player data with the whole lifecycle handled: load on join, autosave, save and release on leave or shutdown
@@ -25,6 +27,8 @@ Geode is built in layers. The top one, `Geode.players`, handles player data in o
 
 ## Where to go next
 
+- [How it works](how-it-works), the life of a player's data from join to leave
 - [Installation](installation)
 - [Getting started](getting-started)
+- [Developer products](developer-products)
 - [Troubleshooting](troubleshooting) when something doesn't behave the way you expect
