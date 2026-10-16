@@ -444,3 +444,15 @@ Messages can arrive twice or not at all, so each edit sent to a holder carries a
 Values cross the bridge in stored form and are decoded with the schema where the op runs, so codec values survive the Bindable and the messaging hop. The `ops` request describes the built-in ops' arguments. Custom ops are listed without arguments, because they don't declare them yet. Studio on live data still never messages a live holder (entry 32), so in a playtest an edit to a profile held by a live server is refused. The bridge only exists in a running playtest, so nothing can edit from edit mode.
 
 **PR:** #10
+
+## 36. Custom ops declare their arguments with schemas
+
+**Date:** 2026-10-16
+
+Custom ops took whatever they were given. Remote ops already checked a client's arguments against schemas (entry 25), but the same op called from game code, mail or a development tool got no check at all, and tools couldn't tell what to ask for or decode codec values that crossed in stored form.
+
+`Geode.op(name, handler, { args = { schemas } })` takes one schema per argument, the same shape remote ops use. The transaction checks a call against them before the handler runs, whoever made it, and a mismatch fails with `invalidArgs` so nothing in the transaction lands. Fewer arguments are fine when the missing ones are optional. Tools list each argument with its schema described and decode stored values with it. Ops registered without `args` behave as before, so this adds nothing to existing games.
+
+The alternative was named arguments, a map from name to schema. Positional lists match how ops are called and how remote ops already declare them. Names for tool forms can come later as an option next to `args`.
+
+**PR:** #14
