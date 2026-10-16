@@ -30,6 +30,11 @@ function Bus.publish(kind: string, fields: { [string]: any }?, at: number?)
 	signal:fire(table.freeze(message))
 end
 
+-- True when something listens, so callers can skip building expensive payloads
+function Bus.listening(): boolean
+	return signal:handlerCount() > 0
+end
+
 function Bus.subscribe(callback: (message: Message) -> ()): Types.Connection
 	return signal:connect(callback)
 end

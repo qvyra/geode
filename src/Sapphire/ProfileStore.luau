@@ -8,6 +8,7 @@ local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
 local Handoff = require("./Handoff")
 local Bus = require("../Vein/Bus")
+local GuardEvent = require("../Vein/GuardEvent")
 local VeinBridge = require("../Vein/Bridge")
 local VeinRegistry = require("../Vein/Registry")
 local Mailbox = require("./Mailbox")
@@ -636,13 +637,15 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	})
 	guardSet.broken:connect(function(violation: Guards.Violation)
 		self.guardBroken:fire(violation, profile)
-		Bus.publish("guardBroken", {
-			store = self.name,
-			key = key,
-			guard = violation.guard,
-			action = violation.action,
-			reason = violation.reason,
-		}, services.clock:now())
+		GuardEvent.publish(
+			self.name,
+			"profile",
+			key,
+			violation,
+			self._schema,
+			services.json,
+			services.clock:now()
+		)
 	end)
 	Bus.publish("profileLoaded", { store = self.name, key = key }, services.clock:now())
 	profile.released:connect(function()
