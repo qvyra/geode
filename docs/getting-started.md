@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 # Getting started
@@ -35,6 +35,8 @@ end)
 
 ## Where to go next
 
+- [How it works](how-it-works) explains session leases, releases and autosave
+- [Developer products](developer-products) grants purchases exactly once
 - [Concepts](concepts) explains the layers and the transaction pipeline every write goes through
 - [Profiles and the beginner layer](profiles) covers player data in depth
 - [Testing with Geode.Testing](testing) shows how to run all of it in Lune without Roblox
