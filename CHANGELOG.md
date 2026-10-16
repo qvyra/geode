@@ -2,7 +2,7 @@
 
 All notable changes to Geode are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before 1.0 the public API may still change between minor versions.
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-10-16
 
 The first public release.
 
