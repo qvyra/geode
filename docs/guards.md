@@ -67,4 +67,4 @@ end)
 
 ## Who made the change
 
-Each transaction has a source: `system` for game code, `player` with a user id for client intent, `reaction` and `bundle` for facet writes, `mailbox`, `migration` and `plugin`. Rate guards skip reaction and bundle writes by default, so a level up reward doesn't use up a player's coin limit, but every other guard still judges them. `skipSources` changes that per guard, and `ops` limits a guard to transactions that ran certain ops.
+Each transaction has a source: `system` for game code, `player` with a user id for client intent, `reaction` and `bundle` for facet writes, `mailbox`, `migration` and `plugin`. Rate guards skip reaction, bundle and plugin writes by default, so a level up reward or an edit from a Studio tool doesn't use up a player's coin limit, but every other guard still judges them. `skipSources` changes that per guard, and `ops` limits a guard to transactions that ran certain ops.

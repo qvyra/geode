@@ -189,6 +189,24 @@ return function(spec: Spec.Api)
 		end)
 	end)
 
+	describe("plugin writes", function()
+		it("don't count toward rate guards but still meet every other guard", function()
+			local s = setup({
+				Guards.rate("n", { count = 1, window = 60 }),
+				Guards.rateValue("n", { gain = 5, window = 60 }),
+				Guards.range("n", { max = 100 }),
+			}, { n = 0 })
+			for _ = 1, 3 do
+				expect(s.doc:transact(function(tx)
+					tx:increment("n", 10)
+				end, { source = "plugin" }).ok).toBe(true)
+			end
+			expect(rejected(s.doc:transact(function(tx)
+				tx:increment("n", 1000)
+			end, { source = "plugin" }))).toBe(true)
+		end)
+	end)
+
 	describe("value rate guard", function()
 		it("caps total gains within a rolling window", function()
 			local s = setup(
