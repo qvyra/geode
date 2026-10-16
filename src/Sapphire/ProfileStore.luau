@@ -1488,10 +1488,19 @@ function ProfileStore._toolEdit(
 	if not loaded.ok then
 		return editFailure("loadFailed", loaded.error.message)
 	end
+	-- Load, edit and release run back to back, and the release runs whatever the edit did, so a
+	-- refused edit never leaves this server holding the lease
 	local result = self:_editHere(key, op, list, note)
 	local released = loaded.profile:release()
-	if result.ok and not released.ok then
-		return editFailure("saveFailed", released.error.message)
+	if not released.ok then
+		if result.ok then
+			return editFailure("saveFailed", released.error.message)
+		end
+		return editFailure(
+			"releaseFailed",
+			`the edit was refused ({(result.error :: any).message}) and releasing {key} `
+				.. `failed too: {released.error.message}`
+		)
 	end
 	if result.ok then
 		result.via = "loaded"
