@@ -11,6 +11,7 @@ local Guards = require("../Obsidian/Guards")
 local Path = require("../Matrix/Path")
 local RealServices = require("../Quartz/Real/Services")
 local VeinBridge = require("../Vein/Bridge")
+local GuardEvent = require("../Vein/GuardEvent")
 local Reconcile = require("../Sapphire/Reconcile")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
@@ -81,6 +82,8 @@ type Fields = {
 	_topic: string,
 	_sizeBudget: Size.Budget,
 	_report: (message: string) -> (),
+	-- The key whose held callbacks are running, for guard telemetry
+	_guardKey: string?,
 	_cache: { [string]: Cached },
 }
 
@@ -190,6 +193,17 @@ function SharedStore.new(options: Options): SharedStore
 		_cache = {},
 	}
 	local store = setmetatable(self, SharedStore)
+	guards.broken:connect(function(violation: Guards.Violation)
+		GuardEvent.publish(
+			options.name,
+			"shared",
+			store._guardKey,
+			violation,
+			options.schema,
+			services.json,
+			services.clock:now()
+		)
+	end)
 	Registry.register("sharedStore", options.name, function()
 		local cached = 0
 		for _ in store._cache do
@@ -388,6 +402,23 @@ end
 
 -- Writing
 
+-- Runs a scratch document's held callbacks with the key noted, so guard telemetry can name it
+function SharedStore._runHeld(
+	self: SharedStore,
+	key: string,
+	document: Document.Document,
+	outcome: Transaction.Outcome?
+)
+	self._guardKey = key
+	local ok, problem = pcall(function()
+		document:runHeld(outcome)
+	end)
+	self._guardKey = nil
+	if not ok then
+		error(problem, 0)
+	end
+end
+
 --[=[
 	Runs `body` as one transaction on the freshest stored value of `key`. The whole pipeline runs
 	inside UpdateAsync, so bundles, reactions and guards see exactly what gets written. Yields
@@ -489,7 +520,7 @@ function SharedStore.transact(
 	local document = final
 	if not result.ok then
 		if document then
-			document:runHeld({
+			self:_runHeld(key, document, {
 				committed = false,
 				record = nil,
 				error = { kind = "error", message = result.error.message },
@@ -520,7 +551,7 @@ function SharedStore.transact(
 		if written == nil then
 			-- The scratch document may have committed in memory, but nothing reached the DataStore
 			local failed = outcome
-			document:runHeld({
+			self:_runHeld(key, document, {
 				committed = false,
 				record = nil,
 				error = if failed and not failed.ok
@@ -528,7 +559,7 @@ function SharedStore.transact(
 					else nil,
 			})
 		else
-			document:runHeld()
+			self:_runHeld(key, document)
 		end
 	end
 	return outcome or writeFailure("error", "the transform never ran")
