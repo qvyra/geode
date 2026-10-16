@@ -410,3 +410,13 @@ A playtest with `studio = "real"` loads the same keys live servers hold. When a 
 Until that's settled, a profile store in Studio on live data never sends a release request and never steals. With the default steal policy the load fails at `stealAfter` and says why. With `stealPolicy = "wait"` it waits until the live server lets go on its own. `"scope"` mode keeps working as before: its records live in their own scope, and a live holder only releases on a request that names its own session.
 
 **Commits:** 4d3eb68
+
+## 33. guardBroken telemetry carries the whole violation, values capped
+
+**Date:** 2026-10-16
+
+Tools showing guard events need to know who broke what and how. The message used to carry only store, key, guard, action and reason. Now it adds the guard kind, path, source, player, the ops that ran, and the value at the path before and after the transaction. Shared stores publish it too, with the key that was being written.
+
+The values are captured while the guard runs, because a rejected draft is gone by the time listeners hear about it. In the message they go out in stored form, so codec values survive a Bindable, and anything over 1 KB encoded is left out with only its size. A value that breaks its schema is sent as it is, since encoding it could produce garbage. None of this is built unless something listens to the bus, so games without tooling pay nothing extra.
+
+**Commits:** 58546b8, 201dad5
