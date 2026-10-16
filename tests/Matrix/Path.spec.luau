@@ -65,4 +65,26 @@ return function(spec: Spec.Api)
 			expect(Path.startsWith({ "a" }, { "a", "b" })).toBe(false)
 		end)
 	end)
+
+	describe("Path.parseFormatted", function()
+		it("reads back whatever Path.format writes", function()
+			local cases: { Path.Path } = {
+				{},
+				{ "coins" },
+				inventoryPos,
+				{ 2, "name" },
+				{ "odd key", 1 },
+				{ 'quote"inside', "tab	here" },
+			}
+			for _, path in cases do
+				expect(Path.parseFormatted(Path.format(path))).toEqual(path)
+			end
+		end)
+
+		it("gives nil for text that isn't a formatted path", function()
+			expect(Path.parseFormatted("not a path!")).toBeNil()
+			expect(Path.parseFormatted(".leading")).toBeNil()
+			expect(Path.parseFormatted("a[x]")).toBeNil()
+		end)
+	end)
 end
