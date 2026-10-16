@@ -1,7 +1,8 @@
 name: Live checks
 
 # Runs the Studio checks against live Roblox services through Open Cloud. Pull requests from
-# forks never run it, since the API key must not reach code from outside the repository
+# forks never run it, since the API key must not reach code from outside the repository.
+# Dependabot PRs skip it too: GitHub doesn't give them Actions secrets, so it could only fail
 
 on:
   pull_request:
@@ -17,7 +18,10 @@ concurrency:
 
 jobs:
   live:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
