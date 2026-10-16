@@ -400,3 +400,13 @@ In CI it runs on pull requests from the repository and on demand, never on pull 
 A Bindable copies tables and mangles mixed or sparse ones, so profile answers send the stored form with the path of each codec value, and the tool decodes them for display. Nothing outside Studio ever creates the bridge, and `Geode.setup({ studioBridge = false })` keeps it shut.
 
 **Commits:** 6a44bdb, ddb804b
+
+## 32. Studio on live data never steals a lease or asks for a release
+
+**Date:** 2026-10-16
+
+A playtest with `studio = "real"` loads the same keys live servers hold. When a key is held, a normal load asks the holder over MessagingService to release, and steals the lease once `stealAfter` runs out. Roblox's docs say MemoryStore data is isolated between Studio and production, but they say nothing about MessagingService, and nobody has tested it. If Studio messages do reach live servers, a playtest could make one release a player's profile and kick them.
+
+Until that's settled, a profile store in Studio on live data never sends a release request and never steals. With the default steal policy the load fails at `stealAfter` and says why. With `stealPolicy = "wait"` it waits until the live server lets go on its own. `"scope"` mode keeps working as before: its records live in their own scope, and a live holder only releases on a request that names its own session.
+
+**Commits:** 4d3eb68
