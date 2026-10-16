@@ -103,6 +103,32 @@ end
 
 A profile's writes go through the transaction pipeline: `set`, `increment`, `decrement`, `append`, `insert`, `remove`, `clear`, `merge`, `update`, custom ops and `transact` for several at once. Reads return frozen values. `observe` calls back after each commit that changes a path.
 
+## Custom ops
+
+`Geode.op` registers an op once for the whole game, and a store lists the ones it allows in `ops`. Give it `args`, one schema per argument, and every call is checked before the handler runs, whoever made it: game code, mail or a development tool. A call that doesn't match fails with `invalidArgs` and writes nothing. Tools also use the schemas to describe the op and to decode values like a `Vector3` that crossed in stored form.
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+local t = Geode.t
+
+Geode.op("guideGrantItem", function(tx, item: string, amount: number)
+	tx:update({ "inventory", item }, function(current)
+		return (current or 0) + amount
+	end)
+end, { args = { t.string(), t.integer({ min = 1 }) } })
+
+local PlayerData = Geode.players({
+	name = "PlayerData",
+	template = { inventory = {} },
+	ops = { "guideGrantItem" },
+})
+
+PlayerData:onLoaded(function(player, profile)
+	profile:op("guideGrantItem", "potion", 3)
+end)
+```
+
 ## Schemas and migrations
 
 A schema checks every write and converts Roblox datatypes to and from their stored form. Migrations upgrade data saved by an older schema version, oldest first, before the schema decodes it.
