@@ -430,3 +430,15 @@ The bridge is going to grow: writes, schema lookups, more telemetry. If tools co
 A protocol range stays, but only for what a feature list can't express: a change to a request or answer that old tools would misread. The folder carries `BridgeVersion` and `BridgeMinVersion`, and a tool can send its own protocol with `hello` to be turned away with a reason that says which side to update.
 
 **Commits:** 227adb0
+
+## 35. Tools edit profiles only through the pipeline, with a note
+
+**Date:** 2026-10-16
+
+Entry 31 kept the bridge read only for its first version. Editing data from Studio is the next step, and the risk is a tool that writes around the rules the game relies on.
+
+So every edit is an op run through the normal transaction pipeline with a `plugin` source, and it needs a note saying why, which lands in the commit record and the audit log. Guards still judge it. Rate guards are the one exception, since a developer fixing a profile shouldn't use up the player's limits. A profile open on this server is edited there. One open on another server gets the edit sent to its holder, which runs it and answers, the same way rollbacks work. Nobody holding it means this server takes the lease, edits and releases.
+
+Values cross the bridge in stored form and are decoded with the schema where the op runs, so codec values survive the Bindable and the messaging hop. The `ops` request describes the built-in ops' arguments. Custom ops are listed without arguments, because they don't declare them yet. Studio on live data still never messages a live holder (entry 32), so in a playtest an edit to a profile held by a live server is refused. The bridge only exists in a running playtest, so nothing can edit from edit mode.
+
+**Commits:** ad2dae3, 802643f
