@@ -51,7 +51,8 @@ interface TransactOptions {
 	note?: string;
 }
 
-type TxErrorKind = "opFailed" | "unknownOp" | "error" | "readOnly" | "busy" | "rejected";
+type TxErrorKind =
+	"opFailed" | "unknownOp" | "invalidArgs" | "error" | "readOnly" | "busy" | "rejected";
 
 interface TxError {
 	kind: TxErrorKind;
@@ -172,6 +173,11 @@ interface NumberOptions {
 interface LengthOptions {
 	minLength?: number;
 	maxLength?: number;
+}
+
+interface OpOptions {
+	/** One schema per argument. A call with other arguments fails with `invalidArgs` before the handler runs */
+	args?: Schema[];
 }
 
 interface SchemaBuilders {
@@ -975,7 +981,12 @@ interface Geode {
 		options: { writes: Path[]; name?: string },
 	): Reaction;
 	derive(this: void, name: string, deps: Path[], compute: (state: unknown) => unknown): Derived;
-	op(this: void, name: string, handler: (tx: Transaction, ...args: never[]) => void): void;
+	op(
+		this: void,
+		name: string,
+		handler: (tx: Transaction, ...args: never[]) => void,
+		options?: OpOptions,
+	): void;
 
 	readonly Profile: { store(this: void, options: ProfileStoreOptions): ProfileStore };
 	receipts(
