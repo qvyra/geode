@@ -39,6 +39,10 @@ export type Violation = {
 	userId: number?,
 	ops: { string },
 	timestamp: number,
+	-- The value at `path` before and after the transaction, when the path can be read back.
+	-- Live values, shared with the tree, never copied
+	before: unknown?,
+	after: unknown?,
 }
 
 -- Decides what to do about a violation. Returning nil fails closed and rejects
@@ -484,33 +488,6 @@ end
 
 -- Walks a schema along a path. Stops at kinds that have no addressable children, returning how
 -- many segments it consumed, or nil when the path leaves the schema
-local function schemaAt(root: Schema, path: Path): (Schema?, number)
-	local node = root
-	local depth = 0
-	while depth < #path do
-		if node.kind == "optional" then
-			node = node.item :: Schema
-			continue
-		end
-		local segment = path[depth + 1]
-		if node.kind == "struct" then
-			local field = (node.fields :: { [string]: Schema })[segment :: string]
-			if field == nil then
-				if node.extra then
-					return nil, depth
-				end
-				return nil, depth + 1
-			end
-			node = field
-		elseif node.kind == "array" or node.kind == "map" then
-			node = node.item :: Schema
-		else
-			return node, depth
-		end
-		depth += 1
-	end
-	return node, depth
-end
 
 --[=[
 	Changed values must match the schema. Only the changed parts are checked, so the cost follows
@@ -525,7 +502,7 @@ function Guards.schema(schema: Schema, options: GuardOptions?): Guard
 		local findings: { Finding } = {}
 		local checked: { [string]: boolean } = {}
 		for _, entry in ctx.diff do
-			local node, depth = schemaAt(schema, entry.path)
+			local node, depth = Validate.at(schema, entry.path)
 			local prefix = table.move(entry.path, 1, depth, 1, {})
 			local key = Path.format(prefix)
 			if checked[key] then
@@ -546,7 +523,7 @@ function Guards.schema(schema: Schema, options: GuardOptions?): Guard
 			-- A list that shrank leaves its old last indices as nil. That's a removal, not a hole
 			local value = ctx.get(prefix)
 			if value == nil and depth > 0 then
-				local parentSchema = schemaAt(schema, table.move(prefix, 1, depth - 1, 1, {}))
+				local parentSchema = Validate.at(schema, table.move(prefix, 1, depth - 1, 1, {}))
 				if parentSchema and parentSchema.kind == "array" then
 					continue
 				end
@@ -705,6 +682,27 @@ local function applies(guard: Guard, ctx: Context): boolean
 	return true
 end
 
+-- Before and after values for a finding's path. Schema guards report paths under a "data" root
+local function valuesAt(guard: Guard, finding: Finding, ctx: Context): (unknown, unknown)
+	if finding.path == nil then
+		return nil, nil
+	end
+	local path = Path.parseFormatted(finding.path)
+	if path == nil then
+		return nil, nil
+	end
+	if guard.kind == "schema" and path[1] == "data" then
+		table.remove(path, 1)
+	end
+	local ok, before, after = pcall(function()
+		return ctx.getBefore(path), ctx.get(path)
+	end)
+	if not ok then
+		return nil, nil
+	end
+	return before, after
+end
+
 local function resolve(action: Action, violation: Violation): ActionName
 	if type(action) == "string" then
 		return action :: ActionName
@@ -739,6 +737,7 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 			local view = filtered(guard, ctx, tx)
 			table.insert(checked, { guard = guard, ctx = view })
 			for _, finding in guard.check(view, self._state[guard]) do
+				local before, after = valuesAt(guard, finding, ctx)
 				local violation: Violation = {
 					guard = guard.name,
 					kind = guard.kind,
@@ -749,6 +748,8 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 					userId = ctx.userId,
 					ops = opNames,
 					timestamp = ctx.now,
+					before = before,
+					after = after,
 				}
 				violation.action = resolve(guard.action, violation)
 				table.freeze(violation)

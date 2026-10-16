@@ -246,6 +246,10 @@ interface Violation {
 	userId?: number;
 	ops: string[];
 	timestamp: number;
+	/** The value at `path` before the transaction, when the path can be read back */
+	before?: unknown;
+	/** The value at `path` after the transaction, when the path can be read back */
+	after?: unknown;
 }
 
 type Action = ActionName | ((violation: Violation) => ActionName | undefined);
