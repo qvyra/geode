@@ -9,6 +9,14 @@ export type Describe = () -> { [string]: unknown }
 export type Tooling = {
 	keys: () -> { string },
 	inspect: (key: string) -> unknown,
+	-- the services the store runs on, so a bridge only answers for stores on its own server
+	services: unknown?,
+	-- the ops a tool may call, with their arguments
+	ops: (() -> unknown)?,
+	-- what the schema says at a path
+	schemaAt: ((path: unknown) -> unknown)?,
+	-- runs an edit with a plugin source. Yields
+	apply: ((key: string, op: string, args: { unknown }, note: string) -> unknown)?,
 }
 
 export type Entry = {

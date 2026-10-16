@@ -7,6 +7,7 @@ local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
 local Handoff = require("./Handoff")
+local Tooling = require("./Tooling")
 local Bus = require("../Vein/Bus")
 local GuardEvent = require("../Vein/GuardEvent")
 local VeinBridge = require("../Vein/Bridge")
@@ -152,6 +153,8 @@ type Fields = {
 	_audit: Types.DataStore?,
 	-- rollbacks sent to another server and waiting on its answer, by request id
 	_pendingRollbacks: { [string]: { thread: thread, done: boolean, ok: boolean, message: string? } },
+	_pendingEdits: { [string]: { thread: thread, done: boolean, answer: EditResult? } },
+	_studioMode: StudioMode,
 	_veinHandle: VeinRegistry.Handle,
 	_report: (message: string) -> (),
 }
@@ -336,6 +339,8 @@ function ProfileStore.new(options: Options): ProfileStore
 		_owners = {},
 		_handoff = Handoff.new(services, options.name, options.handoff ~= false, report),
 		_pendingRollbacks = {},
+		_pendingEdits = {},
+		_studioMode = options.studio or DEFAULTS.studio,
 		_audit = if options.audit then services.dataStore(`{options.name}_audit`, scope) else nil,
 		_veinHandle = nil :: any,
 		_report = report,
@@ -353,6 +358,9 @@ function ProfileStore.new(options: Options): ProfileStore
 	store._handoff:on("op", function(message: Handoff.Message)
 		store:_opRequested(message)
 	end)
+	store._handoff:on("opDone", function(message: Handoff.Message)
+		store:_editAnswered(message)
+	end)
 	store._veinHandle = VeinRegistry.register("profileStore", options.name, function()
 		return { scope = scope, open = store:openCount() }
 	end, {
@@ -361,6 +369,16 @@ function ProfileStore.new(options: Options): ProfileStore
 		end,
 		inspect = function(key: string): unknown
 			return store:inspect(key)
+		end,
+		services = givenServices,
+		ops = function(): unknown
+			return Tooling.ops(store._ops)
+		end,
+		schemaAt = function(path: unknown): unknown
+			return Tooling.schemaAt(store._schema, path)
+		end,
+		apply = function(key: string, op: string, args: { unknown }, note: string): unknown
+			return store:_toolEdit(key, op, args, note)
 		end,
 	})
 	VeinBridge.ensure(givenServices)
@@ -996,6 +1014,14 @@ export type HistoryOptions = {
 	limit: number?,
 }
 
+-- What an edit from a development tool did. `via` says where it ran
+export type EditResult = {
+	ok: boolean,
+	revision: number?,
+	via: ("here" | "holder" | "loaded")?,
+	error: { kind: string, message: string }?,
+}
+
 export type RollbackResult = {
 	ok: boolean,
 	message: string?,
@@ -1337,6 +1363,10 @@ function ProfileStore.sendOp(self: ProfileStore, key: string, name: string, ...:
 end
 
 function ProfileStore._opRequested(self: ProfileStore, message: Handoff.Message)
+	if type(message.id) == "string" then
+		self:_editRequested(message)
+		return
+	end
 	local open: unknown = self._open[message.key]
 	if open == nil or type(message.name) ~= "string" or type(message.args) ~= "table" then
 		return
@@ -1348,6 +1378,211 @@ function ProfileStore._opRequested(self: ProfileStore, message: Handoff.Message)
 	if not result.ok then
 		self._report(`an op sent to {message.key} failed: {result.error.message}`)
 	end
+end
+
+-- Edits from development tools
+
+local function editFailure(kind: string, message: string): EditResult
+	return { ok = false, error = { kind = kind, message = message } }
+end
+
+-- Runs a tool's edit on a profile open here, with a plugin source and the tool's note
+function ProfileStore._editHere(
+	self: ProfileStore,
+	key: string,
+	op: string,
+	args: { unknown },
+	note: string
+): EditResult
+	local profile = self._open[key]
+	local decoded, values, count = Tooling.decodeArgs(self._schema, op, args)
+	if not decoded then
+		return editFailure("badArgs", values :: string)
+	end
+	local list = values :: { unknown }
+	local result = profile:transact(function(tx)
+		if Tooling.isBuiltIn(op) then
+			-- built-ins are methods on the transaction, only custom ops go through tx:op
+			(tx :: any)[op](tx, table.unpack(list, 1, count))
+		else
+			tx:op(op, table.unpack(list, 1, count))
+		end
+	end, { source = "plugin", note = note })
+	if not result.ok then
+		return editFailure(result.error.kind, result.error.message)
+	end
+	return { ok = true, revision = profile:revision(), via = "here" }
+end
+
+-- An edit from a development tool. Values arrive in stored form and are decoded with the
+-- schema here, or on the holder when another server has the profile open. Nobody holding it
+-- means this server takes the lease, edits and releases, the same as a rollback
+function ProfileStore._toolEdit(
+	self: ProfileStore,
+	key: string,
+	op: string,
+	args: { unknown },
+	note: string
+): EditResult
+	if type(note) ~= "string" or note == "" then
+		return editFailure("noteRequired", "edits from a development tool need a note saying why")
+	end
+	if type(key) ~= "string" or type(op) ~= "string" then
+		return editFailure("badArgs", "an edit needs a key and an op name")
+	end
+	if not self._services.bridge:isAvailable() then
+		return editFailure(
+			"unavailable",
+			"edits from development tools only run in a Studio playtest"
+		)
+	end
+	local list: { unknown } = if type(args) == "table" then args else {}
+	local open: unknown = self._open[key]
+	if open ~= nil then
+		return self:_editHere(key, op, list, note)
+	end
+
+	local peek = self._scheduler:submit({
+		priority = "read",
+		budget = "standardRead",
+		key = self:_schedulerKey(key),
+		run = function()
+			return self._dataStore:get(key)
+		end,
+	})
+	if not peek.ok then
+		return editFailure("adapter", peek.error.message)
+	end
+	local current = peek.value.value
+	if Record.isRecord(current) then
+		local record = current :: Record.Record
+		local nobody = { jobId = "", session = "" }
+		local now = self._services.clock:now()
+		if Record.leaseState(record, now, self._config.leaseTimeout, nobody) == "held" then
+			local holder = (record.meta.lease :: Record.Lease).jobId
+			if holder == self._services.jobId then
+				return editFailure(
+					"busy",
+					`profile {key} is being loaded or released here, try again`
+				)
+			end
+			if self._studioMode == "real" and self._services.lifecycle:isStudio() then
+				return editFailure(
+					"unreachable",
+					`profile {key} is open on live server {holder}. Studio on live data never sends `
+						.. "messages to live servers, since it's not known whether they arrive"
+				)
+			end
+			return self:_editThroughHolder(key, holder, op, list, note)
+		end
+	end
+
+	local userIds = if peek.value.info then peek.value.info.userIds else nil
+	local loaded = self:load(key, { userIds = userIds })
+	if not loaded.ok then
+		return editFailure("loadFailed", loaded.error.message)
+	end
+	local result = self:_editHere(key, op, list, note)
+	local released = loaded.profile:release()
+	if result.ok and not released.ok then
+		return editFailure("saveFailed", released.error.message)
+	end
+	if result.ok then
+		result.via = "loaded"
+	end
+	return result
+end
+
+-- Sends an edit to the server holding the profile and waits for its answer, like a rollback
+function ProfileStore._editThroughHolder(
+	self: ProfileStore,
+	key: string,
+	holder: string,
+	op: string,
+	args: { unknown },
+	note: string
+): EditResult
+	self._handoff:start()
+	local clock = self._services.clock
+	local id = self._services.guid()
+	local pending = { thread = coroutine.running(), done = false, answer = nil :: EditResult? }
+	self._pendingEdits[id] = pending
+	local sent =
+		self._handoff:send("op", key, { id = id, to = holder, name = op, args = args, note = note })
+	if not sent then
+		self._pendingEdits[id] = nil
+		return editFailure(
+			"unreachable",
+			`profile {key} is held by server {holder} and the edit couldn't be sent there`
+		)
+	end
+	clock:delay(ROLLBACK_ANSWER_TIMEOUT, function()
+		if not pending.done then
+			pending.done = true
+			self._pendingEdits[id] = nil
+			clock:resume(pending.thread)
+		end
+	end)
+	coroutine.yield()
+	local answer = pending.answer
+	if answer == nil then
+		return editFailure(
+			"noAnswer",
+			`server {holder} holds profile {key} but didn't answer the edit`
+		)
+	end
+	if answer.ok then
+		answer.via = "holder"
+	end
+	return answer
+end
+
+function ProfileStore._editRequested(self: ProfileStore, message: Handoff.Message)
+	if message.to ~= self._services.jobId then
+		return
+	end
+	local function answer(result: EditResult)
+		self._handoff:send("opDone", message.key, {
+			id = message.id,
+			ok = result.ok,
+			revision = result.revision,
+			error = result.error,
+		})
+	end
+	local note = if type(message.note) == "string" then message.note else ""
+	local open: unknown = self._open[message.key]
+	if open == nil then
+		answer(
+			editFailure("released", `profile {message.key} was released before the edit arrived`)
+		)
+		return
+	end
+	if type(message.name) ~= "string" or note == "" then
+		answer(editFailure("badArgs", "an edit needs an op name and a note"))
+		return
+	end
+	local args = if type(message.args) == "table" then message.args :: { unknown } else {}
+	answer(self:_editHere(message.key, message.name :: string, args, note))
+end
+
+function ProfileStore._editAnswered(self: ProfileStore, message: Handoff.Message)
+	local id = message.id
+	if type(id) ~= "string" then
+		return
+	end
+	local pending = self._pendingEdits[id]
+	if pending == nil or pending.done then
+		return
+	end
+	self._pendingEdits[id] = nil
+	pending.done = true
+	local errorValue = message.error
+	pending.answer = {
+		ok = message.ok == true,
+		revision = if type(message.revision) == "number" then message.revision else nil,
+		error = if type(errorValue) == "table" then errorValue :: any else nil,
+	}
+	self._services.clock:resume(pending.thread)
 end
 
 local function summarize(record: Document.CommitRecord): AuditEntry
