@@ -51,3 +51,9 @@ Every DataStore uses the name `GeodeStudioCheck` or starts with `GeodeStudioChec
 | Profile cycle                                        | A full load, change, save, release and reload of a profile against live DataStores                                      |
 
 When an observed result differs from the mock, update the mock and its contract test to match, then drop the matching `TODO(verify)` note in the source.
+
+## Messaging probe
+
+`MessagingProbe.luau` checks whether MessagingService messages cross between a Studio playtest and other servers of the experience. `lune run scripts/messaging-probe` starts a Luau Execution task that subscribes to a fresh topic, publishes every few seconds and prints the topic. While it runs, start a playtest of the test place and call `Probe.run(topic, "studio", seconds)` on the server. Each side reports how many messages it heard from each role.
+
+Last run: both sides overlapped for about two and a half minutes. The task heard only its own messages (66 of 66) and the playtest only its own (44 of 44). Messages didn't cross between a Studio playtest and an execution task. Whether an execution task counts as a live server isn't documented, so this doesn't rule out a playtest reaching a live game server.
