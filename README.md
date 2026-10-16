@@ -1,8 +1,37 @@
 # Geode
 
-A layered data framework for Roblox. Geode puts DataStoreService, MemoryStoreService and MessagingService behind one API, with guards, reactive data and replication on top.
+A data framework for Roblox. Geode puts DataStoreService, MemoryStoreService and MessagingService behind one API, with session-locked player data, guards, reactive data and replication on top.
 
-> Geode is in early development. The API will change without notice until 1.0.
+> Geode is in early development. The API can still change before 1.0.
+
+## Features
+
+- **Player data in one call:** profiles load on join, autosave, and save and release on leave or shutdown
+- **Session locking:** the lease lives in the DataStore record, so two servers never write the same profile
+- **Fast server hops:** the old server is asked to release instead of waiting out the lease
+- **Purchases granted once:** each grant and its receipt are saved together
+- **Migrations and schemas,** including Roblox datatypes, with size budgets that never trim data
+- **Guards:** rules every write must pass, from clients and servers alike
+- **Bundles, reactions and derived fields** that stay consistent with the data
+- **Shared stores** for data any server writes
+- **MemoryStore helpers:** presence, locks, counters, rate limits and job queues
+- **Matchmaking and leaderboards**
+- **Replication** of chosen paths to clients, read there as atoms
+- **History, rollback and an audit log**
+- **Testable without Roblox:** in-memory services with fault injection and a virtual clock
+
+## Install
+
+With [Wally](https://wally.run), add Geode to `wally.toml` and run `wally install`:
+
+```toml
+[dependencies]
+Geode = "qvyra/geode@0.4.0"
+```
+
+A roblox-ts package is coming. The typings for the whole API already live in `types/`.
+
+<!-- TODO: request the @rbxts/geode name from the roblox-ts organization before the first npm release -->
 
 ## Quick start
 
@@ -21,65 +50,14 @@ PlayerData:onLoaded(function(player, profile)
 end)
 ```
 
-Each player's data loads when they join and is saved and released when they leave or the server shuts down. Until it loads, `PlayerData:get(player)` reads the template, and `isLoaded`, `waitFor` and `onLoaded` tell you when the real data is in. In Studio, data stays in memory unless you ask for a separate scope or live data. `PlayerData.store` is the profile store underneath, with every option visible, for when you need more control.
+Each player's data loads when they join and is saved and released when they leave or the server shuts down. `coins` replicates to its owner and `level` to everyone.
 
-On the client, the replicated paths arrive as atoms:
+## Documentation
 
-```lua
-local client = Geode.Client.start()
-client:atom("coins"):subscribe(function(coins)
-	print("coins", coins)
-end)
-```
-
-## Install
-
-With [Wally](https://wally.run), add Geode to `wally.toml` and run `wally install`:
-
-```toml
-[dependencies]
-Geode = "qvyra/geode@0.4.0"
-```
-
-A roblox-ts package is coming. The typings for the whole API already live in `types/`.
-
-<!-- TODO: request the @rbxts/geode name from the roblox-ts organization before the first npm release -->
-
-## The idea
-
-```
-Polish       Geode.players and Geode.setup: player data with the lifecycle handled
-Stores       Profile, Shared, Ephemeral, Ranked, Matchmaker, plus premades
-Primitives   scheduler, schema, transactions, leases, guards, bundles, reactions
-Adapters     DataStore, MemoryStore, MessagingService, remotes, plus mocks
-```
-
-Each layer only uses the public API of the one below it. Start at the top and drop down a level whenever you need more control.
-
-DataStore is always the source of truth. MemoryStore and MessagingService only make things faster or help servers coordinate, and correctness never depends on them. Every write from every source goes through one transaction pipeline, so guards, reactions, replication and history all see the same changes.
-
-## What's inside
-
-- **Profiles:** session locked player data with autosave, fast server hops, migrations, receipts that never grant twice, a mailbox for offline players and erasure on request
-- **Shared stores:** data any server writes, with the whole pipeline run inside UpdateAsync
-- **MemoryStore:** validated hash maps, sorted maps and queues, plus presence, locks with fencing tokens, counters, rate limits and job queues
-- **Matchmaking and leaderboards:** one elected matcher per queue, all-time and windowed boards
-- **Replication:** per path visibility, diffs batched once per frame, client atoms and rate limited remote ops
-- **History and tooling:** version history, rollback through the server holding a profile, an audit log and a telemetry bus
-
-The guides and the API reference are at [qvyra.github.io/geode](https://qvyra.github.io/geode). [DECISIONS.md](DECISIONS.md) records why things are built the way they are, and `example/` holds a small game that uses most of it.
-
-## Development
-
-You need [Rokit](https://github.com/rojo-rbx/rokit) and Node.js.
-
-```sh
-rokit install
-npm ci
-lune run check
-```
-
-`lune run check` runs formatting, linting, type checking and tests, the same as CI. `lune run fix` applies the formatters. `lune run test <filter>` runs only the spec files whose path contains the filter. See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+- [Docs site](https://qvyra.github.io/geode): installation, getting started, guides for every part, troubleshooting and the API reference
+- [DECISIONS.md](DECISIONS.md): why Geode is built the way it is
+- `example/`: a small game that uses most of it
+- [CONTRIBUTING.md](CONTRIBUTING.md): setup and the check suite
 
 ## License
 
