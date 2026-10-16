@@ -51,6 +51,13 @@ if (lock.ok && lock.value !== undefined) {
 	lock.value.release();
 }
 
+Geode.op(
+	"grantItem",
+	(tx, itemId: string, amount: number) => {
+		tx.increment(["inventory", itemId], amount);
+	},
+	{ args: [Geode.t.string(), Geode.t.integer({ min: 1 })] },
+);
 Geode.remoteOp("buyItem", { store: playerData.store, args: [Geode.t.string()] });
 
 const client = Geode.Client.start();

@@ -6,6 +6,7 @@
 
 local Path = require("../Matrix/Path")
 local Schema = require("../Obsidian/Schema")
+local Transaction = require("../Matrix/Transaction")
 local Validate = require("../Obsidian/Validate")
 
 type Schema = Schema.Schema
@@ -15,15 +16,18 @@ local Tooling = {}
 export type ArgSpec = {
 	name: string,
 	-- "path", "number", "index", "value" (decoded with the schema at the op's path), "item" (an
-	-- item of the list at the path), "fields" (fields of the struct at the path)
+	-- item of the list at the path), "fields" (fields of the struct at the path), or "schema"
+	-- for a custom op's argument, decoded with its own schema
 	type: string,
 	optional: boolean?,
+	-- for "schema" arguments, the schema described the way schemaAt describes a node
+	schema: { [string]: unknown }?,
 }
 
 export type OpSpec = {
 	name: string,
 	builtin: boolean,
-	-- nil for custom ops, which don't declare their arguments
+	-- nil for a custom op registered without argument schemas
 	args: { ArgSpec }?,
 }
 
@@ -130,9 +134,52 @@ function Tooling.ops(custom: { string }?): { OpSpec }
 	local list: { OpSpec } = table.clone(BUILT_IN)
 	local names: { string } = custom or {}
 	for _, name in names do
-		table.insert(list, { name = name, builtin = false })
+		local schemas = Transaction.opArgs(name)
+		local args: { ArgSpec }? = nil
+		if schemas then
+			local specs: { ArgSpec } = {}
+			for index, schema in schemas do
+				local inner = schema
+				while inner.kind == "optional" do
+					inner = inner.item :: Schema
+				end
+				table.insert(specs, {
+					name = `arg{index}`,
+					type = "schema",
+					optional = schema.kind == "optional",
+					schema = describe(inner),
+				})
+			end
+			args = specs
+		end
+		table.insert(list, { name = name, builtin = false, args = args })
 	end
 	return list
+end
+
+-- A custom op's arguments decoded with its own schemas. Ops without schemas get theirs as they
+-- came
+local function decodeCustom(op: string, args: { unknown }): (boolean, { unknown } | string, number)
+	local schemas = Transaction.opArgs(op)
+	if schemas == nil then
+		return true, args, #args
+	end
+	if #args > #schemas then
+		return false, `{op} takes {#schemas} arguments and was given {#args}`, 0
+	end
+	local out: { unknown } = {}
+	for index, schema in schemas do
+		local raw = args[index]
+		if raw == nil then
+			continue
+		end
+		local ok, decoded = Validate.decode(schema, raw)
+		if not ok then
+			return false, `argument {index} of {op} doesn't match its schema`, 0
+		end
+		out[index] = decoded
+	end
+	return true, out, #schemas
 end
 
 -- What `schema` says at `path`: `{ declared = false }` past what it describes, or the node's
@@ -166,7 +213,7 @@ local function decodeAt(schema: Schema?, node: Schema?, value: unknown): (boolea
 end
 
 -- Turns `args` for `op` from their stored form back into live values, using the codec at the
--- op's path. Custom ops get their arguments as they came
+-- op's path for built-ins and the op's own schemas for custom ops
 function Tooling.decodeArgs(
 	schema: Schema?,
 	op: string,
@@ -174,7 +221,7 @@ function Tooling.decodeArgs(
 ): (boolean, { unknown } | string, number)
 	local spec = SPECS[op]
 	if spec == nil then
-		return true, args, #args
+		return decodeCustom(op, args)
 	end
 	local specs = spec.args :: { ArgSpec }
 	local out: { unknown } = {}

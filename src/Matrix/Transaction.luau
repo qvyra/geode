@@ -4,7 +4,9 @@
 -- document commits it. Throwing anywhere inside a transaction discards the draft whole
 
 local Path = require("./Path")
+local Schema = require("../Obsidian/Schema")
 local Tree = require("./Tree")
+local Validate = require("../Obsidian/Validate")
 
 type Path = Path.Path
 type PathLike = Path.PathLike
@@ -30,7 +32,14 @@ export type OpCall = {
 	args: { unknown },
 }
 
-export type TxErrorKind = "opFailed" | "unknownOp" | "error" | "readOnly" | "busy" | "rejected"
+export type TxErrorKind =
+	"opFailed"
+	| "unknownOp"
+	| "invalidArgs"
+	| "error"
+	| "readOnly"
+	| "busy"
+	| "rejected"
 
 export type TxError = {
 	kind: TxErrorKind,
@@ -46,6 +55,11 @@ export type Outcome = {
 }
 
 export type OpHandler = (tx: Transaction, ...any) -> ()
+
+export type OpOptions = {
+	-- One schema per argument. A call with other arguments fails before the handler runs
+	args: { Schema.Schema }?,
+}
 
 type Fields = {
 	source: Source,
@@ -93,6 +107,8 @@ local BUILT_IN: { [string]: boolean } = {
 }
 
 local registry: { [string]: OpHandler } = {}
+-- argument schemas of the custom ops that declared them
+local argSchemas: { [string]: { Schema.Schema } } = {}
 
 -- Errors and sources
 
@@ -142,27 +158,69 @@ end
 
 --[=[
 	Registers an op once for the whole game. A store has to list it in its `ops` before the op
-	can run there
+	can run there. With `args`, every call is checked against one schema per argument before the
+	handler runs, and development tools can describe and decode the arguments
 
 	@function op
 	@within Geode
 	@param name string
 	@param handler OpHandler
+	@param options OpOptions?
 
 	```lua
 	Geode.op("grantItem", function(tx, itemId: string, amount: number)
 		tx:update({ "inventory", itemId }, function(current)
 			return (current or 0) + amount
 		end)
-	end)
+	end, { args = { Geode.t.string(), Geode.t.integer({ min = 1 }) } })
 	```
 ]=]
-function Transaction.register(name: string, handler: OpHandler)
+function Transaction.register(name: string, handler: OpHandler, options: OpOptions?)
 	assert(type(name) == "string" and name ~= "", "an op needs a name")
 	assert(type(handler) == "function", `op {name} needs a handler function`)
 	assert(not BUILT_IN[name], `{name} is a built-in op and can't be replaced`)
 	assert(registry[name] == nil, `an op named {name} is already registered`)
+	local args = options and options.args
+	if args ~= nil then
+		assert(type(args) == "table", `op {name}'s args must be a list of schemas`)
+		for index, schema in args do
+			assert(
+				type(schema) == "table" and type((schema :: any).kind) == "string",
+				`argument {index} of op {name} isn't a schema`
+			)
+		end
+		argSchemas[name] = table.clone(args)
+	end
 	registry[name] = handler
+end
+
+-- The argument schemas a custom op declared, or nil when it declared none
+function Transaction.opArgs(name: string): { Schema.Schema }?
+	local args = argSchemas[name]
+	return if args then table.clone(args) else nil
+end
+
+-- Checks a call's arguments against the op's schemas. Fewer is fine when the missing ones are
+-- optional, the schemas decide
+local function checkArgs(name: string, args: { n: number, [number]: unknown })
+	local schemas = argSchemas[name]
+	if schemas == nil then
+		return
+	end
+	if args.n > #schemas then
+		Transaction.fail(
+			"invalidArgs",
+			`op {name} takes {#schemas} arguments and was given {args.n}`
+		)
+	end
+	for index, schema in schemas do
+		local result = Validate.validate(schema, args[index])
+		if not result.ok then
+			local issue = result.issues[1]
+			local where = if issue.path ~= "" then ` at {issue.path}` else ""
+			Transaction.fail("invalidArgs", `argument {index} of op {name}{where}: {issue.message}`)
+		end
+	end
 end
 
 function Transaction.isRegistered(name: string): boolean
@@ -416,6 +474,7 @@ function Transaction.op(self: Transaction, name: string, ...: any)
 		Transaction.fail("unknownOp", `op {name} isn't enabled on this store, add it to its ops`)
 	end
 	local args = table.pack(...)
+	checkArgs(name, args)
 	self:_run(name, table.move(args, 1, args.n, 1, {}), function()
 		handler(self, table.unpack(args, 1, args.n))
 	end)
