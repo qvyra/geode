@@ -694,6 +694,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 			services.clock:now()
 		)
 	end)
+	self:_publishCommits(key, profile)
 	if self._audit then
 		self:_auditProfile(key, profile)
 	end
@@ -1731,6 +1732,27 @@ local function summarize(record: Document.CommitRecord): AuditEntry
 		paths = paths,
 		at = record.timestamp,
 	}
+end
+
+-- Commit telemetry for change logs: revision, source, note, ops and changed paths. Built only
+-- while something listens, so a game nobody inspects pays nothing for it
+function ProfileStore._publishCommits(self: ProfileStore, key: string, profile: Profile.Profile)
+	profile:onCommit(function(record: Document.CommitRecord)
+		if not Bus.listening() then
+			return
+		end
+		local entry = summarize(record)
+		Bus.publish("profileCommitted", {
+			store = self.name,
+			key = key,
+			revision = entry.revision,
+			source = entry.source,
+			player = entry.userId,
+			note = entry.note,
+			ops = entry.ops,
+			paths = entry.paths,
+		}, entry.at)
+	end)
 end
 
 function ProfileStore._auditKey(_self: ProfileStore, key: string, revision: number): string
