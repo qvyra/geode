@@ -184,6 +184,10 @@ return function(spec: Spec.Api)
 			local rejected = edit(1000)
 			expect(rejected.ok).toBe(false)
 			expect(rejected.error.kind).toBe("rejected")
+			expect(type(rejected.error.guard)).toBe("string")
+			expect((string.find(rejected.error.message, `guard {rejected.error.guard}: `, 1, true))).toBe(
+				1
+			)
 			expect(profile:get("coins")).toBe(20)
 		end)
 
@@ -213,7 +217,7 @@ return function(spec: Spec.Api)
 			local server = universe:server({ jobId = "studio", studio = true })
 			local store = Helpers.store(server, {
 				studio = "real",
-				guards = { Guards.range("coins", { max = 100 }) },
+				guards = { Guards.range("coins", { max = 100 }, { name = "coinCap" }) },
 			}) :: Any
 			local answer = request(universe, server, {
 				kind = "apply",
@@ -225,6 +229,7 @@ return function(spec: Spec.Api)
 			})
 			expect(answer.ok).toBe(false)
 			expect(answer.error.kind).toBe("rejected")
+			expect(answer.error.guard).toBe("coinCap")
 			expect(store:get("free")).toBeNil()
 			local stored = Helpers.stored(universe, "free") :: Any
 			expect(stored.meta.lease).toBeNil()

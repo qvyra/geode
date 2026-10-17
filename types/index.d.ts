@@ -57,6 +57,8 @@ type TxErrorKind =
 interface TxError {
 	kind: TxErrorKind;
 	message: string;
+	/** The guard that rejected the transaction, when a guard did */
+	guard?: string;
 }
 
 interface DiffEntry {
@@ -633,7 +635,11 @@ type WriteResult =
 	| { ok: true; record?: CommitRecord }
 	| {
 			ok: false;
-			error: { kind: TxErrorKind | "adapter" | "corrupt" | "tooLarge"; message: string };
+			error: {
+				kind: TxErrorKind | "adapter" | "corrupt" | "tooLarge";
+				message: string;
+				guard?: string;
+			};
 	  };
 
 interface SharedStore {

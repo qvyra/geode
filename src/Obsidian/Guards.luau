@@ -796,7 +796,8 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 				"rejected",
 				`guard {blocking.guard}: {blocking.reason}{if others > 0
 					then ` (and {others} more)`
-					else ""}`
+					else ""}`,
+				blocking.guard
 			)
 		end
 	end
