@@ -34,6 +34,8 @@ Bridge.FEATURES = table.freeze({
 	"schema",
 	-- the apply request
 	"edit",
+	-- apply with dryRun = true: what an edit would change and which guards it would break
+	"dryRun",
 })
 
 type Opened = {
@@ -130,7 +132,13 @@ local function answer(services: Types.Services, request: unknown): unknown
 			end
 			local args = if type(fields.args) == "table" then fields.args :: { unknown } else {}
 			local note = if type(fields.note) == "string" then fields.note else ""
-			return tooling.apply(fields.key :: string, fields.op :: string, args, note)
+			return tooling.apply(
+				fields.key :: string,
+				fields.op :: string,
+				args,
+				note,
+				{ dryRun = fields.dryRun == true }
+			)
 		end
 		return { error = `this store doesn't support {kind}` }
 	end

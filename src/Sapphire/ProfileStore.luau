@@ -382,8 +382,14 @@ function ProfileStore.new(options: Options): ProfileStore
 		schemaAt = function(path: unknown): unknown
 			return Tooling.schemaAt(store._schema, path)
 		end,
-		apply = function(key: string, op: string, args: { unknown }, note: string): unknown
-			return store:_toolEdit(key, op, args, note)
+		apply = function(
+			key: string,
+			op: string,
+			args: { unknown },
+			note: string,
+			toolOptions: { dryRun: boolean? }?
+		): unknown
+			return store:_toolEdit(key, op, args, note, toolOptions)
 		end,
 	})
 	VeinBridge.ensure(givenServices)
@@ -1026,6 +1032,14 @@ export type EditResult = {
 	via: ("here" | "holder" | "loaded")?,
 	-- `guard` names the guard behind a "rejected" error, when a guard raised it
 	error: { kind: string, message: string, guard: string? }?,
+	-- set on a dry run's answer
+	dryRun: boolean?,
+	-- whether the edit would commit: no guard would reject or kick
+	wouldCommit: boolean?,
+	-- the paths the edit would change
+	paths: { string }?,
+	-- every guard the edit would break, as plain data
+	violations: { { [string]: unknown } }?,
 }
 
 export type RollbackResult = {
@@ -1394,6 +1408,15 @@ local function editFailure(kind: string, message: string): EditResult
 	return { ok = false, error = { kind = kind, message = message } }
 end
 
+local function callOp(tx: Transaction.Transaction, op: string, list: { unknown }, count: number)
+	if Tooling.isBuiltIn(op) then
+		-- built-ins are methods on the transaction, only custom ops go through tx:op
+		(tx :: any)[op](tx, table.unpack(list, 1, count))
+	else
+		tx:op(op, table.unpack(list, 1, count))
+	end
+end
+
 -- Runs a tool's edit on a profile open here, with a plugin source and the tool's note
 function ProfileStore._editHere(
 	self: ProfileStore,
@@ -1409,12 +1432,7 @@ function ProfileStore._editHere(
 	end
 	local list = values :: { unknown }
 	local result = profile:transact(function(tx)
-		if Tooling.isBuiltIn(op) then
-			-- built-ins are methods on the transaction, only custom ops go through tx:op
-			(tx :: any)[op](tx, table.unpack(list, 1, count))
-		else
-			tx:op(op, table.unpack(list, 1, count))
-		end
+		callOp(tx, op, list, count)
 	end, { source = "plugin", note = note })
 	if not result.ok then
 		local failed = editFailure(result.error.kind, result.error.message);
@@ -1432,9 +1450,12 @@ function ProfileStore._toolEdit(
 	key: string,
 	op: string,
 	args: { unknown },
-	note: string
+	note: string,
+	options: { dryRun: boolean? }?
 ): EditResult
-	if type(note) ~= "string" or note == "" then
+	local dryRun = options ~= nil and options.dryRun == true
+	-- a dry run changes nothing, so it needs no note
+	if not dryRun and (type(note) ~= "string" or note == "") then
 		return editFailure("noteRequired", "edits from a development tool need a note saying why")
 	end
 	if type(key) ~= "string" or type(op) ~= "string" then
@@ -1447,6 +1468,9 @@ function ProfileStore._toolEdit(
 		)
 	end
 	local list: { unknown } = if type(args) == "table" then args else {}
+	if dryRun then
+		return self:_dryRun(key, op, list)
+	end
 	local open: unknown = self._open[key]
 	if open ~= nil then
 		return self:_editHere(key, op, list, note)
@@ -1510,6 +1534,57 @@ function ProfileStore._toolEdit(
 		result.via = "loaded"
 	end
 	return result
+end
+
+-- What an edit would do to a profile open here: the paths it would change and every guard it
+-- would break, with the actions they'd take. Runs the whole pipeline on a draft that's thrown
+-- away, so nothing commits, no guard fires or counts it, and nobody is kicked
+function ProfileStore._dryRun(
+	self: ProfileStore,
+	key: string,
+	op: string,
+	args: { unknown }
+): EditResult
+	local function failed(kind: string, message: string, guard: string?): EditResult
+		local result = editFailure(kind, message)
+		result.dryRun = true
+		(result.error :: any).guard = guard
+		return result
+	end
+	local open: unknown = self._open[key]
+	if open == nil then
+		return failed("notOpen", `a dry run needs profile {key} open on this server`)
+	end
+	local profile = self._open[key]
+	local decoded, values, count = Tooling.decodeArgs(self._schema, op, args)
+	if not decoded then
+		return failed("badArgs", values :: string)
+	end
+	local list = values :: { unknown }
+	local result = profile:transact(function(tx)
+		callOp(tx, op, list, count)
+	end, { source = "plugin", dryRun = true })
+	if not result.ok then
+		return failed(result.error.kind, result.error.message, result.error.guard)
+	end
+	local found = result.dryRun :: Document.DryRun
+	local violations = {}
+	local wouldCommit = true
+	for _, finding in found.findings do
+		local violation = finding :: Guards.Violation
+		if Guards.ACTION_RANK[violation.action] >= Guards.ACTION_RANK.reject then
+			wouldCommit = false
+		end
+		table.insert(violations, GuardEvent.describe(violation, self._schema, self._services.json))
+	end
+	return {
+		ok = true,
+		dryRun = true,
+		wouldCommit = wouldCommit,
+		paths = found.paths,
+		violations = violations,
+		revision = profile:revision(),
+	}
 end
 
 -- Sends an edit to the server holding the profile and waits for its answer, like a rollback
