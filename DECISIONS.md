@@ -456,3 +456,15 @@ Custom ops took whatever they were given. Remote ops already checked a client's 
 The alternative was named arguments, a map from name to schema. Positional lists match how ops are called and how remote ops already declare them. Names for tool forms can come later as an option next to `args`.
 
 **PR:** #14
+
+## 37. A dry run reports every guard and leaves no trace
+
+**Date:** 2026-10-17
+
+Tools want to know what the guards would say before an edit lands. `transact` takes `dryRun = true`: the body and every stage run on a draft, then the draft is thrown away. No commit, no listeners, no deferred callbacks. In a dry run guards collect every violation instead of stopping at the first rejection, and they check against a copy of their state, so a rate guard never counts a dry run and the real edit afterwards sees the same limits. Nothing fires `guardBroken`, nobody is kicked.
+
+The bridge's `apply` takes `dryRun` and answers with the paths that would change, each violation as plain data, and `wouldCommit`, false when any violation rejects or kicks. It needs no note, since nothing changes, and only works on a profile open on that server. Running it on a profile held elsewhere would mean a round trip through the holder for an answer that may be stale by the time it arrives, and loading a free profile would take its lease just to look. Tools list it as the `dryRun` feature.
+
+Shared stores refuse dry runs. Their transactions run inside UpdateAsync, so a dry run would still spend a write request to learn nothing a write result can carry.
+
+**PR:** #17
