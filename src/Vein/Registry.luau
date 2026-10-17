@@ -11,6 +11,9 @@ export type Tooling = {
 	inspect: (key: string) -> unknown,
 	-- the services the store runs on, so a bridge only answers for stores on its own server
 	services: unknown?,
+	-- where the store keeps its data in Studio: "mock", "scope" or "real". Tools ask for a
+	-- confirmation before editing live data
+	studio: string?,
 	-- the ops a tool may call, with their arguments
 	ops: (() -> unknown)?,
 	-- what the schema says at a path

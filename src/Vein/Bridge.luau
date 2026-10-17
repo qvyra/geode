@@ -98,7 +98,10 @@ local function answer(services: Types.Services, request: unknown): unknown
 		local stores = {}
 		for _, entry in profileStores(services) do
 			local tooling = entry.tooling :: Registry.Tooling
-			table.insert(stores, { name = entry.name, keys = tooling.keys() })
+			table.insert(
+				stores,
+				{ name = entry.name, keys = tooling.keys(), studio = tooling.studio }
+			)
 		end
 		return { stores = stores }
 	elseif kind == "profile" then
