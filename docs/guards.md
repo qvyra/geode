@@ -65,6 +65,12 @@ PlayerData.store.guardBroken:connect(function(violation)
 end)
 ```
 
+## Trying an edit first
+
+A profile transaction with `{ dryRun = true }` runs the body, reactions, bundles and guards, then throws the draft away. Nothing commits and no listener runs. Guards report every violation instead of stopping at the first one that rejects, and they don't fire `guardBroken`, kick anyone, or count the transaction toward a rate limit. The result's `dryRun` holds the paths that would change and the violations, in `findings`. Shared stores don't take dry runs, since one would still cost a write request.
+
+Development tools reach the same thing through the Studio bridge's `apply` request with `dryRun`, which needs the profile open on that server.
+
 ## Who made the change
 
 Each transaction has a source: `system` for game code, `player` with a user id for client intent, `reaction` and `bundle` for facet writes, `mailbox`, `migration` and `plugin`. Rate guards skip reaction, bundle and plugin writes by default, so a level up reward or an edit from a Studio tool doesn't use up a player's coin limit, but every other guard still judges them. `skipSources` changes that per guard, and `ops` limits a guard to transactions that ran certain ops.
