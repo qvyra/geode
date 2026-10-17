@@ -48,7 +48,7 @@ Each guard has an action for when it breaks. The default is `reject`.
 - `kick` undoes it and kicks the player who made it
 - A function decides for itself. It gets the violation and returns an action name, and returning nothing rejects, so a broken handler fails closed
 
-When several guards break, the strongest action wins: kick, then reject, then flag, then warn. Every violation fires the store's `guardBroken` signal. A violation names the guard, its kind, the path, the reason, the action, the source and player, the ops that ran, and the value at the path before and after the transaction.
+When several guards break, the strongest action wins: kick, then reject, then flag, then warn. A rejected transaction fails with the kind `rejected`, and `error.guard` names the guard that blocked it. Every violation fires the store's `guardBroken` signal. A violation names the guard, its kind, the path, the reason, the action, the source and player, the ops that ran, and the value at the path before and after the transaction.
 
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
