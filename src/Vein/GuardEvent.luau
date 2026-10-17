@@ -44,6 +44,35 @@ local function stored(
 	return form, nil
 end
 
+-- `violation` as plain data a Bindable can carry, values in stored form
+function GuardEvent.describe(
+	violation: Guards.Violation,
+	schema: Schema.Schema?,
+	json: Types.Json
+): { [string]: unknown }
+	local path = if violation.path then Path.parseFormatted(violation.path) else nil
+	if path and violation.kind == "schema" and path[1] == "data" then
+		table.remove(path, 1)
+	end
+	local before, beforeSize = stored(violation.before, path, schema, json)
+	local after, afterSize = stored(violation.after, path, schema, json)
+	return {
+		guard = violation.guard,
+		kind = violation.kind,
+		action = violation.action,
+		reason = violation.reason,
+		path = violation.path,
+		source = violation.source.kind,
+		player = violation.userId,
+		ops = table.clone(violation.ops),
+		before = before,
+		after = after,
+		-- encoded sizes of values left out for being too big
+		beforeSize = beforeSize,
+		afterSize = afterSize,
+	}
+end
+
 -- Publishes a guardBroken message for `violation` on `store`/`key`. Does nothing when no one is
 -- listening
 function GuardEvent.publish(
@@ -58,30 +87,11 @@ function GuardEvent.publish(
 	if not Bus.listening() then
 		return
 	end
-	local path = if violation.path then Path.parseFormatted(violation.path) else nil
-	if path and violation.kind == "schema" and path[1] == "data" then
-		table.remove(path, 1)
-	end
-	local before, beforeSize = stored(violation.before, path, schema, json)
-	local after, afterSize = stored(violation.after, path, schema, json)
-	Bus.publish("guardBroken", {
-		store = store,
-		storeKind = storeKind,
-		key = key,
-		guard = violation.guard,
-		kind = violation.kind,
-		action = violation.action,
-		reason = violation.reason,
-		path = violation.path,
-		source = violation.source.kind,
-		player = violation.userId,
-		ops = table.clone(violation.ops),
-		before = before,
-		after = after,
-		-- encoded sizes of values left out for being too big
-		beforeSize = beforeSize,
-		afterSize = afterSize,
-	}, at)
+	local fields = GuardEvent.describe(violation, schema, json)
+	fields.store = store
+	fields.storeKind = storeKind
+	fields.key = key
+	Bus.publish("guardBroken", fields, at)
 end
 
 return GuardEvent
