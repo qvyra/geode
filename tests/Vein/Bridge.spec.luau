@@ -109,6 +109,7 @@ return function(spec: Spec.Api)
 			local profiles = server.tooling:request({ kind = "profiles" }) :: Any
 			expect(profiles.stores[1].name).toBe(Helpers.STORE)
 			expect(profiles.stores[1].keys).toEqual({ "p1" })
+			expect(profiles.stores[1].studio).toBe("real")
 
 			local answer = server.tooling:request({
 				kind = "profile",
@@ -127,6 +128,15 @@ return function(spec: Spec.Api)
 			expect(missing.missing).toBe(true)
 			local unknown = server.tooling:request({ kind = "edit" }) :: Any
 			expect(unknown.error).never.toBeNil()
+		end)
+
+		it("says where each store keeps its Studio data", function()
+			fresh()
+			local universe = Universe.new()
+			local server = universe:server({ studio = true })
+			loaded(server, universe)
+			local profiles = server.tooling:request({ kind = "profiles" }) :: Any
+			expect(profiles.stores[1].studio).toBe("mock")
 		end)
 
 		it("forwards telemetry", function()

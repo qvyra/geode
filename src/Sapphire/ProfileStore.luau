@@ -375,6 +375,7 @@ function ProfileStore.new(options: Options): ProfileStore
 			return store:inspect(key)
 		end,
 		services = givenServices,
+		studio = (options.studio or DEFAULTS.studio) :: string,
 		ops = function(): unknown
 			return Tooling.ops(store._ops)
 		end,
