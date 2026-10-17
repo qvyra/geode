@@ -18,8 +18,14 @@ export type Tooling = {
 	ops: (() -> unknown)?,
 	-- what the schema says at a path
 	schemaAt: ((path: unknown) -> unknown)?,
-	-- runs an edit with a plugin source. Yields
-	apply: ((key: string, op: string, args: { unknown }, note: string) -> unknown)?,
+	-- runs an edit with a plugin source, or only tries it with dryRun. Yields
+	apply: ((
+		key: string,
+		op: string,
+		args: { unknown },
+		note: string,
+		options: { dryRun: boolean? }?
+	) -> unknown)?,
 }
 
 export type Entry = {
