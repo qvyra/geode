@@ -49,6 +49,15 @@ type SourceLike = SourceKind | Source;
 interface TransactOptions {
 	source?: SourceLike;
 	note?: string;
+	/** Profiles only: run everything, commit nothing, and report what guards found */
+	dryRun?: boolean;
+}
+
+interface DryRun {
+	/** The paths the transaction would change */
+	paths: string[];
+	/** What stages found, such as every guard violation */
+	findings: unknown[];
 }
 
 type TxErrorKind =
@@ -76,7 +85,8 @@ interface CommitRecord {
 	readonly note?: string;
 }
 
-type TxResult = { ok: true; record?: CommitRecord } | { ok: false; error: TxError };
+type TxResult =
+	{ ok: true; record?: CommitRecord; dryRun?: DryRun } | { ok: false; error: TxError };
 
 interface Outcome {
 	committed: boolean;
