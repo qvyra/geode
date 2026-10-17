@@ -73,6 +73,9 @@ type Fields = {
 	_open: boolean,
 	_deferred: { (outcome: Outcome) -> () },
 	_provenance: { [string]: SourceKind },
+	-- set for a dry run, which never commits. Stages report into _findings instead of acting
+	_dryRun: boolean,
+	_findings: { unknown },
 }
 
 --[=[
@@ -246,6 +249,8 @@ function Transaction.new(
 		_open = true,
 		_deferred = {},
 		_provenance = {},
+		_dryRun = false,
+		_findings = {},
 	}
 	return setmetatable(self, Transaction)
 end

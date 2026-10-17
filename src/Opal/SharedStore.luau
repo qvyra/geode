@@ -435,6 +435,8 @@ function SharedStore.transact(
 	body: (tx: Transaction.Transaction) -> (),
 	options: Document.TransactOptions?
 ): WriteResult
+	-- a dry run would still cost an UpdateAsync and has nothing to report through a write result
+	assert(not (options and options.dryRun), "shared stores don't do dry runs")
 	self:_listen()
 	local services = self._services
 

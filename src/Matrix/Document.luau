@@ -25,12 +25,21 @@ export type CommitRecord = {
 }
 
 export type TxResult =
-	{ ok: true, record: CommitRecord? }
+	{ ok: true, record: CommitRecord?, dryRun: DryRun? }
 	| { ok: false, error: Transaction.TxError }
+
+-- What a dry run found: the paths it would change and what stages such as guards reported
+export type DryRun = {
+	paths: { string },
+	findings: { unknown },
+}
 
 export type TransactOptions = {
 	source: Transaction.SourceLike?,
 	note: string?,
+	-- run the body and every stage, then throw the draft away. Nothing commits, no listener or
+	-- deferred callback runs, and stages report what they found instead of acting on it
+	dryRun: boolean?,
 }
 
 -- Runs after the transaction body and before commit. It may change the draft or reject the whole
@@ -254,6 +263,8 @@ function Document.transact(
 
 	local source = Transaction.source(options and options.source)
 	local tx = Transaction.new(self._root, source, self._allowed)
+	local dryRun = options ~= nil and options.dryRun == true
+	tx._dryRun = dryRun
 	self._busy = true
 	local ok, thrown = pcall(function()
 		body(tx)
@@ -280,6 +291,14 @@ function Document.transact(
 			self:_settle(tx, { committed = false, record = nil, error = err })
 			return { ok = false, error = err }
 		end
+	end
+	if dryRun then
+		local paths = {}
+		for _, entry in entries do
+			table.insert(paths, Path.format(entry.path))
+		end
+		table.sort(paths)
+		return { ok = true, record = nil, dryRun = { paths = paths, findings = tx._findings } }
 	end
 	if #entries == 0 then
 		self:_settle(tx, { committed = false, record = nil, error = nil })
