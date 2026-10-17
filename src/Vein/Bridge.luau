@@ -36,6 +36,8 @@ Bridge.FEATURES = table.freeze({
 	"edit",
 	-- apply with dryRun = true: what an edit would change and which guards it would break
 	"dryRun",
+	-- profileCommitted telemetry, one message per profile commit
+	"commits",
 })
 
 type Opened = {
