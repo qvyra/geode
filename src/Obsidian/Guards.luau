@@ -707,6 +707,17 @@ local function valuesAt(guard: Guard, finding: Finding, ctx: Context): (unknown,
 	return before, after
 end
 
+local function copy(value: unknown): unknown
+	if type(value) ~= "table" then
+		return value
+	end
+	local out = {}
+	for key, item in value :: { [unknown]: unknown } do
+		out[key] = copy(item)
+	end
+	return out
+end
+
 local function resolve(action: Action, violation: Violation): ActionName
 	if type(action) == "string" then
 		return action :: ActionName
@@ -734,13 +745,18 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 		local violations: { Violation } = {}
 		local checked: { { guard: Guard, ctx: Context } } = {}
 		local strongest = 0
+		local dryRun = tx._dryRun
 		for _, guard in self._guards do
 			if not applies(guard, ctx) then
 				continue
 			end
 			local view = filtered(guard, ctx, tx)
 			table.insert(checked, { guard = guard, ctx = view })
-			for _, finding in guard.check(view, self._state[guard]) do
+			-- a dry run checks against a copy, so rate guards never count it
+			local state = if dryRun
+				then copy(self._state[guard]) :: GuardState
+				else self._state[guard]
+			for _, finding in guard.check(view, state) do
 				local before, after = valuesAt(guard, finding, ctx)
 				local violation: Violation = {
 					guard = guard.name,
@@ -760,6 +776,14 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 				table.insert(violations, violation)
 				strongest = math.max(strongest, ACTION_RANK[violation.action])
 			end
+		end
+
+		-- A dry run reports and stops here: no signal, no kick, nothing recorded, no rejection
+		if dryRun then
+			for _, violation in violations do
+				table.insert(tx._findings, violation)
+			end
+			return
 		end
 
 		tx:defer(function(outcome)
