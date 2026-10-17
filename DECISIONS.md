@@ -468,3 +468,15 @@ The bridge's `apply` takes `dryRun` and answers with the paths that would change
 Shared stores refuse dry runs. Their transactions run inside UpdateAsync, so a dry run would still spend a write request to learn nothing a write result can carry.
 
 **PR:** #17
+
+## 38. Commits go out as telemetry only while someone listens
+
+**Date:** 2026-10-17
+
+A change log needs to know who changed what, and when, as it happens. The audit log already summarizes each commit, but it's written in batches after a save and only when a store keeps one. Every profile commit now also publishes `profileCommitted` on the Bus: store, key, revision, source, player, note, the ops that ran and the changed paths. It reuses the audit log's summary, so the two never disagree.
+
+Building the summary costs a walk over the diff on every commit, so it runs only while `Bus.listening()` is true. With nothing subscribed, a commit does no extra work. In a Studio playtest the bridge subscribes as soon as it opens, so tools always get it there. The bridge lists the message as the `commits` feature, and the Bus version stays at 1 since it's a new message type, not a changed one.
+
+Values aren't in the message. Before and after values can be big, and a change log can ask for the profile when it needs them. Shared stores don't publish it yet, since nothing reads their commits.
+
+**PR:** #18
