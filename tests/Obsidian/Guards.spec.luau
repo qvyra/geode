@@ -66,6 +66,7 @@ return function(spec: Spec.Api)
 			end)
 			expect(rejected(result)).toBe(true)
 			if not result.ok then
+				expect(result.error.guard).never.toBeNil()
 				expect((string.find(result.error.message, "above the maximum of 100", 1, true))).never.toBeNil()
 			end
 			expect(s.doc:get("coins")).toBe(50)

@@ -49,7 +49,7 @@ export type ErrorKind = Transaction.TxErrorKind | "adapter" | "corrupt" | "tooLa
 
 export type WriteResult =
 	{ ok: true, record: Document.CommitRecord? }
-	| { ok: false, error: { kind: ErrorKind, message: string } }
+	| { ok: false, error: { kind: ErrorKind, message: string, guard: string? } }
 
 export type ReadResult = { ok: true, value: unknown } | { ok: false, error: Types.AdapterError }
 

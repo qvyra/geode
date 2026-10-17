@@ -44,6 +44,8 @@ export type TxErrorKind =
 export type TxError = {
 	kind: TxErrorKind,
 	message: string,
+	-- the guard that rejected the transaction, for "rejected" errors a guard raised
+	guard: string?,
 }
 
 -- What a deferred callback learns about how the transaction ended. `record` is set only when it
@@ -117,8 +119,8 @@ local TX_ERROR = {}
 --[=[
 	Throws an error the document reports with the given kind instead of as a plain bug
 ]=]
-function Transaction.fail(kind: TxErrorKind, message: string): never
-	error(setmetatable({ kind = kind, message = message }, TX_ERROR), 0)
+function Transaction.fail(kind: TxErrorKind, message: string, guard: string?): never
+	error(setmetatable({ kind = kind, message = message, guard = guard }, TX_ERROR), 0)
 end
 
 --[=[
@@ -127,7 +129,7 @@ end
 function Transaction.toError(thrown: unknown): TxError
 	if type(thrown) == "table" and getmetatable(thrown :: any) == TX_ERROR then
 		local tagged = thrown :: TxError
-		return { kind = tagged.kind, message = tagged.message }
+		return { kind = tagged.kind, message = tagged.message, guard = tagged.guard }
 	end
 	return { kind = "error", message = tostring(thrown) }
 end

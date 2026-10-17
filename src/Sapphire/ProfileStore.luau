@@ -1024,7 +1024,8 @@ export type EditResult = {
 	ok: boolean,
 	revision: number?,
 	via: ("here" | "holder" | "loaded")?,
-	error: { kind: string, message: string }?,
+	-- `guard` names the guard behind a "rejected" error, when a guard raised it
+	error: { kind: string, message: string, guard: string? }?,
 }
 
 export type RollbackResult = {
@@ -1416,7 +1417,9 @@ function ProfileStore._editHere(
 		end
 	end, { source = "plugin", note = note })
 	if not result.ok then
-		return editFailure(result.error.kind, result.error.message)
+		local failed = editFailure(result.error.kind, result.error.message);
+		(failed.error :: any).guard = result.error.guard
+		return failed
 	end
 	return { ok = true, revision = profile:revision(), via = "here" }
 end
