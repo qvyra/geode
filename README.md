@@ -69,6 +69,10 @@ Each player's data loads when they join and is saved and released when they leav
 - `example/`: a small game that uses most of it
 - [CONTRIBUTING.md](CONTRIBUTING.md): setup and the check suite
 
+## Support
+
+Geode is free and open source. If it saves you time and you want to give something back, there's a [Ko-fi page](https://ko-fi.com/quivery) and a [Roblox support place](https://www.roblox.com/games/136594389777030/Support-Quivery).
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
