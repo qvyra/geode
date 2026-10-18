@@ -2,6 +2,43 @@
 
 All notable changes to Geode are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before 1.0 the public API may still change between minor versions.
 
+## [0.5.0] - 2026-10-18
+
+Development tools can now edit data through the Studio bridge, safely, and see more of what happens while a game runs.
+
+### Added
+
+#### Studio bridge
+
+- Tools can edit profiles during a playtest with the bridge's `apply` request. Every edit is one op run through the normal transaction pipeline with a `plugin` source and a required note, so guards judge it and it lands in the commit record and the audit log
+- An edit to a profile held by another server is sent to that server, which applies it once even if the message arrives twice. When no answer comes back in time the result is `unknown` with the last saved revision, so a tool can look before trying again
+- `ops` lists the ops a tool may call with their arguments, and `schemaAt` describes the schema at a path, so tools can build edit forms
+- `apply` with `dryRun = true` runs the edit and every guard on a copy and keeps nothing. It answers with the paths that would change, every guard that would complain, and whether the edit would go through
+- `hello` lists the bridge's features, and the bridge folder carries a protocol range (`BridgeMinVersion` to `BridgeVersion`), so tools use what a game offers instead of guessing from version numbers
+- The `profiles` answer says where each store keeps its Studio data: `mock`, `scope` or `real`
+- `guardBroken` telemetry carries the whole violation: guard kind, path, source, player, the ops that ran, and the value before and after (left out above 1 KB, with its size). Shared stores send it too
+- `profileCommitted` telemetry for every profile commit: revision, source, player, note, ops and changed paths. It's only built while something listens
+
+#### Writes
+
+- `transact` takes `dryRun = true`. Everything runs on a draft that's thrown away: no commit, no listeners, no `guardBroken`, and rate guards don't count it. Guards report every violation instead of stopping at the first rejection
+- Custom ops can declare their arguments with schemas: `Geode.op(name, handler, { args = { ... } })`. Every call is checked before the handler runs, whoever made it, and a mismatch fails with `invalidArgs`
+- A guard's rejection names the guard in `error.guard`, next to the message
+
+#### Docs
+
+- New pages: installation, getting started, how it works, developer products, troubleshooting, and a mapping for anyone coming from ProfileStore, ProfileService or Lapis
+
+### Changed
+
+- A Studio playtest on live data (`studio = "real"`) never steals a lease and never asks a live server to release a profile. With the default steal policy the load fails at `stealAfter` and says why, and with `stealPolicy = "wait"` it waits for the live server to let go. Nobody has confirmed that Studio's messages can't reach live servers, and a release request could kick a player
+- Rate guards don't count edits from development tools, so fixing a profile doesn't use up the player's limits
+- A shorter README that points to the docs site
+
+### Fixed
+
+- A tool edit refused by a guard still releases the profile it loaded to make the edit
+
 ## [0.4.0] - 2026-10-16
 
 The first public release.
@@ -49,4 +86,5 @@ The first public release.
 - Hand-written typings for the whole API in `types/`, ahead of a roblox-ts package
 - An API reference generated from the doc comments, and guides for every part of Geode
 
+[0.5.0]: https://github.com/qvyra/geode/releases/tag/v0.5.0
 [0.4.0]: https://github.com/qvyra/geode/releases/tag/v0.4.0
