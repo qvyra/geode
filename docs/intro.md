@@ -32,3 +32,7 @@ Geode is built in layers. The top one, `Geode.players`, handles player data in o
 - [Getting started](getting-started)
 - [Developer products](developer-products)
 - [Troubleshooting](troubleshooting) when something doesn't behave the way you expect
+
+## Support
+
+Geode is free and open source. If it saves you time and you want to give something back, there's a Ko-fi page (\<KOFI\>) and a Roblox support place with game passes (\<PLACE\>).
