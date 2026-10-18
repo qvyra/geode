@@ -28,7 +28,7 @@ With [Wally](https://wally.run), add Geode to `wally.toml` and run `wally instal
 
 ```toml
 [dependencies]
-Geode = "qvyra/geode@0.4.0"
+Geode = "qvyra/geode@0.5.0"
 ```
 
 A roblox-ts package is coming. The typings for the whole API already live in `types/`.
