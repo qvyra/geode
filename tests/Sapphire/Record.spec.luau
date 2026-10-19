@@ -26,6 +26,7 @@ return function(spec: Spec.Api)
 			expect(record.meta.createdAt).toBe(50)
 			expect(record.meta.receipts).toEqual({})
 			expect(record.meta.lease).toBeNil()
+			expect(record.meta.format).toBe(Record.FORMAT)
 		end)
 
 		it("recognizes the record shape", function()
@@ -33,6 +34,17 @@ return function(spec: Spec.Api)
 			expect(Record.isRecord({ data = {} })).toBe(false)
 			expect(Record.isRecord("text")).toBe(false)
 			expect(Record.isRecord({ meta = { revision = "1", schemaVersion = 1 } })).toBe(false)
+		end)
+
+		it("accepts records with and without a format", function()
+			expect(Record.FORMAT).toBe(1)
+			expect(Record.isRecord({ meta = { revision = 3, schemaVersion = 1 } })).toBe(true)
+			expect(Record.isRecord({ meta = { format = 1, revision = 3, schemaVersion = 1 } })).toBe(
+				true
+			)
+			expect(Record.isRecord({ meta = { format = "1", revision = 3, schemaVersion = 1 } })).toBe(
+				false
+			)
 		end)
 
 		it("tells free, own, stale and held leases apart", function()

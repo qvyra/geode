@@ -470,6 +470,7 @@ function ProfileStore._tryAcquire(
 					acquiredAt = now,
 					renewedAt = now,
 				}
+				record.meta.format = Record.FORMAT
 				record.meta.updatedAt = now
 				record.meta.lastSession =
 					{ session = owner.session, revision = record.meta.revision }
@@ -504,6 +505,7 @@ function ProfileStore._abandon(self: ProfileStore, key: string, owner: Record.Ow
 					return nil
 				end
 				record.meta.lease = nil
+				record.meta.format = Record.FORMAT
 				return record
 			end)
 		end,
@@ -987,6 +989,7 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 				record.meta.mailboxCursor = 0
 				record.meta.erasedAt = now
 				record.meta.updatedAt = now
+				record.meta.format = Record.FORMAT
 				return record, { userIds = {} }
 			end)
 		end,

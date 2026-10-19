@@ -382,6 +382,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 					end
 				end
 
+				record.meta.format = Record.FORMAT
 				record.meta.updatedAt = now
 				record.meta.lastSession =
 					{ session = backend.owner.session, revision = record.meta.revision }
