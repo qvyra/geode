@@ -22,6 +22,7 @@ local Quartz = require("@self/Quartz")
 local QuartzTypes = require("@self/Quartz/Types")
 local ProfileModule = require("@self/Sapphire/Profile")
 local ProfileStore = require("@self/Sapphire/ProfileStore")
+local Record = require("@self/Sapphire/Record")
 local Sapphire = require("@self/Sapphire")
 local Scheduler = require("@self/Quartz/Scheduler")
 local Topaz = require("@self/Topaz")
@@ -102,6 +103,43 @@ local QuartzRaw = Quartz.Raw
 	@param options FacetSetOptions
 	@return FacetSet -- attach it to a document before any guard set
 ]=]
+--[=[
+	@function externalWrite
+	@within Raw
+	@param stored unknown -- the record as read from the DataStore, decoded from JSON
+	@param data unknown -- the new data, in stored form
+	@param options { now: number, id: string } -- Unix seconds, and an id fresh for this write
+	@return { data: unknown, meta: { [string]: unknown } } -- the record to write back
+
+	For tools that edit a stored profile or shared record directly in the DataStore, outside a
+	running Geode. Returns a copy of `stored` the way such a write has to leave it: the new data,
+	`meta.revision` one higher, `meta.lastSession` set to `"external:" .. id` with the new
+	revision, and `meta.updatedAt` set to `now`. The rest of `meta`, the lease and the format
+	included, stays as it was. Errors when `stored` isn't a Geode record
+
+	A server whose release already landed would otherwise take a profile back and write over the
+	edit, and shared store caches only take values with a newer revision. A server that still
+	holds the lease writes over an external edit on its next save, so edit records with no lease
+
+	```lua
+	local HttpService = game:GetService("HttpService")
+
+	local stored = { data = { coins = 5 }, meta = { schemaVersion = 1, revision = 7 } }
+	local written = Geode.Raw.externalWrite(stored, { coins = 50 }, {
+		now = DateTime.now().UnixTimestampMillis / 1000,
+		id = HttpService:GenerateGUID(false),
+	})
+	print(written.meta.revision) -- 8
+	```
+]=]
+--[=[
+	@prop recordFormat number
+	@within Raw
+	@readonly
+
+	The layout Geode writes into `meta.format` of profile and shared records. Records without
+	`meta.format` were written by 0.4.0 to 0.5.0
+]=]
 Geode.Raw = table.freeze({
 	services = QuartzRaw.services,
 	fromRoblox = QuartzRaw.fromRoblox,
@@ -111,6 +149,8 @@ Geode.Raw = table.freeze({
 	document = Matrix.Document.new,
 	guards = Obsidian.guardSet,
 	facets = Facet.set,
+	externalWrite = Record.externalWrite,
+	recordFormat = Record.FORMAT,
 })
 
 --[=[

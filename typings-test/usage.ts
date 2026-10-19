@@ -68,3 +68,10 @@ coins.subscribe((newValue) => {
 client.op("buyItem", "sword");
 
 print(Geode.Vein.snapshot().idle);
+
+const edited = Geode.Raw.externalWrite(
+	{ data: { coins: 5 }, meta: { schemaVersion: 1, revision: 7 } },
+	{ coins: 50 },
+	{ now: DateTime.now().UnixTimestampMillis / 1000, id: "edit-1" },
+);
+print(edited.meta.revision, edited.meta.format === Geode.Raw.recordFormat);
