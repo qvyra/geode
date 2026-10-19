@@ -81,6 +81,31 @@ local function budgets(): { [string]: number }
 	return found
 end
 
+-- Counts how often each RunService event fires in one second. Some libraries run their request
+-- queues or autosaves on these, so a task where one never fires can't run them as a server would
+local function frameEvents(): { [string]: number }
+	local counts: { [string]: number } = {}
+	local connections = {}
+	for _, name in { "Heartbeat", "Stepped", "PreSimulation", "PostSimulation" } do
+		counts[name] = 0
+		local ok, connection = pcall(function()
+			return ((RunService :: any)[name] :: RBXScriptSignal):Connect(function()
+				counts[name] += 1
+			end)
+		end)
+		if ok then
+			table.insert(connections, connection)
+		else
+			counts[name] = -1
+		end
+	end
+	task.wait(1)
+	for _, connection in connections do
+		connection:Disconnect()
+	end
+	return counts
+end
+
 local function environment(label: string): { [string]: any }
 	-- tells whether tasks share one DataModel: a later task would see an earlier one's marker
 	local marker = workspace:GetAttribute("GeodeBench")
@@ -97,6 +122,7 @@ local function environment(label: string): { [string]: any }
 		budgets = budgets(),
 		earlierMarker = marker,
 		checksScriptRan = run ~= nil and run:GetAttribute("Results") ~= nil,
+		frameEvents = frameEvents(),
 	}
 end
 
@@ -222,7 +248,7 @@ local function perf(
 			truncated = true
 			return nil
 		end
-		local step = measure(proxy, op, keys[index], 60, body)
+		local step = measure(proxy, op, keys[index], math.min(60, deadline - os.clock()), body)
 		lastDone[index] = os.clock()
 		table.insert(steps, step)
 		return step
@@ -631,6 +657,14 @@ function Bench.run(options: Options): { [string]: any }
 	end
 
 	local library = options.library :: string
+	-- Lapis sends every request from a RunService.PostSimulation handler. Without that event its
+	-- loads wait forever and make no request, so it's reported instead of timed
+	if library == "Lapis" and report.environment.frameEvents.PostSimulation == 0 then
+		report.notRunnable =
+			"RunService.PostSimulation didn't fire in this task, and Lapis sends its DataStore requests from that event"
+		report.endedAt = now()
+		return report
+	end
 	local proxy = newProxy(library)
 	Proxy.setActive(proxy)
 	local context: Libraries.Context = {
