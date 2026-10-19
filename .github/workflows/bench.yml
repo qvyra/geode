@@ -1,0 +1,55 @@
+name: Benchmarks
+
+# Runs the library benchmarks against live Roblox services through Open Cloud. Same rules as the
+# live checks: pull requests from forks and Dependabot never run it, since it needs the API key
+
+on:
+  # Every run uploads a version of the test place and takes about half an hour, so only changes to
+  # the bench itself trigger it
+  pull_request:
+    paths:
+      - "tests/bench/**"
+      - "scripts/bench.luau"
+      - "scripts/OpenCloud.luau"
+      - ".lune/bench.luau"
+      - ".github/workflows/bench.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Shares the live checks' group, since both upload versions of the same test place
+concurrency:
+  group: live-checks
+  cancel-in-progress: false
+
+jobs:
+  bench:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: CompeyDev/setup-rokit@v0.2.1
+        with:
+          cache: true
+
+      - run: lune run bench
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+
+      - name: Summary
+        if: always() && hashFiles('.cache/bench/summary.md') != ''
+        run: cat .cache/bench/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        if: always() && hashFiles('.cache/bench/results.json') != ''
+        with:
+          name: bench-results
+          path: |
+            .cache/bench/results.json
+            .cache/bench/summary.md
