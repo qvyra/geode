@@ -2,6 +2,18 @@
 
 All notable changes to Geode are recorded here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before 1.0 the public API may still change between minor versions.
 
+## [Unreleased]
+
+### Added
+
+- Profile and shared records carry `meta.format`, the layout of the stored record. Geode writes `1`. Records without it were written by 0.4.0 to 0.5.0 and keep loading; their next write adds it. `Geode.Raw.recordFormat` holds the current value
+- `Geode.Raw.externalWrite(stored, data, { now, id })` for tools that edit a stored record directly in its DataStore key. It returns the record with the new data, `meta.revision` one higher, `meta.lastSession` set to an `external:` session and a new `meta.updatedAt`, and leaves the rest of `meta` alone. That way a server whose release already landed can't take the profile back and save over the edit, and shared store caches pick it up
+- A docs page on the stored record format and the rule for external writes
+
+### Changed
+
+- A profile that loses its session because a tool edited it after its release says so in the reason
+
 ## [0.5.0] - 2026-10-18
 
 Development tools can now edit data through the Studio bridge, safely, and see more of what happens while a game runs.
@@ -86,5 +98,6 @@ The first public release.
 - Hand-written typings for the whole API in `types/`, ahead of a roblox-ts package
 - An API reference generated from the doc comments, and guides for every part of Geode
 
+[Unreleased]: https://github.com/qvyra/geode/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/qvyra/geode/releases/tag/v0.5.0
 [0.4.0]: https://github.com/qvyra/geode/releases/tag/v0.4.0
