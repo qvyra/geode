@@ -94,6 +94,7 @@ local STEPS: { Step } = {
 	{ name = "selene src", program = "selene", args = { "src" } },
 	{ name = "selene tests", program = "selene", args = { "." }, cwd = "tests" },
 	{ name = "selene studio", program = "selene", args = { "." }, cwd = "tests/studio" },
+	{ name = "selene bench", program = "selene", args = { "." }, cwd = "tests/bench" },
 	{ name = "selene example", program = "selene", args = { "." }, cwd = "example" },
 	{ name = "selene lune", program = "selene", args = { "." }, cwd = ".lune" },
 	{ name = "selene scripts", program = "selene", args = { "." }, cwd = "scripts" },
