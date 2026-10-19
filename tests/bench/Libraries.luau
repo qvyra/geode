@@ -176,6 +176,11 @@ local function profileStore(context: Context): Adapter
 	-- Save and EndSession start the write on a new thread, so the adapter waits for the write
 	-- itself to finish
 	local function written(handle: Handle, start: () -> ())
+		if not handle.value:IsActive() then
+			-- the library already ended the session, for example because another server asked
+			-- for it, so there's nothing left for this call to write
+			return
+		end
 		local since = os.clock()
 		start()
 		if not context.waitWrite(handle.key, since, context.writeLimit) then
@@ -230,6 +235,11 @@ local function profileService(context: Context): Adapter
 		ProfileService.GetProfileStore(Libraries.storeName("ProfileService"), Libraries.template())
 
 	local function written(handle: Handle, start: () -> ())
+		if not handle.value:IsActive() then
+			-- the library already ended the session, for example because another server asked
+			-- for it, so there's nothing left for this call to write
+			return
+		end
 		local since = os.clock()
 		start()
 		if not context.waitWrite(handle.key, since, context.writeLimit) then
