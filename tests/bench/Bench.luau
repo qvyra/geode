@@ -42,6 +42,9 @@ export type Step = {
 	-- budget before minus budget after, per request type. Refills during the step add noise
 	budgetUsed: { [string]: number },
 	check: string?,
+	-- each request in order: method, seconds from the step's start to the request's start and
+	-- end (-1 while out), and whether it succeeded. Capped at TIMELINE_LIMIT
+	timeline: { { any } },
 }
 
 -- Seconds of the five minute task limit the bench plans to use
@@ -50,6 +53,7 @@ local TASK_BUDGET = 270
 -- write cooldown and the old 6 second per key write limit, so neither adds to a timing
 local GAP = 8
 local DEFAULT_ITERATIONS = 5
+local TIMELINE_LIMIT = 12
 local HOP_ATTEMPTS = 3
 local WRITE_METHODS =
 	{ UpdateAsync = true, SetAsync = true, RemoveAsync = true, IncrementAsync = true }
@@ -183,10 +187,19 @@ local function measure(
 	end
 	local after = budgets()
 	local byMethod: { [string]: number } = {}
+	local timeline: { { any } } = {}
 	local requests, failed = 0, 0
 	for _, call in Proxy.since(proxy, since, key) do
 		if call.started <= since + seconds then
 			requests += 1
+			if #timeline < TIMELINE_LIMIT then
+				-- -1 for a request still out, so the entry stays a plain JSON array
+				local ended = if call.finished then call.finished - since else -1
+				table.insert(
+					timeline,
+					{ call.method :: any, call.started - since, ended, call.ok == true }
+				)
+			end
 			byMethod[call.method] = (byMethod[call.method] or 0) + 1
 			if call.ok == false then
 				failed += 1
@@ -209,6 +222,7 @@ local function measure(
 		byMethod = byMethod,
 		failedRequests = failed,
 		budgetUsed = used,
+		timeline = timeline,
 	}
 end
 
