@@ -203,6 +203,9 @@ local function record(mode: string, library: string, finished: OpenCloud.Finishe
 	if report and report.error then
 		print(`  {mode} {library}: the bench reported {report.error}`)
 	end
+	if report and report.notRunnable then
+		print(`  {mode} {library}: not runnable here, {report.notRunnable}`)
+	end
 	if problem then
 		print(`  {mode} {library}: the task {problem}`)
 	end
@@ -295,12 +298,28 @@ local function counts(values: { number }): string
 	return `{sorted[1]} to {sorted[#sorted]}`
 end
 
+-- Why a library couldn't run in a mode, if it couldn't
+local function notRunnable(records: { TaskRecord }, modes: { string }, library: string): string?
+	for _, entry in records do
+		local reason = entry.report and entry.report.notRunnable
+		if reason and entry.library == library and table.find(modes, entry.mode) then
+			return reason
+		end
+	end
+	return nil
+end
+
 local function summarize(records: { TaskRecord }): string
 	local lines = {
 		"| Library | Load new (s) | Load stored (s) | Save (s) | Release (s) | Requests: load / save / release |",
 		"| --- | --- | --- | --- | --- | --- |",
 	}
 	for _, library in LIBRARIES do
+		local blocked = notRunnable(records, { "perf" }, library)
+		if blocked then
+			table.insert(lines, `| {library} | not measured: {blocked} |`)
+			continue
+		end
 		local times: { [string]: { number } } = { loadNew = {}, load = {}, save = {}, release = {} }
 		local requests: { [string]: { number } } = { load = {}, save = {}, release = {} }
 		local failures = 0
@@ -339,6 +358,11 @@ local function summarize(records: { TaskRecord }): string
 	)
 	table.insert(lines, "| --- | --- | --- | --- | --- | --- |")
 	for _, library in LIBRARIES do
+		local blocked = notRunnable(records, { "hold", "join" }, library)
+		if blocked then
+			table.insert(lines, `| {library} | not measured: {blocked} |`)
+			continue
+		end
 		local hops, latest, total = {}, 0, 0
 		local keepTime, keepCoins, sameJob = "-", "-", "-"
 		for _, entry in records do
@@ -375,6 +399,11 @@ local function summarize(records: { TaskRecord }): string
 	table.insert(lines, "| Library | Burst | Load | Save | Release | Failed requests |")
 	table.insert(lines, "| --- | --- | --- | --- | --- | --- |")
 	for _, library in LIBRARIES do
+		local blocked = notRunnable(records, { "throttle" }, library)
+		if blocked then
+			table.insert(lines, `| {library} | not measured: {blocked} |`)
+			continue
+		end
 		for _, entry in records do
 			local result = entry.report and entry.report.result
 			if entry.mode == "throttle" and entry.library == library and result then
