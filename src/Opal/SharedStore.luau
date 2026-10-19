@@ -13,6 +13,7 @@ local RealServices = require("../Quartz/Real/Services")
 local VeinBridge = require("../Vein/Bridge")
 local GuardEvent = require("../Vein/GuardEvent")
 local Reconcile = require("../Sapphire/Reconcile")
+local Record = require("../Sapphire/Record")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
 local Schema = require("../Obsidian/Schema")
@@ -55,7 +56,8 @@ export type ReadResult = { ok: true, value: unknown } | { ok: false, error: Type
 
 export type Stored = {
 	data: unknown,
-	meta: { schemaVersion: number, revision: number, updatedAt: number },
+	-- format is missing on records written before 0.6.0, see Record.FORMAT
+	meta: { format: number?, schemaVersion: number, revision: number, updatedAt: number },
 }
 
 type Cached = {
@@ -110,7 +112,12 @@ local function isStored(value: unknown): boolean
 		return false
 	end
 	local meta = (value :: { meta: unknown }).meta
-	return type(meta) == "table" and type((meta :: { revision: unknown }).revision) == "number"
+	if type(meta) ~= "table" then
+		return false
+	end
+	local fields = meta :: { revision: unknown, format: unknown }
+	return type(fields.revision) == "number"
+		and (fields.format == nil or type(fields.format) == "number")
 end
 
 --[=[
@@ -247,6 +254,7 @@ function SharedStore._encode(self: SharedStore, data: unknown, revision: number)
 	return {
 		data = if self._schema then Validate.encode(self._schema, data) else data,
 		meta = {
+			format = Record.FORMAT,
 			schemaVersion = self._schemaVersion,
 			revision = revision,
 			updatedAt = self._services.clock:now(),
