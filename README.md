@@ -63,7 +63,7 @@ Each player's data loads when they join and is saved and released when they leav
 
 ## Support
 
-Geode is free and open source. If it saves you time and you want to give something back, there's a Ko-fi page (\<KOFI\>) and a Roblox support place with game passes (\<PLACE\>).
+Geode is free and open source. If it saves you time and you want to give something back, there's a [Ko-fi page](https://ko-fi.com/quivery) and a Roblox support place with game passes (\<PLACE\>).
 
 ## License
 
