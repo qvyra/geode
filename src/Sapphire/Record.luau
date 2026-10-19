@@ -49,12 +49,23 @@ export type Owner = {
 
 export type LeaseState = "free" | "mine" | "stale" | "held"
 
+export type ExternalWriteOptions = {
+	-- Unix time in seconds, written to meta.updatedAt
+	now: number,
+	-- Fresh for every write, such as HttpService:GenerateGUID(false)
+	id: string,
+}
+
 local Record = {}
 
 -- The record layout this Geode writes into `meta.format`. Records without it were written by
 -- 0.4.0 to 0.5.0, whose layout is the same apart from the missing field. Bump it only when the
 -- stored shape changes in a way a tool reading records has to know about
 Record.FORMAT = 1
+
+-- Starts the session an external write leaves in meta.lastSession. Geode's own sessions are
+-- GUIDs, so a running server never mistakes one for its own
+Record.EXTERNAL_SESSION_PREFIX = "external:"
 
 local function copy(value: unknown): unknown
 	if type(value) ~= "table" then
@@ -107,6 +118,41 @@ end
 function Record.lastWrittenBy(record: Record, owner: Owner): boolean
 	local last = record.meta.lastSession
 	return last ~= nil and last.session == owner.session and last.revision == record.meta.revision
+end
+
+-- What a tool editing a stored record outside a running Geode writes back: `data` in place of
+-- the old data, the revision one higher, a session in lastSession that no server owns, and a new
+-- updatedAt. Everything else in meta stays as it was, the lease and the format included. Works
+-- on profile and shared records alike and never changes `stored`
+--
+-- The tool writes the result back in one UpdateAsync and returns the key's user IDs and metadata
+-- with it. A transform that returns no metadata wipes it (seen live, see Quartz/Real/DataStore).
+-- TODO(verify): whether leaving out the user IDs clears them too. The docs say to pass both back
+function Record.externalWrite(stored: unknown, data: unknown, options: ExternalWriteOptions): Record
+	assert(Record.isRecord(stored), "externalWrite needs a stored Geode record")
+	assert(type(options) == "table", "externalWrite needs options with now and id")
+	assert(type(options.now) == "number", "externalWrite needs now, in Unix seconds")
+	assert(type(options.id) == "string" and options.id ~= "", "externalWrite needs a fresh id")
+	local record = copy(stored) :: Record
+	local revision = record.meta.revision + 1
+	record.data = copy(data)
+	record.meta.revision = revision
+	record.meta.lastSession = {
+		session = Record.EXTERNAL_SESSION_PREFIX .. options.id,
+		revision = revision,
+	}
+	record.meta.updatedAt = options.now
+	return record
+end
+
+-- Was the last write to `record` an external one?
+function Record.writtenExternally(record: Record): boolean
+	local last = record.meta.lastSession
+	local prefix = Record.EXTERNAL_SESSION_PREFIX
+	return last ~= nil
+		and type(last.session) == "string"
+		and string.sub(last.session, 1, #prefix) == prefix
+		and last.revision == record.meta.revision
 end
 
 function Record.leaseState(record: Record, now: number, timeout: number, owner: Owner): LeaseState

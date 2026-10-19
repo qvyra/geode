@@ -354,6 +354,9 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				if Record.leaseState(record, now, math.huge, backend.owner) ~= "mine" then
 					lostReason = if record.meta.erasedAt
 						then "the profile was erased"
+						elseif
+							record.meta.lease == nil and Record.writtenExternally(record)
+						then "the profile was edited outside Geode after this server let it go"
 						else "another server took the session"
 					return nil
 				end

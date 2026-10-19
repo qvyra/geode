@@ -943,6 +943,19 @@ interface Testing {
 	clock(this: void, start?: number): MockClock;
 }
 
+/** A profile or shared record the way it sits in its DataStore key */
+interface StoredRecord {
+	data: unknown;
+	meta: {
+		format?: number;
+		schemaVersion: number;
+		revision: number;
+		updatedAt?: number;
+		lastSession?: { session: string; revision: number };
+		[field: string]: unknown;
+	};
+}
+
 interface Geode {
 	/** Semantic version of the running Geode build */
 	readonly version: string;
@@ -976,6 +989,19 @@ interface Geode {
 				maxDepth?: number;
 			},
 		): FacetSet;
+		/**
+		 * For tools editing a stored record outside a running Geode: the new data, the revision one
+		 * higher, an `external:` session in `meta.lastSession`, a new `meta.updatedAt`, and the
+		 * rest of `meta` unchanged
+		 */
+		externalWrite(
+			this: void,
+			stored: unknown,
+			data: unknown,
+			options: { now: number; id: string },
+		): StoredRecord;
+		/** The layout Geode writes into `meta.format`. Missing means 0.4.0 to 0.5.0 */
+		readonly recordFormat: number;
 	};
 	readonly Testing: Testing;
 
