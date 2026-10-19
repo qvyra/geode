@@ -14,6 +14,8 @@ export type Lease = {
 }
 
 export type Meta = {
+	-- Layout of the stored record, see Record.FORMAT. Missing on records written before 0.6.0
+	format: number?,
 	schemaVersion: number,
 	revision: number,
 	lease: Lease?,
@@ -49,6 +51,11 @@ export type LeaseState = "free" | "mine" | "stale" | "held"
 
 local Record = {}
 
+-- The record layout this Geode writes into `meta.format`. Records without it were written by
+-- 0.4.0 to 0.5.0, whose layout is the same apart from the missing field. Bump it only when the
+-- stored shape changes in a way a tool reading records has to know about
+Record.FORMAT = 1
+
 local function copy(value: unknown): unknown
 	if type(value) ~= "table" then
 		return value
@@ -64,6 +71,7 @@ function Record.new(data: unknown, now: number, schemaVersion: number): Record
 	return {
 		data = copy(data),
 		meta = {
+			format = Record.FORMAT,
 			schemaVersion = schemaVersion,
 			revision = 0,
 			lease = nil,
@@ -86,6 +94,7 @@ function Record.isRecord(value: unknown): boolean
 	local fields = meta :: { [string]: unknown }
 	return type(fields.revision) == "number"
 		and type(fields.schemaVersion) == "number"
+		and (fields.format == nil or type(fields.format) == "number")
 		and (fields.lease == nil or type(fields.lease) == "table")
 end
 
