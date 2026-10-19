@@ -480,3 +480,19 @@ Building the summary costs a walk over the diff on every commit, so it runs only
 Values aren't in the message. Before and after values can be big, and a change log can ask for the profile when it needs them. Shared stores don't publish it yet, since nothing reads their commits.
 
 **PR:** #18
+
+## 39. Tools that write records directly follow one rule
+
+**Date:** 2026-10-19
+
+Tools are starting to edit Geode records straight in their DataStore keys, with no Geode running. Two parts of Geode trip over a write like that. A server whose release reported failure takes the profile back on its next save when the lease is gone and `meta.lastSession` still names its own session at the current revision (entry 18), so an edit that left `lastSession` and the revision alone would be saved over. And shared store caches only take values at the same or a newer revision, and drop a cached value only for a message naming a newer one.
+
+So an external write raises `meta.revision` by one, sets `meta.lastSession` to `{ session = "external:" .. id, revision = <new revision> }` with an id fresh for every write, updates `meta.updatedAt`, and leaves everything else in `meta` alone. Geode's own sessions are GUIDs, so the prefix never matches one, and the reclaim check needed no change: both the session and the revision differ from what the server left. Servers already running 0.5.0 behave the same way. `Geode.Raw.externalWrite` applies the rule, so tools and tests share one definition, and a profile that loses its session to such an edit says so in the reason.
+
+The other options were clearing `lastSession`, the way erasure does, or a new field such as `meta.editedBy` for the reclaim check to read. Clearing works but forgets who wrote last. A new field would be ignored by older servers, which would still reclaim.
+
+The lease stays untouched on purpose. A tool can't keep a lease alive the way a server does, so a server that still holds one saves over any external edit. Tools edit only records with no lease and go through the holder otherwise (entry 35).
+
+Records also carry `meta.format`, `1` from 0.6.0, so tools can tell layouts apart without guessing from which fields are there. Missing means 0.4.0 to 0.5.0, and those records keep loading. An external write doesn't set it, since the tool didn't change the layout. Older servers keep the field on profiles, since they copy `meta`, but drop it when they write a shared record, so during an update a shared record can lose it until a newer server writes it again.
+
+**PR:** #21
