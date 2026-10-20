@@ -20,6 +20,18 @@ export type Limits = {
 	keyThroughput: boolean?,
 }
 
+-- Off unless a test turns it on. Each server's DataStore keeps a copy of every key it reads or
+-- writes for `seconds`, and a GetAsync that may use the cache returns that copy, as Roblox
+-- documents. `cancelledUpdates` also answers an UpdateAsync from the copy when its transform
+-- writes nothing, which is what the live bench timings look like but isn't documented.
+-- A read that skips the cache refreshes the copy here, going by the docs' "all GetAsync calls
+-- that retrieve a value ... from the backend update the cache"
+-- TODO(verify): does a GetAsync with UseCache = false refresh the copy UpdateAsync then sees?
+export type DataStoreCache = {
+	seconds: number,
+	cancelledUpdates: boolean?,
+}
+
 export type StoredVersion = {
 	version: string,
 	value: unknown,
@@ -75,6 +87,7 @@ export type Shared = {
 	clock: MockClock.MockClock,
 	limits: Limits,
 	messagingLatency: number,
+	dataStoreCache: DataStoreCache?,
 	dataStores: { [string]: { [string]: DataStoreEntry } },
 	orderedDataStores: { [string]: { [string]: number } },
 	hashMaps: { [string]: { [string]: MemoryItem } },

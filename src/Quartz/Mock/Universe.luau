@@ -29,6 +29,8 @@ export type UniverseOptions = {
 		keyThroughput: boolean?,
 	}?,
 	messagingLatency: number?,
+	-- see Context.DataStoreCache
+	dataStoreCache: Context.DataStoreCache?,
 }
 
 export type ServerOptions = {
@@ -112,6 +114,7 @@ function Universe.new(options: UniverseOptions?): Universe
 			keyThroughput = limits and limits.keyThroughput,
 		},
 		messagingLatency = options and options.messagingLatency or 0,
+		dataStoreCache = options and options.dataStoreCache,
 		dataStores = {},
 		orderedDataStores = {},
 		hashMaps = {},

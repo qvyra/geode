@@ -10,6 +10,7 @@ export type RobloxApi = {
 	sortAscending: Enum.SortDirection,
 	sortDescending: Enum.SortDirection,
 	newSetOptions: (metadata: { [string]: unknown }) -> DataStoreSetOptions,
+	newGetOptions: (useCache: boolean) -> DataStoreGetOptions,
 	newIncrementOptions: (metadata: { [string]: unknown }) -> DataStoreIncrementOptions,
 	newTeleportOptions: (reservedServerCode: string?, data: unknown?) -> TeleportOptions,
 }
@@ -33,6 +34,11 @@ function RobloxApi.live(): RobloxApi
 		newSetOptions = function(metadata: { [string]: unknown }): DataStoreSetOptions
 			local options = Instance.new("DataStoreSetOptions")
 			options:SetMetadata(metadata)
+			return options
+		end,
+		newGetOptions = function(useCache: boolean): DataStoreGetOptions
+			local options = Instance.new("DataStoreGetOptions")
+			options.UseCache = useCache
 			return options
 		end,
 		newIncrementOptions = function(metadata: { [string]: unknown }): DataStoreIncrementOptions

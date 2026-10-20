@@ -929,6 +929,8 @@ interface Testing {
 		options?: {
 			clock?: MockClock;
 			messagingLatency?: number;
+			/** Each server keeps a copy of the DataStore keys it touches, like GetAsync's cache */
+			dataStoreCache?: { seconds: number; cancelledUpdates?: boolean };
 			limits?: {
 				keyLength?: number;
 				nameLength?: number;
