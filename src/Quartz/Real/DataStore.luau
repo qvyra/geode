@@ -54,8 +54,19 @@ function RealDataStore._setOptions(
 	return options.userIds, setOptions
 end
 
-function RealDataStore.get(self: RealDataStore, key: string): Types.Result<Types.Read>
+function RealDataStore.get(
+	self: RealDataStore,
+	key: string,
+	options: Types.ReadOptions?
+): Types.Result<Types.Read>
+	-- Only pass options when the cache is skipped, so a plain read stays a plain GetAsync
+	local getOptions = if options and options.useCache == false
+		then self._api.newGetOptions(false)
+		else nil
 	local ok, value, info = pcall(function()
+		if getOptions then
+			return self._store:GetAsync(key, getOptions)
+		end
 		return self._store:GetAsync(key)
 	end)
 	if not ok then

@@ -77,6 +77,12 @@ export type WriteOptions = {
 	metadata: { [string]: unknown }?,
 }
 
+export type ReadOptions = {
+	-- false skips this server's cached copy of the key and asks the backend. GetAsync caches
+	-- a key for 4 seconds after it's read or written here
+	useCache: boolean?,
+}
+
 export type Read = {
 	value: unknown,
 	info: KeyInfo?,
@@ -108,7 +114,7 @@ export type VersionQuery = {
 export type DataStore = {
 	name: string,
 	scope: string,
-	get: (self: DataStore, key: string) -> Result<Read>,
+	get: (self: DataStore, key: string, options: ReadOptions?) -> Result<Read>,
 	set: (self: DataStore, key: string, value: unknown, options: WriteOptions?) -> Result<string>,
 	update: (self: DataStore, key: string, transform: Transform) -> Result<Update>,
 	remove: (self: DataStore, key: string) -> Result<Read>,

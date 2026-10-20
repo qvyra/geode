@@ -44,6 +44,63 @@ return function(spec: Spec.Api)
 			expect(heardAt).toBe(2)
 		end)
 
+		it("can keep a per server copy of DataStore keys, like GetAsync's cache", function()
+			local universe = Universe.new({ dataStoreCache = { seconds = 4 } })
+			local a = universe:server()
+			local b = universe:server()
+			universe.clock:run(function()
+				local mine = a.dataStore("Players")
+				unwrap(mine:set("p1", 1))
+				unwrap(b.dataStore("Players"):set("p1", 2))
+				expect(unwrap(mine:get("p1")).value).toBe(1)
+				expect(unwrap(mine:get("p1", { useCache = false })).value).toBe(2)
+				-- the uncached read refreshed the copy
+				expect(unwrap(mine:get("p1")).value).toBe(2)
+				unwrap(b.dataStore("Players"):set("p1", 3))
+				universe.clock:wait(4)
+				expect(unwrap(mine:get("p1")).value).toBe(3)
+			end)
+		end)
+
+		it("answers a cancelled update from the copy only when told to", function()
+			local function seen(cancelledUpdates: boolean): unknown
+				local universe = Universe.new({
+					dataStoreCache = { seconds = 4, cancelledUpdates = cancelledUpdates },
+				})
+				local a = universe:server()
+				local b = universe:server()
+				return universe.clock:run(function()
+					local mine = a.dataStore("Players")
+					unwrap(mine:set("p1", "held"))
+					unwrap(b.dataStore("Players"):set("p1", "free"))
+					local update = unwrap(mine:update("p1", function()
+						return nil
+					end))
+					expect(update.cancelled).toBe(true)
+					return update.value
+				end)
+			end
+			expect(seen(true)).toBe("held")
+			expect(seen(false)).toBe("free")
+		end)
+
+		it("writes over a stale copy only after seeing the latest value", function()
+			local universe = Universe.new({
+				dataStoreCache = { seconds = 4, cancelledUpdates = true },
+			})
+			local a = universe:server()
+			local b = universe:server()
+			universe.clock:run(function()
+				local mine = a.dataStore("Players")
+				unwrap(mine:set("p1", 1))
+				unwrap(b.dataStore("Players"):set("p1", 10))
+				local update = unwrap(mine:update("p1", function(current: unknown)
+					return (current :: number) + 1
+				end))
+				expect(update.value).toBe(11)
+			end)
+		end)
+
 		it("records teleports for assertions", function()
 			local universe = Universe.new()
 			local server = universe:server({ jobId = "lobby" })
