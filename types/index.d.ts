@@ -492,6 +492,7 @@ interface ProfileStoreOptions {
 	loadTimeout?: number;
 	bindToClose?: boolean;
 	handoff?: boolean;
+	mailbox?: boolean;
 	audit?: boolean;
 	reportError?: (message: string) => void;
 }

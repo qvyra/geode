@@ -69,6 +69,9 @@ export type Options = {
 	-- Ask holders over MessagingService to release, and hear when they have, so server hops
 	-- don't wait out retries. On by default. Correctness never depends on it
 	handoff: boolean?,
+	-- Take mail sent with `store:mail` and apply it on load. Off by default, so stores that never
+	-- get mail never read a mailbox. Turn it on wherever the store is made, senders included
+	mailbox: boolean?,
 	-- Keep a commit history in a `<name>_audit` DataStore: who changed which paths and why, one
 	-- key per save. Off by default
 	audit: boolean?,
@@ -136,6 +139,8 @@ type Fields = {
 	_scheduler: Scheduler.Scheduler,
 	_dataStore: Types.DataStore,
 	_mailboxStore: Types.DataStore,
+	-- whether loads read the mailbox, see Options.mailbox
+	_mailbox: boolean,
 	_template: { [string]: unknown },
 	_migrations: { [number]: (tx: Transaction.Transaction) -> () },
 	_userKey: (userId: number) -> string,
@@ -324,6 +329,7 @@ function ProfileStore.new(options: Options): ProfileStore
 			or Scheduler.new({ clock = services.clock, budget = services.budget }),
 		_dataStore = services.dataStore(options.name, scope),
 		_mailboxStore = services.dataStore(`{options.name}_mailbox`, scope),
+		_mailbox = options.mailbox == true,
 		_template = copy(options.template) :: { [string]: unknown },
 		_migrations = migrations,
 		_userKey = options.userKey or function(userId: number): string
@@ -705,7 +711,9 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 			self._handoff:announce(key, profile:revision(), owner.session)
 		end)
 	end)
-	self:_deliverMail(key, profile)
+	if self._mailbox then
+		self:_deliverMail(key, profile)
+	end
 	self._open[key] = profile
 	if userId then
 		self._owners[key] = userId
@@ -868,7 +876,7 @@ end
 
 --[=[
 	Queues an op for a profile, wherever its player is. It's applied as a mailbox transaction the
-	next time the profile loads. Yields
+	next time the profile loads. Only stores made with `mailbox = true` take mail. Yields
 
 	@param key string
 	@param op string -- a built-in op other than update, or a custom op this store enables
@@ -880,6 +888,16 @@ function ProfileStore.mail(
 	op: string,
 	...: unknown
 ): Types.Result<number>
+	if not self._mailbox then
+		-- A store without it never reads its mailbox, so the mail would sit there unapplied
+		return {
+			ok = false,
+			error = {
+				kind = "invalidValue",
+				message = `{self.name} doesn't take mail, make the store with mailbox = true`,
+			},
+		}
+	end
 	local enabled = Mailbox.isBuiltIn(op) or (self._ops ~= nil and table.find(self._ops, op) ~= nil)
 	if not enabled then
 		return {
