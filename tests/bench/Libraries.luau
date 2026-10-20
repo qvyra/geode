@@ -48,7 +48,8 @@ export type Adapter = {
 
 local Libraries = {}
 
-Libraries.NAMES = { "Geode", "ProfileStore", "ProfileService", "Lapis", "DataStore2" }
+-- GeodeMail is Geode with `mailbox = true`, which reads a mailbox on every load
+Libraries.NAMES = { "Geode", "GeodeMail", "ProfileStore", "ProfileService", "Lapis", "DataStore2" }
 
 -- The same starting data for every library
 function Libraries.template(): { [string]: any }
@@ -86,8 +87,8 @@ end
 
 --// Geode
 
-local function geode(context: Context): Adapter
-	local name = Libraries.storeName("Geode")
+local function geode(context: Context, library: string, mailbox: boolean): Adapter
+	local name = Libraries.storeName(library)
 	-- Execution tasks may report being Studio. A live server isn't, so Geode is told so
 	-- and runs exactly as it would there, steals and handoffs included
 	local runService: any = if RunService:IsStudio()
@@ -122,10 +123,11 @@ local function geode(context: Context): Adapter
 		name = name,
 		template = Libraries.template(),
 		services = services,
+		mailbox = mailbox,
 	})
 
 	return {
-		name = "Geode",
+		name = library,
 		locks = true,
 		load = function(key: string): Handle
 			local result = store:load(key)
@@ -413,7 +415,12 @@ local function dataStore2(context: Context): Adapter
 end
 
 local MAKERS: { [string]: (Context) -> Adapter } = {
-	Geode = geode,
+	Geode = function(context: Context): Adapter
+		return geode(context, "Geode", false)
+	end,
+	GeodeMail = function(context: Context): Adapter
+		return geode(context, "GeodeMail", true)
+	end,
 	ProfileStore = profileStore,
 	ProfileService = profileService,
 	Lapis = lapis,
