@@ -14,6 +14,7 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 
 - Mail is now opt in. A profile store reads its mailbox on load only when it's made with `mailbox = true`, so stores that never get mail save a GetAsync on every load. `store:mail` on a store without it fails instead of queuing mail nobody reads. Games that send mail need to add `mailbox = true` wherever the store is made; mail already queued stays in the mailbox and applies once they do
 - A store that takes mail reads the mailbox while it takes the lease instead of after, so a load waits for one round trip instead of two
+- Server hops are faster. When the old server announces its release, the new one reads the record once past the DataStore cache before trying to take the lease. Live hops used to spend about 4 seconds on retries that kept seeing the released lease as held
 - A profile that loses its session because a tool edited it after its release says so in the reason
 
 ## [0.5.0] - 2026-10-18

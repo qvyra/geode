@@ -493,6 +493,34 @@ function ProfileStore._tryAcquire(
 	return attempt, nil
 end
 
+-- Reads the record past this server's cache after a release announcement. Live hops showed
+-- UpdateAsync retries answering in under 10 ms with the lease still held, for about 4 seconds
+-- after the first try, as if a transform that writes nothing were fed this server's cached copy
+-- of the key. Roblox documents that 4 second cache for GetAsync only. A fresh GetAsync gets the
+-- real record, and going by the docs it also refreshes the cached copy, so the UpdateAsync
+-- after it sees the release. Returns a held attempt when the lease really is still held, nil
+-- when the UpdateAsync should go ahead
+-- TODO(verify): does the uncached GetAsync refresh the copy that UpdateAsync then sees?
+function ProfileStore._peekLease(self: ProfileStore, key: string, owner: Record.Owner): Attempt?
+	local read = self._scheduler:submit({
+		priority = "load",
+		budget = "standardRead",
+		key = self:_schedulerKey(key),
+		run = function()
+			return self._dataStore:get(key, { useCache = false })
+		end,
+	})
+	if not read.ok or not Record.isRecord(read.value.value) then
+		return nil
+	end
+	local record = read.value.value :: Record.Record
+	local now = self._services.clock:now()
+	if Record.leaseState(record, now, self._config.leaseTimeout, owner) ~= "held" then
+		return nil
+	end
+	return { outcome = "held", record = nil, holder = record.meta.lease }
+end
+
 function ProfileStore._abandon(self: ProfileStore, key: string, owner: Record.Owner)
 	self._scheduler:submit({
 		priority = "release",
@@ -559,15 +587,24 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	local record: Record.Record
 	local erasedAt: number? = nil
 	local mailRead: Future.Future? = nil
+	-- set when a read past the cache found the lease still held, so the next turn skips the
+	-- UpdateAsync that would only find the same
+	local peeked: Attempt? = nil
 	while true do
-		-- The mailbox is read next to each attempt rather than after it, so a load costs one
-		-- round trip. Reading before the lease is ours is safe: the cursor in the record we get
-		-- decides what applies, and mail the read missed waits for the next load. A read still
-		-- running from the last attempt is kept, a finished one is redone to pick up newer mail
-		if self._mailbox and (mailRead == nil or mailRead:isDone()) then
-			mailRead = self:_readMailbox(key)
+		local attempt: Attempt?, adapterError: Types.AdapterError?
+		if peeked then
+			attempt, peeked = peeked, nil
+		else
+			-- The mailbox is read next to each attempt rather than after it, so a load costs one
+			-- round trip. Reading before the lease is ours is safe: the cursor in the record we
+			-- get decides what applies, and mail the read missed waits for the next load. A read
+			-- still running from the last attempt is kept, a finished one is redone to pick up
+			-- newer mail
+			if self._mailbox and (mailRead == nil or mailRead:isDone()) then
+				mailRead = self:_readMailbox(key)
+			end
+			attempt, adapterError = self:_tryAcquire(key, owner, userIds, force)
 		end
-		local attempt, adapterError = self:_tryAcquire(key, owner, userIds, force)
 		if attempt == nil then
 			local err = adapterError :: Types.AdapterError
 			local retryable = err.kind == "throttled" or err.kind == "internal"
@@ -619,12 +656,15 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		tries += 1
 		-- Wakes early on the holder's release announcement. The handoff key backs that message
 		-- up until the steal window closes
-		self._handoff:wait(
+		local announced = self._handoff:wait(
 			key,
 			math.min(RETRY_BASE * 2 ^ (tries - 1), RETRY_MAX),
 			holder.session,
 			waited < config.stealAfter
 		)
+		if announced then
+			peeked = self:_peekLease(key, owner)
+		end
 	end
 
 	local data, problem, problemMessage = self:_decodeStored(key, record)
