@@ -24,9 +24,8 @@ export type Limits = {
 -- writes for `seconds`, and a GetAsync that may use the cache returns that copy, as Roblox
 -- documents. `cancelledUpdates` also answers an UpdateAsync from the copy when its transform
 -- writes nothing, which is what the live bench timings look like but isn't documented.
--- A read that skips the cache refreshes the copy here, going by the docs' "all GetAsync calls
--- that retrieve a value ... from the backend update the cache"
--- TODO(verify): does a GetAsync with UseCache = false refresh the copy UpdateAsync then sees?
+-- A read that skips the cache refreshes the copy here. The docs say "all GetAsync calls that
+-- retrieve a value ... from the backend update the cache", and live hops behave that way
 export type DataStoreCache = {
 	seconds: number,
 	cancelledUpdates: boolean?,
