@@ -5,6 +5,7 @@
 
 local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
+local Future = require("../Quartz/Future")
 local Guards = require("../Obsidian/Guards")
 local Handoff = require("./Handoff")
 local Tooling = require("./Tooling")
@@ -557,7 +558,15 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	local tries = 0
 	local record: Record.Record
 	local erasedAt: number? = nil
+	local mailRead: Future.Future? = nil
 	while true do
+		-- The mailbox is read next to each attempt rather than after it, so a load costs one
+		-- round trip. Reading before the lease is ours is safe: the cursor in the record we get
+		-- decides what applies, and mail the read missed waits for the next load. A read still
+		-- running from the last attempt is kept, a finished one is redone to pick up newer mail
+		if self._mailbox and (mailRead == nil or mailRead:isDone()) then
+			mailRead = self:_readMailbox(key)
+		end
 		local attempt, adapterError = self:_tryAcquire(key, owner, userIds, force)
 		if attempt == nil then
 			local err = adapterError :: Types.AdapterError
@@ -711,8 +720,8 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 			self._handoff:announce(key, profile:revision(), owner.session)
 		end)
 	end)
-	if self._mailbox then
-		self:_deliverMail(key, profile)
+	if mailRead then
+		self:_deliverMail(key, profile, mailRead:await() :: Types.Result<Types.Read>)
 	end
 	self._open[key] = profile
 	if userId then
@@ -813,18 +822,32 @@ end
 --//  Mailbox                                                         //--
 --// ================================================================ //--
 
+-- Reads the mailbox of `key` on its own thread. The future settles with the read's result
+function ProfileStore._readMailbox(self: ProfileStore, key: string): Future.Future
+	local clock = self._services.clock
+	local future = Future.new(clock)
+	clock:spawn(function()
+		future:resolve(self._scheduler:submit({
+			priority = "load",
+			budget = "standardRead",
+			key = self:_mailboxKey(key),
+			run = function()
+				return self._mailboxStore:get(key)
+			end,
+		}))
+	end)
+	return future
+end
+
 -- Applies everything after the saved cursor, one mailbox transaction per message, then trims
 -- what earlier sessions already saved as applied. Failed messages are archived, not dropped
-function ProfileStore._deliverMail(self: ProfileStore, key: string, profile: Profile.Profile)
+function ProfileStore._deliverMail(
+	self: ProfileStore,
+	key: string,
+	profile: Profile.Profile,
+	read: Types.Result<Types.Read>
+)
 	local savedCursor = profile:mailboxCursor()
-	local read = self._scheduler:submit({
-		priority = "load",
-		budget = "standardRead",
-		key = self:_mailboxKey(key),
-		run = function()
-			return self._mailboxStore:get(key)
-		end,
-	})
 	if not read.ok then
 		self._report(
 			`couldn't read the mailbox of {key}, it will be delivered on a later load: {read.error.message}`
