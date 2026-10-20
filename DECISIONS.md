@@ -496,3 +496,27 @@ The lease stays untouched on purpose. A tool can't keep a lease alive the way a 
 Records also carry `meta.format`, `1` from 0.6.0, so tools can tell layouts apart without guessing from which fields are there. Missing means 0.4.0 to 0.5.0, and those records keep loading. An external write doesn't set it, since the tool didn't change the layout. Older servers keep the field on profiles, since they copy `meta`, but drop it when they write a shared record, so during an update a shared record can lose it until a newer server writes it again.
 
 **PR:** #21
+
+## 40. Mail is opt in, and its read runs next to the lease
+
+**Date:** 2026-10-20
+
+Every profile load read the store's mailbox with a GetAsync after taking the lease, so a load cost two round trips one after the other, even in games that never send mail. Nothing in a store's options says whether it gets mail: any store can be mailed a built-in op, and custom ops listed in `ops` are just as callable from game code.
+
+So a store says it with `mailbox = true`. Without it a load never touches the mailbox, and `store:mail` fails instead of queuing mail nothing would read. Mail already queued is left alone and applies once the option is on. The other choice was keeping mail on by default with `mailbox = false` to opt out, which would keep the extra request for nearly every game.
+
+A store with the option starts the mailbox read on its own thread next to each acquire attempt, and applies the mail once the lease is taken, before `load` returns, as before. Reading before the lease is ours changes nothing about exactly once: the cursor in the record the acquire returns decides what applies, and pruning only drops messages at or before that saved cursor. A read that saw less than the latest mailbox only leaves mail for the next load, which a cached GetAsync could already do. A read from an attempt that found the lease held is redone with the next attempt, so mail sent while a hop waits still lands.
+
+**PR:** #23
+
+## 41. A hop reads the record past the cache after the release announcement
+
+**Date:** 2026-10-20
+
+Live benchmark hops took about 5 s although the old server released within half a second. The new server's tries were at 0, 0.5, 2.5 and 4.6 s. The second and third answered in under 10 ms with the lease still held, and only the fourth, about 4 s after the first, reached the backend and got the profile. Those tries are UpdateAsync calls. Roblox documents a 4 second cache for GetAsync only, and says SetAsync and UpdateAsync write into it, so the documented cache doesn't explain it. The timings fit this server's cached copy of the key being handed to a transform that then writes nothing, so nothing goes to the backend to correct it. That part isn't documented.
+
+After a release announcement (the message, or the handoff key showing the release) the load now reads the record once with `DataStoreGetOptions.UseCache = false`, which the docs say always asks the backend. If the lease is free there, the UpdateAsync follows at once; if it's still held, the load keeps waiting without spending an UpdateAsync. The UpdateAsync still decides, so nothing about correctness rests on the read. The docs say a GetAsync that reaches the backend refreshes the cache, which is what should let the UpdateAsync after it see the release; the benchmarks run on this change checks that.
+
+The adapter's `get` takes `{ useCache = false }`, and the mock can keep a per server copy of keys (`dataStoreCache`) so tests can reproduce the slow hop. Waiting longer before retrying was the other idea, but that only moves the 4 seconds around.
+
+**PR:** #23
