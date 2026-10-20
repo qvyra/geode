@@ -163,7 +163,7 @@ Missing template fields are filled in on load, which other libraries call reconc
 
 `store:mail` queues an op for a profile wherever its player is. It applies, exactly once, the next time the profile loads.
 
-Mail is off unless the store is made with `mailbox = true`, so a store that never gets mail never reads a mailbox. Set it everywhere the store is made, on the servers that send mail too: a store without it refuses to send.
+Mail is off unless the store is made with `mailbox = true`, so a store that never gets mail never reads a mailbox. Set it everywhere the store is made, on the servers that send mail too: a store without it refuses to send. A store that has it reads the mailbox while it takes the lease, so the load doesn't wait for one more request.
 
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
