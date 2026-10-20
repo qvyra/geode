@@ -14,6 +14,8 @@ export type Call = {
 	finished: number?,
 	ok: boolean?,
 	err: string?,
+	-- a GetAsync told to skip the cache (DataStoreGetOptions.UseCache = false)
+	noCache: boolean?,
 }
 
 -- Where an extra DataStore a library asks for ends up instead: the allowed name, under a scope
@@ -74,6 +76,13 @@ function Proxy.new(options: Options): Proxy
 						else nil,
 					started = options.clock(),
 				}
+				if method == "GetAsync" then
+					local getOptions = select(2, ...)
+					local read, useCache = pcall(function()
+						return getOptions.UseCache
+					end)
+					call.noCache = getOptions ~= nil and read and useCache == false
+				end
 				table.insert(calls, call)
 				local results = table.pack(pcall(real[method], real, ...))
 				call.finished = options.clock()

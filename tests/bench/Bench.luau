@@ -191,16 +191,17 @@ local function measure(
 	local requests, failed = 0, 0
 	for _, call in Proxy.since(proxy, since, key) do
 		if call.started <= since + seconds then
+			local method = if call.noCache then "GetAsync (no cache)" else call.method
 			requests += 1
 			if #timeline < TIMELINE_LIMIT then
 				-- -1 for a request still out, so the entry stays a plain JSON array
 				local ended = if call.finished then call.finished - since else -1
 				table.insert(
 					timeline,
-					{ call.method :: any, call.started - since, ended, call.ok == true }
+					{ method :: any, call.started - since, ended, call.ok == true }
 				)
 			end
-			byMethod[call.method] = (byMethod[call.method] or 0) + 1
+			byMethod[method] = (byMethod[method] or 0) + 1
 			if call.ok == false then
 				failed += 1
 			end
