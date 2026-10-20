@@ -136,7 +136,7 @@ local function newProxy(library: string): Proxy.Proxy
 		allowed = Libraries.storeName(library),
 		clock = os.clock,
 		-- Geode keeps mail in a second DataStore, moved under a scope of the allowed one
-		aliases = if library == "Geode"
+		aliases = if library == "Geode" or library == "GeodeMail"
 			then { [`{Libraries.storeName(library)}_mailbox`] = { scope = "mailbox" } }
 			else nil,
 	})
