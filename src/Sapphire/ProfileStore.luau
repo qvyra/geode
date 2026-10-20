@@ -497,10 +497,10 @@ end
 -- UpdateAsync retries answering in under 10 ms with the lease still held, for about 4 seconds
 -- after the first try, as if a transform that writes nothing were fed this server's cached copy
 -- of the key. Roblox documents that 4 second cache for GetAsync only. A fresh GetAsync gets the
--- real record, and going by the docs it also refreshes the cached copy, so the UpdateAsync
--- after it sees the release. Returns a held attempt when the lease really is still held, nil
--- when the UpdateAsync should go ahead
--- TODO(verify): does the uncached GetAsync refresh the copy that UpdateAsync then sees?
+-- real record and refreshes the copy: in live hops the UpdateAsync right after it saw the
+-- release every time, and hops went from about 5 s to about 0.6 s. That's observed, not
+-- documented. Returns a held attempt when the lease really is still held, nil when the
+-- UpdateAsync should go ahead
 function ProfileStore._peekLease(self: ProfileStore, key: string, owner: Record.Owner): Attempt?
 	local read = self._scheduler:submit({
 		priority = "load",
