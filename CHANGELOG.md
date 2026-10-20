@@ -12,6 +12,7 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 
 ### Changed
 
+- Mail is now opt in. A profile store reads its mailbox on load only when it's made with `mailbox = true`, so stores that never get mail save a GetAsync on every load. `store:mail` on a store without it fails instead of queuing mail nobody reads. Games that send mail need to add `mailbox = true` wherever the store is made; mail already queued stays in the mailbox and applies once they do
 - A profile that loses its session because a tool edited it after its release says so in the reason
 
 ## [0.5.0] - 2026-10-18
