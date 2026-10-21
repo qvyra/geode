@@ -520,3 +520,17 @@ After a release announcement (the message, or the handoff key showing the releas
 The adapter's `get` takes `{ useCache = false }`, and the mock can keep a per server copy of keys (`dataStoreCache`) so tests can reproduce the slow hop. Waiting longer before retrying was the other idea, but that only moves the 4 seconds around.
 
 **PR:** #23
+
+## 42. The npm package ships the Luau source with its Rojo project
+
+**Date:** 2026-10-21
+
+roblox-ts games get packages from npm, under `node_modules/@rbxts`, which their Rojo project puts in ReplicatedStorage. roblox-ts maps an import to a Luau file through the package's `main` and `types`, and works out the instance path from the Rojo tree. So `@rbxts/geode` ships the same `src` as Wally, with `main` at `src/init.luau` and `types` at `types/index.d.ts`, and no build step of its own.
+
+`default.project.json` ships too. With it, Rojo builds the package folder as one ModuleScript named `Geode`, the same as a Wally install, and roblox-ts resolves imports to that name. Without it the folder would be a Folder holding a `src` ModuleScript, which also works but differs from every other install. Both layouts were built with roblox-ts 3.0.0 and Rojo 7.7.1 before choosing.
+
+`package.json` drops `"type": "module"`. With it, TypeScript treats `types/index.d.ts` as an ES module under Node16 resolution and refuses its `export =`; the ESLint config moved to `.mjs` instead. The typings also moved into a `Geode` namespace merged with the value, so roblox-ts code can name `Geode.Profile` and the rest, the way Luau code names the exported types.
+
+The npm and Wally packages share one version number and are bumped in the same release PR.
+
+**PR:** #24
