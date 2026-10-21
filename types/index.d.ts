@@ -54,7 +54,10 @@ declare namespace Geode {
 	interface TransactOptions {
 		source?: SourceLike;
 		note?: string;
-		/** Profiles only: run everything, commit nothing, and report what guards found */
+		/**
+		 * Run everything, commit nothing, and report what guards found. Profiles and documents
+		 * only: shared stores refuse it
+		 */
 		dryRun?: boolean;
 	}
 
@@ -114,6 +117,12 @@ declare namespace Geode {
 		merge(path: Path | undefined, partial: Record<string, unknown>): void;
 		op(name: string, ...args: unknown[]): void;
 		defer(callback: (outcome: Outcome) => void): void;
+		/** Leaf changes the draft holds so far */
+		diff(): DiffEntry[];
+		/** Records who wrote a path, keyed by its formatted form. The first writer wins */
+		markWriter(pathKey: string, kind: SourceKind): void;
+		/** Who wrote a path in this transaction, the transaction's source when nobody claimed it */
+		writerOf(pathKey: string): SourceKind;
 	}
 
 	type Observer = (newValue: unknown, oldValue: unknown, record: CommitRecord) => void;
@@ -143,6 +152,7 @@ declare namespace Geode {
 		clearReadOnly(): void;
 		isReadOnly(): boolean;
 		addStage(stage: (tx: Transaction) => void): void;
+		addDerived(name: string, deps: Path[], read: (root: unknown) => unknown): void;
 		runHeld(outcome?: Outcome): void;
 	}
 
@@ -158,14 +168,62 @@ declare namespace Geode {
 
 	// Schemas and codecs
 
-	/** A schema node built with Geode.t. Its fields are internal */
+	type SchemaKind =
+		| "string"
+		| "number"
+		| "boolean"
+		| "literal"
+		| "enum"
+		| "array"
+		| "map"
+		| "struct"
+		| "optional"
+		| "union"
+		| "codec"
+		| "json";
+
+	/** A schema node built with Geode.t. Its other fields are internal */
 	interface Schema {
-		readonly kind: string;
+		readonly kind: SchemaKind;
 	}
+
+	/** How a value is stored and read back, for Geode.t.fromCodec */
+	interface Codec {
+		name: string;
+		version: number;
+		is: (value: unknown) => boolean;
+		encode: (value: unknown) => unknown;
+		/** false and a reason when the stored form is malformed */
+		decode: (encoded: unknown) => LuaTuple<[boolean, unknown]>;
+	}
+
+	type IssueCode =
+		| "type"
+		| "nan"
+		| "infinite"
+		| "range"
+		| "integer"
+		| "length"
+		| "pattern"
+		| "literal"
+		| "enum"
+		| "sparse"
+		| "mixed"
+		| "key"
+		| "extra"
+		| "entries"
+		| "union"
+		| "codec"
+		| "cycle"
+		| "utf8"
+		| "datatype"
+		| "instance"
+		| "function"
+		| "thread";
 
 	interface Issue {
 		path: string;
-		code: string;
+		code: IssueCode;
 		message: string;
 	}
 
@@ -211,7 +269,8 @@ declare namespace Geode {
 		optional(this: void, inner: Schema): Schema;
 		union(this: void, options: Schema[]): Schema;
 		json(this: void): Schema;
-		fromCodec(this: void, codec: unknown): Schema;
+		fromCodec(this: void, codec: Codec): Schema;
+		isSchema(this: void, value: unknown): value is Schema;
 	}
 
 	interface CodecSet {
@@ -249,7 +308,7 @@ declare namespace Geode {
 			schema: Schema,
 			encoded: unknown,
 			options?: ValidateOptions,
-		): LuaTuple<[boolean, unknown]>;
+		): LuaTuple<[true, unknown] | [false, ValidationResult]>;
 		measure(this: void, json: { encode(value: unknown): string }, value: unknown): number;
 		checkSize(
 			this: void,
@@ -257,16 +316,19 @@ declare namespace Geode {
 			value: unknown,
 			budget: SizeBudget,
 		): { size: number; level: "ok" | "soft" | "hard" };
-		checkStorable(this: void, value: unknown, root?: string): ValidationResult;
+		checkStorable(this: void, value: unknown, root?: string, limit?: number): ValidationResult;
 	}
 
 	// Guards
 
 	type ActionName = "warn" | "flag" | "reject" | "rollback" | "kick";
 
+	type GuardKind =
+		"schema" | "range" | "delta" | "rate" | "rateValue" | "requires" | "subset" | "custom";
+
 	interface Violation {
 		guard: string;
-		kind: string;
+		kind: GuardKind;
 		path?: string;
 		reason: string;
 		action: ActionName;
@@ -302,8 +364,9 @@ declare namespace Geode {
 		getBefore(this: void, path?: Path): unknown;
 	}
 
-	/** A rule built with Geode.guard. Its fields are internal */
+	/** A rule built with Geode.guard. Its other fields are internal */
 	interface Guard {
+		readonly kind: GuardKind;
 		readonly name: string;
 	}
 
@@ -350,23 +413,34 @@ declare namespace Geode {
 		readonly broken: Signal<[violation: Violation]>;
 		add(guard: Guard): void;
 		attach(document: Document): void;
+		/** The pipeline stage that checks every guard, for documents put together by hand */
+		stage(): (tx: Transaction) => void;
 	}
 
 	// Facets
 
-	/** Built with Geode.bundle, Geode.react and Geode.derive. Their fields are internal */
+	/** Built with Geode.bundle, Geode.react and Geode.derive. Their other fields are internal */
 	interface Bundle {
+		readonly kind: "bundle";
+		readonly name: string;
 		readonly fields: readonly unknown[];
 	}
 	interface Reaction {
+		readonly kind: "reaction";
+		readonly name: string;
 		readonly deps: readonly unknown[];
 	}
 	interface Derived {
+		readonly kind: "derived";
 		readonly name: string;
 	}
 
 	interface FacetSet {
+		/** Reactions in the order they run */
+		readonly order: readonly Reaction[];
 		attach(document: Document): void;
+		/** The pipeline stage that runs bundles and reactions, for documents put together by hand */
+		stage(): (tx: Transaction) => void;
 	}
 
 	// Services and adapters
@@ -406,6 +480,145 @@ declare namespace Geode {
 		};
 		readonly marketplace: { setProcessReceipt(callback: (info: unknown) => unknown): void };
 		readonly lifecycle: { bindToClose(callback: () => void): void; isStudio(): boolean };
+		/** Encode only, for size estimates */
+		readonly json: { encode(value: unknown): string };
+		dataStore(this: void, name: string, scope?: string): DataStoreAdapter;
+		orderedDataStore(this: void, name: string, scope?: string): OrderedDataStoreAdapter;
+		hashMap(this: void, name: string): HashMapAdapter;
+		sortedMap(this: void, name: string): SortedMapAdapter;
+		queue(this: void, name: string, invisibilityTimeout?: number): QueueAdapter;
+		readonly messaging: MessagingAdapter;
+		readonly teleport: TeleportAdapter;
+		/** The server end of a remote event, made on first use */
+		remote(this: void, name: string): ServerRemote;
+		/** Where Studio tools reach a running game. Studio only */
+		readonly bridge: ToolingBridge;
+	}
+
+	interface KeyInfo {
+		version: string;
+		/** Milliseconds since the Unix epoch, like DataStoreKeyInfo */
+		createdTime: number;
+		updatedTime: number;
+		userIds: number[];
+		metadata: Record<string, unknown>;
+	}
+
+	interface WriteOptions {
+		userIds?: number[];
+		metadata?: Record<string, unknown>;
+	}
+
+	interface DataStoreAdapter {
+		readonly name: string;
+		readonly scope: string;
+		/** `useCache = false` skips this server's cached copy of the key and asks the backend */
+		get(key: string, options?: { useCache?: boolean }): Result<{ value: unknown; info?: KeyInfo }>;
+		set(key: string, value: unknown, options?: WriteOptions): Result<string>;
+		/** Returning undefined cancels the write. The transform may run more than once */
+		update(
+			key: string,
+			transform: (current: unknown, info?: KeyInfo) => LuaTuple<[unknown, WriteOptions?]>,
+		): Result<{ value: unknown; info?: KeyInfo; cancelled: boolean }>;
+		remove(key: string): Result<{ value: unknown; info?: KeyInfo }>;
+		increment(key: string, delta: number, options?: WriteOptions): Result<number>;
+		listVersions(
+			key: string,
+			query?: { ascending?: boolean; minDate?: number; maxDate?: number; limit?: number },
+		): Result<VersionInfo[]>;
+		getVersion(key: string, version: string): Result<{ value: unknown; info?: KeyInfo }>;
+	}
+
+	interface OrderedDataStoreAdapter {
+		readonly name: string;
+		readonly scope: string;
+		get(key: string): Result<number | undefined>;
+		set(key: string, value: number): Result<undefined>;
+		update(
+			key: string,
+			transform: (current: number | undefined) => number | undefined,
+		): Result<{ value?: number; cancelled: boolean }>;
+		remove(key: string): Result<number | undefined>;
+		increment(key: string, delta: number): Result<number>;
+		getSorted(query?: {
+			ascending?: boolean;
+			limit?: number;
+			min?: number;
+			max?: number;
+		}): Result<{ key: string; value: number }[]>;
+	}
+
+	interface HashMapAdapter {
+		readonly name: string;
+		get(key: string): Result<unknown>;
+		set(key: string, value: unknown, ttl: number): Result<undefined>;
+		update(
+			key: string,
+			transform: (current: unknown) => unknown,
+			ttl: number,
+		): Result<{ value: unknown; cancelled: boolean }>;
+		remove(key: string): Result<undefined>;
+		list(limit?: number): Result<{ key: string; value: unknown }[]>;
+	}
+
+	interface SortedMapAdapter {
+		readonly name: string;
+		get(key: string): Result<SortedEntry | undefined>;
+		set(key: string, value: unknown, ttl: number, sortKey?: SortKey): Result<undefined>;
+		update(
+			key: string,
+			transform: (current: unknown, sortKey?: SortKey) => LuaTuple<[unknown, SortKey?]>,
+			ttl: number,
+		): Result<{ value: unknown; sortKey?: SortKey; cancelled: boolean }>;
+		remove(key: string): Result<undefined>;
+		getRange(range: SortedRange): Result<SortedEntry[]>;
+	}
+
+	interface QueueAdapter {
+		readonly name: string;
+		readonly invisibilityTimeout: number;
+		add(value: unknown, ttl: number, priority?: number): Result<undefined>;
+		read(options: {
+			count: number;
+			allOrNothing?: boolean;
+			waitTimeout?: number;
+		}): Result<{ items: unknown[]; id?: string }>;
+		remove(id: string): Result<undefined>;
+	}
+
+	interface MessagingAdapter {
+		publish(topic: string, data: unknown): Result<undefined>;
+		subscribe(topic: string, handler: (data: unknown, sentAt: number) => void): Result<Connection>;
+	}
+
+	interface TeleportOptions {
+		reservedServerCode?: string;
+		data?: unknown;
+	}
+
+	interface TeleportAdapter {
+		reserveServer(placeId: number): Result<{ code: string; serverId: string }>;
+		/** Players are Player instances in a game and plain values on mock servers */
+		teleport(placeId: number, players: unknown[], options?: TeleportOptions): Result<undefined>;
+	}
+
+	interface ServerRemote {
+		fire(userId: number, ...args: unknown[]): void;
+		onEvent(handler: (userId: number, ...args: unknown[]) => void): Connection;
+	}
+
+	interface BridgeConnection {
+		publish(message: unknown): void;
+		close(): void;
+	}
+
+	interface ToolingBridge {
+		isAvailable(): boolean;
+		/** Both sides cross a Bindable, so plain data only */
+		open(
+			attributes: Record<string, string | number>,
+			handler: (request: unknown) => unknown,
+		): BridgeConnection;
 	}
 
 	interface ClientServices {
@@ -432,6 +645,7 @@ declare namespace Geode {
 			coalesce?: string;
 			size?: number;
 		}): Result<T>;
+		stats(): { queued: number; inFlight: number; queuedByPriority: Record<string, number> };
 	}
 
 	interface SchedulerOptions {
@@ -444,6 +658,9 @@ declare namespace Geode {
 		agingInterval?: number;
 		writeSpacing?: number;
 		keyThroughput?: boolean;
+		budgetPollInterval?: number;
+		/** Returns a number in [0, 1), for backoff jitter. Tests pass a fixed sequence */
+		random?: () => number;
 	}
 
 	// Profiles
@@ -573,6 +790,11 @@ declare namespace Geode {
 		inspect(key: string): ProfileInspection | undefined;
 		releaseAll(): number;
 		keyForUser(userId: number): string;
+		/**
+		 * Queues an op for the profile's next load. Fails with `invalidValue` unless the store was
+		 * made with `mailbox = true`, and when the op can't be mailed or its arguments can't be
+		 * stored. The value is the mail's sequence number
+		 */
 		mail(key: string, op: string, ...args: unknown[]): Result<number>;
 		erase(key: string): { ok: boolean; message?: string };
 		history(key: string, options?: { ascending?: boolean; limit?: number }): Result<VersionInfo[]>;
@@ -586,6 +808,7 @@ declare namespace Geode {
 		PlayerId: number;
 		ProductId: number;
 		PurchaseId: string | number;
+		[field: string]: unknown;
 	}
 
 	type ReceiptHandler = (tx: Transaction, info: ReceiptInfo) => void;
@@ -672,7 +895,12 @@ declare namespace Geode {
 		get(key: string, path?: Path): Result<unknown>;
 		observe(key: string, path: Path, callback: Observer): Connection;
 		invalidate(key: string): void;
-		transact(key: string, body: (tx: Transaction) => void, options?: TransactOptions): WriteResult;
+		/** Shared stores don't do dry runs */
+		transact(
+			key: string,
+			body: (tx: Transaction) => void,
+			options?: Omit<TransactOptions, "dryRun">,
+		): WriteResult;
 		set(key: string, path: Path, value: unknown): WriteResult;
 		update(key: string, path: Path, transform: (current: unknown) => unknown): WriteResult;
 		increment(key: string, path: Path, amount?: number): WriteResult;
@@ -933,11 +1161,82 @@ declare namespace Geode {
 	}
 
 	interface MockClock extends Clock {
+		/** Moves time forward, waking every sleeper that comes due on the way */
 		advance(seconds: number): void;
+		/** How many sleepers are waiting */
+		pending(): number;
+		/** Runs `fn` in a clock thread, jumping from one wake up to the next until it returns */
+		run<T>(fn: () => T): T;
+	}
+
+	/** `fault` sets one of these, or is "throttle" */
+	interface FaultSpec {
+		code?: number;
+		/** The DataStore write goes through and the error is still reported */
+		landed?: number;
+		latency?: number;
+		/** Runs before the call, as if another server got there first */
+		foreignWrite?: (current: unknown) => unknown;
+		/** Also shows the caller's transform the stale value once, like an UpdateAsync retry */
+		rerun?: boolean;
+	}
+
+	interface FaultRule {
+		/** "dataStore", "orderedDataStore", "hashMap", "sortedMap", "queue", "messaging" or "teleport" */
+		service?: string;
+		store?: string;
+		method?: string;
+		key?: string;
+		fault: "throttle" | FaultSpec;
+		times?: number;
+	}
+
+	interface MockPlayer {
+		UserId: number;
+		Name: string;
+	}
+
+	/** The mock bridge plus controls for tests */
+	interface MockBridge extends ToolingBridge {
+		attributes(): Record<string, string | number> | undefined;
+		request(request: unknown): unknown;
+		messages(): unknown[];
+	}
+
+	/** One mock server: the services a store takes, plus controls for tests */
+	interface MockServer extends Services {
+		readonly tooling: MockBridge;
+		/** The player must be on this server for messages to arrive */
+		client(userId: number): ClientServices;
+		inject(rule: FaultRule): void;
+		/** Each matching call uses one, refilled at `refillPerSecond`. Unset budgets are unlimited */
+		setBudget(budgetType: BudgetType, amount: number, refillPerSecond?: number): void;
+		clearFaults(): void;
+		/** Join handlers run in their own threads, advance the clock to let them finish */
+		join(userId: number, name?: string): MockPlayer;
+		leave(userId: number): void;
+		purchase(info: unknown): unknown;
+		/** Pending calls never return and subscribers stop hearing messages */
+		crash(): void;
+		isAlive(): boolean;
+		/** Each bindToClose callback gets its own clock thread */
+		shutdown(): void;
+	}
+
+	interface Universe {
+		readonly clock: MockClock;
+		readonly teleports: readonly {
+			fromJobId: string;
+			placeId: number;
+			players: unknown[];
+			options?: TeleportOptions;
+		}[];
+		readonly kicks: readonly { jobId: string; userId: number; reason: string }[];
+		server(options?: { jobId?: string; placeId?: number; studio?: boolean }): MockServer;
 	}
 
 	interface Testing {
-		/** A universe of mock servers. See the Luau docs for its full shape */
+		/** A universe of mock servers that share DataStores, MemoryStores and topics */
 		universe(
 			this: void,
 			options?: {
@@ -948,14 +1247,14 @@ declare namespace Geode {
 				limits?: {
 					keyLength?: number;
 					nameLength?: number;
+					/** Needs `measure` too */
 					valueSize?: number;
+					measure?: (value: unknown) => number;
+					/** Needs `measure` */
 					keyThroughput?: boolean;
 				};
 			},
-		): {
-			readonly clock: MockClock;
-			server(options?: { jobId?: string; placeId?: number; studio?: boolean }): Services;
-		};
+		): Universe;
 		clock(this: void, start?: number): MockClock;
 	}
 
@@ -1009,7 +1308,8 @@ declare namespace Geode {
 			/**
 			 * For tools editing a stored record outside a running Geode: the new data, the revision one
 			 * higher, an `external:` session in `meta.lastSession`, a new `meta.updatedAt`, and the
-			 * rest of `meta` unchanged
+			 * rest of `meta` unchanged. Errors when `stored` isn't a Geode record. `now` is in Unix
+			 * seconds and `id` must be fresh for every write
 			 */
 			externalWrite(
 				this: void,
