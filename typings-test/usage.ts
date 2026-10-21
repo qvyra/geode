@@ -85,3 +85,33 @@ const edited = Geode.Raw.externalWrite(
 	{ now: DateTime.now().UnixTimestampMillis / 1000, id: "edit-1" },
 );
 print(edited.meta.revision, edited.meta.format === Geode.Raw.recordFormat);
+
+const universe = Geode.Testing.universe({ dataStoreCache: { seconds: 4 } });
+const server = universe.server();
+server.inject({ service: "dataStore", method: "update", fault: "throttle", times: 1 });
+const mailStore = Geode.Profile.store({
+	name: "Mail",
+	template: { coins: 0 },
+	services: server,
+	mailbox: true,
+});
+const queued = mailStore.mail("player_1", "increment", "coins", 5);
+if (queued.ok) {
+	print(queued.value);
+}
+universe.clock.run(() => {
+	const loaded = mailStore.load("player_1");
+	if (loaded.ok) {
+		loaded.profile.release();
+	}
+});
+const fresh = server.dataStore("Mail").get("player_1", { useCache: false });
+if (fresh.ok) {
+	print(fresh.value.value, fresh.value.info?.version);
+}
+print(universe.kicks.size(), server.tooling.messages().size());
+
+const [valid, result] = Geode.schema.decode(Geode.t.number(), 1);
+if (!valid) {
+	print(result.issues[0]?.code);
+}
