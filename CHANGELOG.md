@@ -10,6 +10,7 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 - `Geode.Raw.externalWrite(stored, data, { now, id })` for tools that edit a stored record directly in its DataStore key. It returns the record with the new data, `meta.revision` one higher, `meta.lastSession` set to an `external:` session and a new `meta.updatedAt`, and leaves the rest of `meta` alone. That way a server whose release already landed can't take the profile back and save over the edit, and shared store caches pick it up
 - A docs page on the stored record format and the rule for external writes
 - Geode is on npm for roblox-ts as `@rbxts/geode`, with the Luau source and the typings. Install it with `npm i @rbxts/geode`
+- The typings name every type through the namespace (`Geode.Profile`, `Geode.TxResult` and the rest) and now cover the service adapters, mock servers and their test controls, `Scheduler.stats` and the pipeline stage methods
 
 ### Changed
 
