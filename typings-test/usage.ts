@@ -19,6 +19,16 @@ playerData.onLoaded((player, profile) => {
 	print(player.Name, profile.get("coins"));
 });
 
+// the types are reachable through the namespace
+function grant(profile: Geode.Profile, amount: number): Geode.TxResult {
+	return profile.increment("coins", amount);
+}
+const store: Geode.ProfileStore = playerData.store;
+const first = store.get("player_1");
+if (first !== undefined) {
+	grant(first, 5);
+}
+
 const handle = playerData.get(game.GetService("Players").GetPlayers()[0]);
 if (handle?.isLoaded() === true) {
 	handle.set("level", 2);
