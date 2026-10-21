@@ -22,7 +22,28 @@ local Geode = require(ReplicatedStorage.Packages.Geode)
 
 ## roblox-ts
 
-A roblox-ts package is coming. Its typings already cover the whole API with the same names and shapes as Luau.
+Install the package from npm:
+
+```sh
+npm i @rbxts/geode
+```
+
+It holds the Luau source and its typings. The Rojo project of a roblox-ts game already puts `node_modules/@rbxts` in ReplicatedStorage, so clients can reach it too, and there is nothing else to set up:
+
+```ts
+import Geode from "@rbxts/geode";
+
+const playerData = Geode.players({
+	name: "PlayerData",
+	template: { coins: 0, level: 1 },
+});
+
+playerData.onLoaded((player, profile) => {
+	profile.increment("coins", 100);
+});
+```
+
+The typings cover the whole API with the same names and shapes as Luau. Luau `nil` is `undefined`, and a result is narrowed by checking its `ok` field first. The npm package has the same version number as the Wally one.
 
 ## Studio
 

@@ -9,6 +9,7 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 - Profile and shared records carry `meta.format`, the layout of the stored record. Geode writes `1`. Records without it were written by 0.4.0 to 0.5.0 and keep loading; their next write adds it. `Geode.Raw.recordFormat` holds the current value
 - `Geode.Raw.externalWrite(stored, data, { now, id })` for tools that edit a stored record directly in its DataStore key. It returns the record with the new data, `meta.revision` one higher, `meta.lastSession` set to an `external:` session and a new `meta.updatedAt`, and leaves the rest of `meta` alone. That way a server whose release already landed can't take the profile back and save over the edit, and shared store caches pick it up
 - A docs page on the stored record format and the rule for external writes
+- Geode is on npm for roblox-ts as `@rbxts/geode`, with the Luau source and the typings. Install it with `npm i @rbxts/geode`
 
 ### Changed
 
