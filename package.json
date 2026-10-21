@@ -26,12 +26,12 @@
 		"types",
 		"default.project.json",
 		"LICENSE",
-		"README.md"
+		"README.md",
+		"CHANGELOG.md"
 	],
 	"publishConfig": {
 		"access": "public"
 	},
-	"private": true,
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
 		"@rbxts/compiler-types": "3.0.0-types.0",
