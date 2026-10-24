@@ -4,19 +4,25 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-24
+
+Faster loads and server hops, Geode on npm for roblox-ts, and what tools need to edit Geode's records safely and find Geode wherever it's installed.
+
+**Breaking:** mail is now opt in. A game that sends mail with `store:mail` has to make that store with `mailbox = true`, or those calls fail. Mail already queued is kept and applies once the store opts in.
+
 ### Added
 
-- Profile and shared records carry `meta.format`, the layout of the stored record. Geode writes `1`. Records without it were written by 0.4.0 to 0.5.0 and keep loading; their next write adds it. `Geode.Raw.recordFormat` holds the current value
-- `Geode.Raw.externalWrite(stored, data, { now, id })` for tools that edit a stored record directly in its DataStore key. It returns the record with the new data, `meta.revision` one higher, `meta.lastSession` set to an `external:` session and a new `meta.updatedAt`, and leaves the rest of `meta` alone. That way a server whose release already landed can't take the profile back and save over the edit, and shared store caches pick it up
-- A docs page on the stored record format and the rule for external writes
 - Geode is on npm for roblox-ts as `@rbxts/geode`, with the Luau source and the typings. Install it with `npm i @rbxts/geode`
 - The typings name every type through the namespace (`Geode.Profile`, `Geode.TxResult` and the rest) and now cover the service adapters, mock servers and their test controls, `Scheduler.stats` and the pipeline stage methods
+- Profile and shared records carry `meta.format`, the layout of the stored record. Geode writes `1`. Records without it were written by 0.4.0 to 0.5.0 and keep loading; their next write adds it. `Geode.Raw.recordFormat` holds the current value
+- `Geode.Raw.externalWrite(stored, data, { now, id })` for tools that edit a stored record directly in its DataStore key. It returns the record with the new data, `meta.revision` one higher, `meta.lastSession` set to an `external:` session and a new `meta.updatedAt`, and leaves the rest of `meta` alone. That way a server whose release already landed can't take the profile back and save over the edit, and shared store caches pick it up
 - Geode's main module carries the `Geode` tag and a `GeodeVersion` attribute, so tools find it wherever it's installed. Both come from `src/init.meta.json`, so Rojo builds, Wally and npm installs and the model file all have them
 - `lune run model` builds Geode alone as `Geode.rbxm`, the model file for releases, and checks the tag and attribute are in it
+- Docs pages on the stored record format and the rule for external writes, and a comparison with ProfileStore, ProfileService, Lapis and DataStore2, with benchmarks run on live Roblox servers
 
 ### Changed
 
-- Mail is now opt in. A profile store reads its mailbox on load only when it's made with `mailbox = true`, so stores that never get mail save a GetAsync on every load. `store:mail` on a store without it fails instead of queuing mail nobody reads. Games that send mail need to add `mailbox = true` wherever the store is made; mail already queued stays in the mailbox and applies once they do
+- **Breaking:** mail is opt in. A profile store reads its mailbox on load only when it's made with `mailbox = true`, so stores that never get mail save a GetAsync on every load. `store:mail` on a store without it fails instead of queuing mail nobody reads. Games that send mail need to add `mailbox = true` wherever the store is made; mail already queued stays in the mailbox and applies once they do
 - A store that takes mail reads the mailbox while it takes the lease instead of after, so a load waits for one round trip instead of two
 - Server hops are faster. When the old server announces its release, the new one reads the record once past the DataStore cache before trying to take the lease. Live hops used to spend about 4 seconds on retries that kept seeing the released lease as held, and now take about 0.6 s
 - A profile that loses its session because a tool edited it after its release says so in the reason
@@ -105,6 +111,7 @@ The first public release.
 - Hand-written typings for the whole API in `types/`, ahead of a roblox-ts package
 - An API reference generated from the doc comments, and guides for every part of Geode
 
-[Unreleased]: https://github.com/qvyra/geode/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/qvyra/geode/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/qvyra/geode/releases/tag/v0.6.0
 [0.5.0]: https://github.com/qvyra/geode/releases/tag/v0.5.0
 [0.4.0]: https://github.com/qvyra/geode/releases/tag/v0.4.0
