@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/qvyra/geode/main/.moonwave/static/geode.png" alt="Geode logo" width="160"></p>
+
 # Geode
 
 A data framework for Roblox. Geode puts DataStoreService, MemoryStoreService and MessagingService behind one API, with session-locked player data, guards, reactive data and replication on top.
