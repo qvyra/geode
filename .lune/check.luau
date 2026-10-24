@@ -125,6 +125,7 @@ local STEPS: { Step } = {
 		args = { "analyze", "--platform=standard", ".lune", "scripts" },
 	},
 	{ name = "tests", program = "lune", args = { "run", "test" } },
+	{ name = "model", program = "lune", args = { "run", "model" } },
 	{ name = "docs", program = "lune", args = { "run", "docs" } },
 	prettier(),
 	node("eslint", "eslint/bin/eslint.js", {}),
