@@ -48,3 +48,7 @@ The typings cover the whole API with the same names and shapes as Luau. Luau `ni
 ## Studio
 
 Out of the box, Studio keeps player data in memory, so playtests never touch real data and don't need DataStore access. To test against real DataStores, either in a separate scope or against live data, turn on Studio access to API Services in the experience's settings and set the Studio mode, as shown in [Profiles](profiles).
+
+## Where Geode lives
+
+Geode works from any folder, under any name, as long as server scripts can require it. Its main module carries the `Geode` tag (CollectionService) and a `GeodeVersion` attribute with its version, whichever way it was installed, so tools can find it with `CollectionService:GetTagged("Geode")` wherever it is.
