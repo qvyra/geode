@@ -11,6 +11,8 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 - A docs page on the stored record format and the rule for external writes
 - Geode is on npm for roblox-ts as `@rbxts/geode`, with the Luau source and the typings. Install it with `npm i @rbxts/geode`
 - The typings name every type through the namespace (`Geode.Profile`, `Geode.TxResult` and the rest) and now cover the service adapters, mock servers and their test controls, `Scheduler.stats` and the pipeline stage methods
+- Geode's main module carries the `Geode` tag and a `GeodeVersion` attribute, so tools find it wherever it's installed. Both come from `src/init.meta.json`, so Rojo builds, Wally and npm installs and the model file all have them
+- `lune run model` builds Geode alone as `Geode.rbxm`, the model file for releases, and checks the tag and attribute are in it
 
 ### Changed
 
