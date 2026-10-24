@@ -10,7 +10,7 @@ Versions read for this page:
 
 | Library        | Repository                                                                          | Version read                                                        |
 | -------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Geode          | [qvyra/geode](https://github.com/qvyra/geode)                                       | 0.5.0                                                               |
+| Geode          | [qvyra/geode](https://github.com/qvyra/geode)                                       | 0.6.0                                                               |
 | ProfileStore   | [MadStudioRoblox/ProfileStore](https://github.com/MadStudioRoblox/ProfileStore)     | commit `45c9847` (2025-07-31), the repository has no releases       |
 | ProfileService | [MadStudioRoblox/ProfileService](https://github.com/MadStudioRoblox/ProfileService) | commit `d736800` (2024-10-13), the repository has no releases       |
 | Lapis          | [nezuo/lapis](https://github.com/nezuo/lapis)                                       | v0.3.3 (commit `f140aca`), with its dependency evaera/promise 4.0.0 |
@@ -34,7 +34,7 @@ Versions read for this page:
 | Testing without Roblox  | Lune tests on in-memory mocks with fault injection                                | `ProfileStore.Mock` inside a Roblox session                                    | `ProfileStore.Mock` inside a Roblox session                                        | Takes any DataStoreService, its own tests run inside Roblox | Its own tests use a mock DataStoreService inside Roblox              |
 | Typing                  | Luau strict, TypeScript typings in the repository                                 | Luau types in the module                                                       | Untyped Lua                                                                        | Luau types in the module                                    | Untyped Lua                                                          |
 | License                 | MIT                                                                               | Apache-2.0                                                                     | Apache-2.0                                                                         | MIT                                                         | Its own license, see below                                           |
-| Maintenance status      | 0.5.0 released 2026-10-18                                                         | Last commit 2025-07-31                                                         | The README says it's no longer supported and points to ProfileStore                | v0.3.3 from 2024-08-24, last commit 2025-02-12              | ds2-1.4.0 from 2021-05-23, last commit 2023-03-17                    |
+| Maintenance status      | 0.6.0 released 2026-10-24                                                         | Last commit 2025-07-31                                                         | The README says it's no longer supported and points to ProfileStore                | v0.3.3 from 2024-08-24, last commit 2025-02-12              | ds2-1.4.0 from 2021-05-23, last commit 2023-03-17                    |
 
 ## Details
 
