@@ -33,9 +33,13 @@ With [Wally](https://wally.run), add Geode to `wally.toml` and run `wally instal
 Geode = "qvyra/geode@0.5.0"
 ```
 
-A roblox-ts package is coming. The typings for the whole API already live in `types/`.
+With roblox-ts, install it from npm:
 
-<!-- TODO: request the @rbxts/geode name from the roblox-ts organization before the first npm release -->
+```sh
+npm i @rbxts/geode
+```
+
+and import it with `import Geode from "@rbxts/geode"`. The typings cover the whole API with the same names as Luau.
 
 ## Quick start
 

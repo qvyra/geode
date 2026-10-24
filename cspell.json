@@ -68,6 +68,10 @@
 		"udim",
 		"ipairs",
 		"millis",
-		"cooldown"
+		"cooldown",
+		"nezuo",
+		"evaera",
+		"loleris",
+		"profilestore"
 	]
 }

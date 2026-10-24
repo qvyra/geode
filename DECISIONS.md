@@ -520,3 +520,29 @@ After a release announcement (the message, or the handoff key showing the releas
 The adapter's `get` takes `{ useCache = false }`, and the mock can keep a per server copy of keys (`dataStoreCache`) so tests can reproduce the slow hop. Waiting longer before retrying was the other idea, but that only moves the 4 seconds around.
 
 **PR:** #23
+
+## 42. The npm package ships the Luau source with its Rojo project
+
+**Date:** 2026-10-21
+
+roblox-ts games get packages from npm, under `node_modules/@rbxts`, which their Rojo project puts in ReplicatedStorage. roblox-ts maps an import to a Luau file through the package's `main` and `types`, and works out the instance path from the Rojo tree. So `@rbxts/geode` ships the same `src` as Wally, with `main` at `src/init.luau` and `types` at `types/index.d.ts`, and no build step of its own.
+
+`default.project.json` ships too. With it, Rojo builds the package folder as one ModuleScript named `Geode`, the same as a Wally install, and roblox-ts resolves imports to that name. Without it the folder would be a Folder holding a `src` ModuleScript, which also works but differs from every other install. Both layouts were built with roblox-ts 3.0.0 and Rojo 7.7.1 before choosing.
+
+`package.json` drops `"type": "module"`. With it, TypeScript treats `types/index.d.ts` as an ES module under Node16 resolution and refuses its `export =`; the ESLint config moved to `.mjs` instead. The typings also moved into a `Geode` namespace merged with the value, so roblox-ts code can name `Geode.Profile` and the rest, the way Luau code names the exported types.
+
+The npm and Wally packages share one version number and are bumped in the same release PR.
+
+**PR:** #24
+
+## 43. The main module carries a tag and its version, for tools to find
+
+**Date:** 2026-10-24
+
+Geode will also ship as a model file, attached to GitHub releases and on the Creator Store, so it can end up in any folder under any name, not only where Wally or Rojo put it. The Studio bridge already works from anywhere, since it lives in its own folder in ServerStorage. What didn't was a tool looking for Geode itself while no bridge exists yet, to say that a game has Geode but hasn't made a store, or that its Geode predates the bridge. Guessing folder names breaks as soon as someone drops the model somewhere else.
+
+So the main module carries the `Geode` tag and a `GeodeVersion` attribute holding `Geode.version`. A tool calls `CollectionService:GetTagged("Geode")` and reads the attribute. Both come from `src/init.meta.json`, the one place every install path shares: Rojo reads it when building the project, Wally and npm ship `src` with it, and the model file is a Rojo build. Setting them at run time instead would only work once something required Geode, which is exactly what a tool can't count on.
+
+The version now sits in four files, so a test keeps the attribute, `wally.toml` and `package.json` equal to `Version.luau`, and `lune run model` builds the release model file and reads it back to check the tag, the attribute and the bridge are really in it. The check suite runs it, so every PR proves the model still builds. Geodes from before the tag have neither; tools need another way to spot those, such as their module layout.
+
+**PR:** #25
