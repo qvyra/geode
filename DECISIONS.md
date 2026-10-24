@@ -534,3 +534,15 @@ roblox-ts games get packages from npm, under `node_modules/@rbxts`, which their 
 The npm and Wally packages share one version number and are bumped in the same release PR.
 
 **PR:** #24
+
+## 43. The main module carries a tag and its version, for tools to find
+
+**Date:** 2026-10-24
+
+Geode will also ship as a model file, attached to GitHub releases and on the Creator Store, so it can end up in any folder under any name, not only where Wally or Rojo put it. The Studio bridge already works from anywhere, since it lives in its own folder in ServerStorage. What didn't was a tool looking for Geode itself while no bridge exists yet, to say that a game has Geode but hasn't made a store, or that its Geode predates the bridge. Guessing folder names breaks as soon as someone drops the model somewhere else.
+
+So the main module carries the `Geode` tag and a `GeodeVersion` attribute holding `Geode.version`. A tool calls `CollectionService:GetTagged("Geode")` and reads the attribute. Both come from `src/init.meta.json`, the one place every install path shares: Rojo reads it when building the project, Wally and npm ship `src` with it, and the model file is a Rojo build. Setting them at run time instead would only work once something required Geode, which is exactly what a tool can't count on.
+
+The version now sits in four files, so a test keeps the attribute, `wally.toml` and `package.json` equal to `Version.luau`, and `lune run model` builds the release model file and reads it back to check the tag, the attribute and the bridge are really in it. The check suite runs it, so every PR proves the model still builds. Geodes from before the tag have neither; tools need another way to spot those, such as their module layout.
+
+**PR:** #25
