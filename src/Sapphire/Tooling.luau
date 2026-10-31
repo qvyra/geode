@@ -29,6 +29,8 @@ export type OpSpec = {
 	builtin: boolean,
 	-- nil for a custom op registered without argument schemas
 	args: { ArgSpec }?,
+	-- what a custom op does, when it was registered with a description
+	description: string?,
 }
 
 -- Built-in ops a tool can call. `update` takes a function, so it can't cross a Bindable
@@ -135,6 +137,8 @@ function Tooling.ops(custom: { string }?): { OpSpec }
 	local names: { string } = custom or {}
 	for _, name in names do
 		local schemas = Transaction.opArgs(name)
+		local info = Transaction.opInfo(name)
+		local argNames = info and info.names or {}
 		local args: { ArgSpec }? = nil
 		if schemas then
 			local specs: { ArgSpec } = {}
@@ -144,7 +148,7 @@ function Tooling.ops(custom: { string }?): { OpSpec }
 					inner = inner.item :: Schema
 				end
 				table.insert(specs, {
-					name = `arg{index}`,
+					name = argNames[index] or `arg{index}`,
 					type = "schema",
 					optional = schema.kind == "optional",
 					schema = describe(inner),
@@ -152,7 +156,12 @@ function Tooling.ops(custom: { string }?): { OpSpec }
 			end
 			args = specs
 		end
-		table.insert(list, { name = name, builtin = false, args = args })
+		table.insert(list, {
+			name = name,
+			builtin = false,
+			args = args,
+			description = info and info.description,
+		})
 	end
 	return list
 end

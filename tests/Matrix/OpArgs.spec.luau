@@ -244,6 +244,47 @@ return function(spec: Spec.Api)
 			expect((args[2].schema :: Any).codec).toBe("Vector3")
 		end)
 
+		it("are called arg1, arg2 and so on when the op names none", function()
+			local name = uniqueOp(function() end, { args = { t.string(), t.number() } })
+			local listed = Tooling.ops({ name })
+			local described = listed[#listed]
+			local args = described.args :: { Tooling.ArgSpec }
+			expect(args[1].name).toBe("arg1")
+			expect(args[2].name).toBe("arg2")
+			expect(described.description).toBeNil()
+		end)
+
+		it("carry the names and description the op gave", function()
+			local name = uniqueOp(function() end, {
+				args = { t.string(), t.integer({ min = 1, max = 1000 }), t.optional(t.string()) },
+				names = { "item", "coins" },
+				description = "Give the player an item and some coins",
+			})
+			local listed = Tooling.ops({ name })
+			local described = listed[#listed]
+			expect(described.description).toBe("Give the player an item and some coins")
+			local args = described.args :: { Tooling.ArgSpec }
+			expect(args[1].name).toBe("item")
+			expect(args[2].name).toBe("coins")
+			expect((args[2].schema :: Any).max).toBe(1000)
+			expect(args[3].name).toBe("arg3")
+			expect(args[3].optional).toBe(true)
+		end)
+
+		it("describe an op without args that gave a description", function()
+			local name = uniqueOp(function() end, { description = "Reset the daily quests" })
+			local listed = Tooling.ops({ name })
+			local described = listed[#listed]
+			expect(described.args).toBeNil()
+			expect(described.description).toBe("Reset the daily quests")
+		end)
+
+		it("leave built-in ops without a description", function()
+			for _, described in Tooling.ops() do
+				expect(described.description).toBeNil()
+			end
+		end)
+
 		it("are decoded from their stored form with their schemas", function()
 			local name = uniqueOp(function() end, { args = { t.string(), codec.Vector3 } })
 			local position = roblox.Vector3.new(1, 2, 3)
