@@ -558,3 +558,19 @@ The names sit in their own list rather than on the schemas. A schema is a value 
 `Transaction.opInfo` hands both to tools, and the bridge's `ops` answer uses the names in each argument's `name` and adds `description` to custom ops. That only adds fields to an answer old tools already read field by field, so the protocol stays at 1, as the bridge's rule asks (entry 34). No feature flag either: a tool sees whether a description is there, and a name it gets is the one to show either way.
 
 **PR:** #28
+
+## 45. Bench runs are kept in the repo and published as data
+
+**Date:** 2026-10-31
+
+The numbers on the benchmarks page came from workflow artifacts, which GitHub deletes after 90 days, so nobody could check them later, not even against the page. Every run now lives in `benchmarks/runs`, cleaned of the ids that point at the test place or a server. `benchmarks/catalog.json` says what was measured and how: suites, scenarios, metrics, the Geode builds and the libraries. `lune run benchdata build` turns both into the files the docs site serves under `data/benchmarks` (a `latest.json`, an index, one file per run and the JSON Schema they follow) and writes the tables on the page between markers. The check suite fails when any of them doesn't match the runs, so the page can't drift from its data.
+
+A run names the Geode it measured by the git tree of `src` and the bench by the tree of `tests/bench`, plus a link to its workflow run. Commit ids don't work for that: the bench often runs on a pull request's merge commit, which isn't kept, and a rebase merge gives every commit a new id anyway. A tree id stays the same for the same files.
+
+Results from before and after a change in behavior never mix. Builds belong to lines, and a subject keeps to the runs of its line. All current subjects take the same runs, the last five in which the current Geode ran, so every row of a table compares the same conditions. Geode before the mailbox change stays on the page as a historical subject with its own runs.
+
+Each suite records its timing resolution. Bench times are wall clock seconds read at frame steps, and 95% of the samples so far are multiples of 1/60 s, so differences under that are ties. Memory per loaded profile is read from the Lua heap and labelled as noisy: garbage collection can move it either way, and the first run gave Geode -0.5 KB. Edit time is measured for Geode alone, in Lune; the other libraries' edits do different work (a plain table change or a `:Update` call), so the catalog lists that comparison as not measured rather than putting the numbers side by side.
+
+Tables keep a notes column written by hand, matched to rows by label. The prose around them stays hand written too, so when new runs change a number the prose quotes, the data pull request lists it for a person to rewrite.
+
+**PR:** #34
