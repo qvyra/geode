@@ -66,7 +66,11 @@ Geode.op(
 	(tx, itemId: string, amount: number) => {
 		tx.increment(["inventory", itemId], amount);
 	},
-	{ args: [Geode.t.string(), Geode.t.integer({ min: 1 })] },
+	{
+		args: [Geode.t.string(), Geode.t.integer({ min: 1 })],
+		names: ["itemId", "amount"],
+		description: "Give the player some of an item",
+	},
 );
 Geode.remoteOp("buyItem", { store: playerData.store, args: [Geode.t.string()] });
 
