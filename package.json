@@ -47,7 +47,7 @@
 	},
 	"overrides": {
 		"brace-expansion@^5.0.0": "5.0.12",
-		"toml": "4.1.2",
+		"toml": "5.0.1",
 		"gh-pages": "5.0.0"
 	}
 }
