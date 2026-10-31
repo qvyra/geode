@@ -122,7 +122,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add benchmarks .moonwave/static/data
+          git add benchmarks .moonwave/static/data docs/benchmarks.md
           git commit -m "docs(bench): data from run $RUN"
           git push origin "$branch"
           gh pr create --base main --head "$branch" --title "Bench data from run $RUN" --body-file .cache/bench/notes.md
