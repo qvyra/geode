@@ -17,7 +17,7 @@ Anything that only identifies the test place, a server or a key is left out: pla
 
 `catalog.json` holds what the runs themselves don't say:
 
-- the suites, their scenarios and metrics, and each suite's timing step (`timingResolution`). The bench checks for a finished request once a frame, so its times move in steps of 1/60 s
+- the suites, their scenarios and metrics, and each suite's timing step (`timingResolution`). The bench checks for a finished request once a frame, so its times move in steps of 1/60 s. A suite marked `recordedOnly` stays in the run files but out of `latest.json`, for numbers that don't hold steady between runs
 - the request methods, with a stable id for each (`GetAsync:noCache` for a GetAsync past the cache) and a label to show
 - Geode's builds and build lines. A line groups builds that behave the same in what the bench measures, and each build lists the `src` trees it covers
 - the subjects: one library with one config. Geode with `mailbox = true` is its own subject, and so is Geode from before mail became opt-in, marked historical
@@ -33,7 +33,9 @@ Anything that only identifies the test place, a server or a key is left out: pla
 - `runs/<run>.json`: one run's results in the same shape, and its raw tasks
 - `schema/v1.json`: the JSON Schema for all three, a copy of `schema.json`
 
-`lune run check` fails when the published files don't match the runs and the catalog, and checks them against the schema.
+The same command writes the tables in `docs/benchmarks.md` that sit between `bench:table` markers, from `latest.json`. Notes columns are kept by hand, matched by the row's label.
+
+`lune run check` fails when the published files or those tables don't match the runs and the catalog, and checks the files against the schema.
 
 ## Adding a run
 
