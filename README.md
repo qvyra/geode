@@ -30,7 +30,7 @@ With [Wally](https://wally.run), add Geode to `wally.toml` and run `wally instal
 
 ```toml
 [dependencies]
-Geode = "qvyra/geode@0.6.0"
+Geode = "qvyra/geode@0.6.1"
 ```
 
 With roblox-ts, install it from npm:
