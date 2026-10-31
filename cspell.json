@@ -28,6 +28,7 @@
 		"Lune",
 		"benchdata",
 		"benchcpu",
+		"collectgarbage",
 		"profileservice",
 		"Rokit",
 		"Rojo",

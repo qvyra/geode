@@ -368,6 +368,7 @@ function BenchResults.sanitize(results: any, info: RunInfo): { [string]: any }
 		benchTree = info.benchTree,
 		workflowRun = info.workflowRun,
 		libraries = clean(results.pins),
+		lune = clean(results.lune),
 		refused = clean(results.refused),
 		tasks = tasks,
 	}

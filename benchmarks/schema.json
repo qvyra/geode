@@ -148,7 +148,7 @@
 				},
 				"problems": {
 					"type": "array",
-					"description": "Tasks that failed as tasks: timed out, or returned no report",
+					"description": "Tasks that failed as tasks, timed out or returned no report, and a Lune suite that failed (mode cpu)",
 					"items": {
 						"type": "object",
 						"required": ["subject", "mode", "problem"],
@@ -159,6 +159,10 @@
 						}
 					}
 				},
+				"lune": {
+					"type": "object",
+					"description": "What the runner measured in Lune itself, with the Lune version, OS and architecture it ran on. The shape may change with the bench"
+				},
 				"tasks": {
 					"type": "array",
 					"description": "What each Luau Execution task reported, with place ids, JobIds, keys and topics left out. The shape of report.result depends on the mode and may change with the bench",
@@ -166,7 +170,7 @@
 						"type": "object",
 						"required": ["mode", "library", "subject"],
 						"properties": {
-							"mode": { "enum": ["perf", "hold", "join", "throttle"] },
+							"mode": { "enum": ["perf", "hold", "join", "throttle", "memory"] },
 							"library": { "type": "string", "description": "The bench's name for it" },
 							"subject": { "$ref": "#/$defs/id" },
 							"problem": { "type": "string" },
@@ -191,7 +195,7 @@
 
 		"suite": {
 			"type": "object",
-			"required": ["id", "name", "environment", "timingResolution", "description", "scenarios"],
+			"required": ["id", "name", "environment", "description", "scenarios"],
 			"properties": {
 				"id": { "$ref": "#/$defs/id" },
 				"name": { "type": "string" },
@@ -199,7 +203,7 @@
 				"timingResolution": {
 					"type": "number",
 					"exclusiveMinimum": 0,
-					"description": "Seconds per timing step. Times differing by less are ties"
+					"description": "Seconds per timing step, for suites that time things. Times differing by less are ties"
 				},
 				"description": { "type": "string" },
 				"caveat": { "type": "string" },
@@ -225,7 +229,8 @@
 			"properties": {
 				"id": { "$ref": "#/$defs/id" },
 				"name": { "type": "string" },
-				"kind": { "enum": ["timing", "requests", "count", "values"] },
+				"kind": { "enum": ["timing", "requests", "count", "values", "amount"] },
+				"unit": { "type": "string", "description": "For amounts: KB, or us for microseconds" },
 				"description": { "type": "string" }
 			}
 		},
@@ -302,14 +307,20 @@
 				"scenario": { "$ref": "#/$defs/id" },
 				"metric": { "$ref": "#/$defs/id" },
 				"subject": { "$ref": "#/$defs/id" },
-				"runs": { "type": "array", "items": { "$ref": "#/$defs/runId" }, "minItems": 1 },
+				"runs": {
+					"type": "array",
+					"description": "The runs that gave this result samples",
+					"items": { "$ref": "#/$defs/runId" },
+					"minItems": 1
+				},
 				"value": {
 					"oneOf": [
 						{ "$ref": "#/$defs/timing" },
 						{ "$ref": "#/$defs/range" },
 						{ "$ref": "#/$defs/requests" },
 						{ "$ref": "#/$defs/count" },
-						{ "$ref": "#/$defs/values" }
+						{ "$ref": "#/$defs/values" },
+						{ "$ref": "#/$defs/amount" }
 					]
 				}
 			}
@@ -388,6 +399,20 @@
 				"kind": { "const": "values" },
 				"counts": { "type": "object", "additionalProperties": { "type": "integer" } },
 				"total": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"amount": {
+			"type": "object",
+			"description": "A measured quantity that isn't a time in seconds, such as KB or microseconds",
+			"required": ["kind", "unit", "n", "median", "min", "max", "samples"],
+			"properties": {
+				"kind": { "const": "amount" },
+				"unit": { "type": "string" },
+				"n": { "type": "integer", "minimum": 1 },
+				"median": { "type": "number" },
+				"min": { "type": "number" },
+				"max": { "type": "number" },
+				"samples": { "type": "array", "items": { "type": "number" } }
 			}
 		},
 

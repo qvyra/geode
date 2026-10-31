@@ -55,6 +55,29 @@
 				{ "id": "save", "name": "Save", "metrics": ["time", "requests"] },
 				{ "id": "release", "name": "Release", "metrics": ["time", "requests"] }
 			]
+		},
+		{
+			"id": "memory",
+			"name": "Memory per loaded profile",
+			"environment": "roblox-live",
+			"description": "After loading and releasing one profile so the library has set itself up, the task reads the Lua heap with collectgarbage(\"count\") every 0.1 s for 5 s, loads twenty fresh profiles with the same data as the other suites and holds them, then reads the heap again. The result is the difference between the lowest readings, divided by the profiles held. The bench's request log is paused meanwhile so it doesn't count. One sample per run.",
+			"caveat": "An upper bound, and noisy: a script can't make Luau finish a garbage collection cycle, so some of the difference can be garbage not yet collected. It covers what the library keeps in Lua per profile, not memory the engine holds.",
+			"scenarios": [
+				{
+					"id": "loaded-profiles",
+					"name": "Twenty loaded profiles",
+					"metrics": ["heap-per-profile"]
+				}
+			]
+		},
+		{
+			"id": "geode-edits",
+			"name": "Geode edit time",
+			"environment": "lune",
+			"timingResolution": 0.000001,
+			"description": "Geode only, in Lune against Geode's test universe on the machine that runs the bench, not on a Roblox server. One loaded profile with the same data as the other suites takes batches of 1000 profile:increment(\"coins\") calls, after one batch that isn't counted. Each edit runs through the profile's transaction pipeline and is recorded for the next save, without a DataStore request. One sample per batch.",
+			"caveat": "Depends on the machine and Lune version, which the run file records. Compare runs on the same machine only.",
+			"scenarios": [{ "id": "increment", "name": "Increment", "metrics": ["time-per-edit"] }]
 		}
 	],
 	"metrics": [
@@ -81,6 +104,20 @@
 			"name": "Value seen",
 			"kind": "values",
 			"description": "What the new server read, and how often."
+		},
+		{
+			"id": "heap-per-profile",
+			"name": "Heap per profile",
+			"kind": "amount",
+			"unit": "KB",
+			"description": "Growth of the Lua heap per loaded profile, an upper bound."
+		},
+		{
+			"id": "time-per-edit",
+			"name": "Time per edit",
+			"kind": "amount",
+			"unit": "us",
+			"description": "Microseconds per edit, from a batch's time divided by its edits."
 		}
 	],
 	"requestMethods": [
@@ -220,6 +257,10 @@
 			"subject": "datastore2",
 			"config": "OrderedBackups",
 			"reason": "DataStore2's default OrderedBackups method needs DataStores named per player, which the bench's one allowed DataStore rules out. Only the Standard method ran."
+		},
+		{
+			"scenario": "edit-time-across-libraries",
+			"reason": "Only Geode's edits are timed. A Geode edit runs through its transaction pipeline, while ProfileStore and ProfileService change a plain table and DataStore2 calls :Update, so per-edit times side by side would compare different work."
 		},
 		{
 			"scenario": "servers-with-players",

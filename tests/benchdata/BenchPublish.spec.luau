@@ -50,12 +50,45 @@ local function catalog(): any
 				description = "d",
 				scenarios = { { id = "load", name = "Load", metrics = { "time" } } },
 			},
+			{
+				id = "memory",
+				name = "Memory",
+				environment = "roblox-live",
+				description = "d",
+				scenarios = {
+					{ id = "loaded-profiles", name = "Loaded", metrics = { "heap-per-profile" } },
+				},
+			} :: any,
+			{
+				id = "geode-edits",
+				name = "Edits",
+				environment = "lune",
+				timingResolution = 0.000001,
+				description = "d",
+				scenarios = {
+					{ id = "increment", name = "Increment", metrics = { "time-per-edit" } },
+				},
+			},
 		},
 		metrics = {
 			{ id = "time", name = "Time", kind = "timing", description = "d" },
 			{ id = "requests", name = "Requests", kind = "requests", description = "d" },
 			{ id = "final-save-seen", name = "Final save", kind = "count", description = "d" },
 			{ id = "value-seen", name = "Value", kind = "values", description = "d" },
+			{
+				id = "heap-per-profile",
+				name = "Heap",
+				kind = "amount",
+				unit = "KB",
+				description = "d",
+			},
+			{
+				id = "time-per-edit",
+				name = "Edit",
+				kind = "amount",
+				unit = "us",
+				description = "d",
+			},
 		},
 		requestMethods = {
 			{ id = "UpdateAsync", label = "UpdateAsync", bench = "UpdateAsync" },
@@ -245,6 +278,40 @@ return function(api: Spec.Api)
 			expect(throttled.value.max).toBe(32.5)
 		end)
 
+		it("read the heap per profile and Geode's edit timings", function()
+			local data = run("aaaaaaaa", "2026-01-01T00:00:00Z", "2.0.0", { 0.2 })
+			table.insert(data.tasks, {
+				mode = "memory",
+				library = "Other",
+				report = { result = { profiles = 20, perProfileKb = 12.3456 } },
+			})
+			table.insert(data.tasks, {
+				mode = "memory",
+				library = "Geode",
+				report = { result = { notReadable = "not allowed" } },
+			})
+			data.lune = { cpu = { editsPerBatch = 1000, batches = { 0.006, 0.008, 0.007 } } }
+			local file = BenchPublish.runFile(catalog(), data)
+			local heap =
+				resultFor(file.results, "memory", "loaded-profiles", "heap-per-profile", "other")
+			expect(heap.value).toEqual({
+				kind = "amount",
+				unit = "KB",
+				n = 1,
+				median = 12.346,
+				min = 12.346,
+				max = 12.346,
+				samples = { 12.346 },
+			})
+			expect(file.notRunnable[1].suite).toBe("memory")
+			local edits =
+				resultFor(file.results, "geode-edits", "increment", "time-per-edit", "geode")
+			expect(edits.value.unit).toBe("us")
+			expect(edits.value.median).toBe(7)
+			expect(edits.value.samples).toEqual({ 6, 8, 7 })
+			expect(file.lune).toBe(data.lune)
+		end)
+
 		it("list tasks that couldn't run or failed", function()
 			local data = run("aaaaaaaa", "2026-01-01T00:00:00Z", "2.0.0", { 0.2 })
 			table.insert(
@@ -291,6 +358,11 @@ return function(api: Spec.Api)
 				resultFor(latest.results, "load-save-release", "load-new", "time", "geode-1")
 			expect(old.runs).toEqual({ "00000001", "00000002" })
 			expect(#latest.runs).toBe(4)
+			-- a run without a measurement isn't listed for it
+			runs[5].tasks[2] = nil
+			local later = BenchPublish.latest(catalog(), runs)
+			local fewer = resultFor(later.results, "load-save-release", "load-new", "time", "other")
+			expect(fewer.runs).toEqual({ "00000004" })
 			expect(latest.subjects[1].bench).toBeNil()
 		end)
 
