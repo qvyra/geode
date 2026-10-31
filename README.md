@@ -41,6 +41,8 @@ npm i @rbxts/geode
 
 and import it with `import Geode from "@rbxts/geode"`. The typings cover the whole API with the same names as Luau.
 
+Without Rojo or a package manager, download `Geode.rbxm` from the [latest release](https://github.com/qvyra/geode/releases/latest) and insert it in Studio: right-click ReplicatedStorage, choose Insert from File and pick the file. Then require it with `require(ReplicatedStorage.Geode)`. The [installation page](https://qvyra.github.io/geode/docs/installation#model-file) has the details.
+
 ## Quick start
 
 ```lua
