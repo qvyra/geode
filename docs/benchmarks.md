@@ -16,25 +16,33 @@ Runs differ more than the steps do. In `0f6881b6` ProfileStore loaded a new prof
 
 Each run loads five fresh profiles, saves each, releases each after a change, loads them again and releases them again, with the steps on one key at least 8 seconds apart.
 
+<!-- bench:table perf-times start -->
+
 | Library                       | Load, new profile (s)   | Load, stored profile (s) | Save (s)                | Release (s)             |
 | ----------------------------- | ----------------------- | ------------------------ | ----------------------- | ----------------------- |
 | Geode before                  | 0.38 (0.28 to 0.52, 25) | 0.33 (0.27 to 0.40, 25)  | 0.23 (0.15 to 0.30, 25) | 0.25 (0.18 to 0.40, 25) |
-| Geode after                   | 0.27 (0.18 to 0.40, 10) | 0.22 (0.18 to 0.30, 10)  | 0.21 (0.15 to 0.28, 10) | 0.24 (0.20 to 0.27, 10) |
-| Geode after, `mailbox = true` | 0.32 (0.22 to 0.55, 10) | 0.27 (0.20 to 0.35, 10)  | 0.24 (0.17 to 0.33, 10) | 0.26 (0.18 to 0.32, 10) |
-| ProfileStore                  | 0.32 (0.18 to 0.50, 35) | 0.28 (0.20 to 0.48, 35)  | 0.25 (0.17 to 0.40, 35) | 0.28 (0.18 to 0.47, 35) |
-| ProfileService                | 0.32 (0.20 to 0.45, 35) | 0.28 (0.18 to 0.38, 35)  | 0.27 (0.17 to 0.35, 35) | 0.28 (0.17 to 0.43, 35) |
-| DataStore2                    | 0.08 (0.03 to 0.12, 35) | 0.03 (0.02 to 0.07, 35)  | 0.30 (0.20 to 0.38, 35) | 0.25 (0.18 to 0.33, 35) |
+| Geode after                   | 0.32 (0.23 to 0.43, 25) | 0.27 (0.22 to 0.32, 25)  | 0.25 (0.18 to 0.30, 25) | 0.28 (0.22 to 0.77, 25) |
+| Geode after, `mailbox = true` | 0.32 (0.23 to 1.22, 25) | 0.27 (0.20 to 0.50, 25)  | 0.27 (0.18 to 0.48, 25) | 0.28 (0.22 to 0.52, 25) |
+| ProfileStore                  | 0.33 (0.25 to 0.80, 25) | 0.30 (0.20 to 0.78, 25)  | 0.28 (0.18 to 0.77, 25) | 0.28 (0.22 to 0.77, 25) |
+| ProfileService                | 0.32 (0.23 to 0.40, 25) | 0.28 (0.22 to 0.35, 25)  | 0.27 (0.20 to 0.32, 25) | 0.28 (0.20 to 0.35, 25) |
+| DataStore2                    | 0.08 (0.08 to 0.12, 25) | 0.03 (0.03 to 0.08, 25)  | 0.32 (0.25 to 0.42, 25) | 0.28 (0.20 to 0.35, 25) |
+
+<!-- bench:table perf-times end -->
 
 DataStore requests per step, the same in every sample:
 
-| Library                       | Load                                                        | Save          | Release       |
-| ----------------------------- | ----------------------------------------------------------- | ------------- | ------------- |
-| Geode before                  | 1 UpdateAsync, then 1 GetAsync (its mailbox)                | 1 UpdateAsync | 1 UpdateAsync |
-| Geode after                   | 1 UpdateAsync                                               | 1 UpdateAsync | 1 UpdateAsync |
-| Geode after, `mailbox = true` | 1 UpdateAsync and 1 GetAsync (its mailbox) at the same time | 1 UpdateAsync | 1 UpdateAsync |
-| ProfileStore                  | 1 UpdateAsync                                               | 1 UpdateAsync | 1 UpdateAsync |
-| ProfileService                | 1 UpdateAsync                                               | 1 UpdateAsync | 1 UpdateAsync |
-| DataStore2                    | 1 GetAsync                                                  | 1 UpdateAsync | 1 UpdateAsync |
+<!-- bench:table perf-requests start -->
+
+| Library                       | Load                         | Save          | Release       | Notes                                                         |
+| ----------------------------- | ---------------------------- | ------------- | ------------- | ------------------------------------------------------------- |
+| Geode before                  | 1 UpdateAsync and 1 GetAsync | 1 UpdateAsync | 1 UpdateAsync | The mailbox GetAsync waits for the UpdateAsync                |
+| Geode after                   | 1 UpdateAsync                | 1 UpdateAsync | 1 UpdateAsync |                                                               |
+| Geode after, `mailbox = true` | 1 UpdateAsync and 1 GetAsync | 1 UpdateAsync | 1 UpdateAsync | The mailbox GetAsync goes at the same time as the UpdateAsync |
+| ProfileStore                  | 1 UpdateAsync                | 1 UpdateAsync | 1 UpdateAsync |                                                               |
+| ProfileService                | 1 UpdateAsync                | 1 UpdateAsync | 1 UpdateAsync |                                                               |
+| DataStore2                    | 1 GetAsync                   | 1 UpdateAsync | 1 UpdateAsync |                                                               |
+
+<!-- bench:table perf-requests end -->
 
 A DataStore2 load is one GetAsync and takes no lock. The others write their lock in the same request that reads the data.
 
@@ -49,14 +57,18 @@ The old server loads a profile, saves a value (777), waits 8 seconds, then chang
 - **Old server releases.** The new server writes "go" and starts loading at once. The old server sees "go" (within 0.4 s in every sample) and releases, the way a server releases when a player leaves for another one. The time is from the new server's load call until it has the data. 888 means the new server saw the old server's final save
 - **Old server keeps it.** Same, with 999 as the unsaved value, but the old server never releases on its own. Whatever happens next is the library's doing. 999 means the library got the old server to hand the profile over with its last change, 777 means the new server went ahead without it
 
-| Library                       | Old server releases (s) | Saw the final save | Old server keeps it (s)   | Value seen when kept | Requests by the new server                                      |
-| ----------------------------- | ----------------------- | ------------------ | ------------------------- | -------------------- | --------------------------------------------------------------- |
-| Geode before                  | 4.95 (4.55 to 5.17, 15) | 15 of 15           | 4.98 (4.62 to 5.20, 5)    | 999 in 5 of 5        | 4 UpdateAsync and 1 GetAsync                                    |
-| Geode after                   | 0.62 (0.62 to 0.67, 6)  | 6 of 6             | 0.68 (0.63 to 0.73, 2)    | 999 in 2 of 2        | 2 UpdateAsync and 1 GetAsync past the cache                     |
-| Geode after, `mailbox = true` | 0.59 (0.50 to 0.75, 6)  | 6 of 6             | 0.63 (0.58 to 0.68, 2)    | 999 in 2 of 2        | 2 UpdateAsync, 1 GetAsync past the cache and 2 mailbox GetAsync |
-| ProfileStore                  | 5.52 (0.75 to 5.60, 21) | 21 of 21           | 5.55 (5.38 to 5.62, 7)    | 999 in 7 of 7        | 1 or 2 UpdateAsync                                              |
-| ProfileService                | 7.25 (0.78 to 7.30, 21) | 21 of 21           | 21.32 (21.23 to 21.52, 7) | 999 in 7 of 7        | 1 or 2 UpdateAsync, 4 when kept                                 |
-| DataStore2                    | 0.03 (0.02 to 0.07, 21) | 0 of 21            | 0.03 (0.02 to 0.07, 7)    | 777 in 7 of 7        | 1 GetAsync                                                      |
+<!-- bench:table hops start -->
+
+| Library                       | Old server releases (s) | Saw the final save | Old server keeps it (s)   | Value seen when kept | Requests by the new server                                                                                   | Notes                                    |
+| ----------------------------- | ----------------------- | ------------------ | ------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| Geode before                  | 4.95 (4.55 to 5.17, 15) | 15 of 15           | 4.98 (4.62 to 5.20, 5)    | 999 in 5 of 5        | 4 UpdateAsync and 1 GetAsync                                                                                 |                                          |
+| Geode after                   | 0.73 (0.63 to 2.60, 15) | 15 of 15           | 0.77 (0.70 to 1.87, 5)    | 999 in 5 of 5        | 1 or 2 UpdateAsync and 0 or 1 GetAsync past the cache, when kept 2 UpdateAsync and 1 GetAsync past the cache |                                          |
+| Geode after, `mailbox = true` | 0.72 (0.55 to 0.98, 15) | 15 of 15           | 0.73 (0.65 to 1.05, 5)    | 999 in 5 of 5        | 2 UpdateAsync, 2 GetAsync and 1 GetAsync past the cache                                                      | The plain GetAsync calls are its mailbox |
+| ProfileStore                  | 5.48 (0.63 to 5.63, 15) | 15 of 15           | 5.60 (5.43 to 6.47, 5)    | 999 in 5 of 5        | 1 or 2 UpdateAsync, when kept 2 UpdateAsync                                                                  |                                          |
+| ProfileService                | 7.32 (0.68 to 7.42, 15) | 15 of 15           | 21.35 (21.28 to 21.36, 5) | 999 in 5 of 5        | 1 or 2 UpdateAsync, when kept 4 UpdateAsync                                                                  |                                          |
+| DataStore2                    | 0.03 (0.03 to 0.05, 15) | 0 of 15            | 0.03 (0.03 to 0.03, 5)    | 777 in 5 of 5        | 1 GetAsync                                                                                                   |                                          |
+
+<!-- bench:table hops end -->
 
 When it kept the profile, the old server saw this: Geode's profile fired `released` after the new server's request, ProfileStore's fired `OnLastSave` with `"External"`, and ProfileService's `ListenToRelease` fired. DataStore2 has no lock, so both servers had the data open at the same time and the new one read the value saved 8 seconds earlier.
 
@@ -70,16 +82,50 @@ Geode after reads the key once with `DataStoreGetOptions.UseCache = false` when 
 
 What can be provoked fairly is a used up request budget on the library's own server. Each task starts with the same budgets (120 or 121 for UpdateAsync, GetAsync, StandardRead and StandardWrite), fires 160 or 161 UpdateAsync calls at once on throwaway keys, then has the library load, save and release one profile. The burst's transform returns nil, so it writes nothing and leaves no keys behind. In every run the burst took the UpdateAsync and StandardRead budgets to 0 and left StandardWrite as it was. Roblox queued most of it ("DataStore request was added to queue") and dropped 9 calls with "StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full". The library's steps then run back to back, without the 8 second gap. That's one sample per run.
 
+<!-- bench:table throttling start -->
+
 | Library                       | Load (s)       | Save (s)     | Release (s)  | What the proxy saw during the load                                                                                                                                               |
 | ----------------------------- | -------------- | ------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Geode before                  | 33.79 to 34.11 | 0.20 to 1.23 | 0.17 to 0.28 | 1 UpdateAsync and 1 GetAsync, none failed. Geode's scheduler held the UpdateAsync back for about 32.6 s until the budget allowed it, and the mailbox GetAsync for another second |
-| Geode after                   | 32.71 to 32.89 | 1.17 to 1.25 | 0.18 to 0.22 | 1 UpdateAsync, none failed, sent about 32.6 s in                                                                                                                                 |
-| Geode after, `mailbox = true` | 32.93 to 33.69 | 1.18 to 1.20 | 0.17 to 0.18 | 1 GetAsync and 1 UpdateAsync, none failed. Both wait for the read budget, so here too the second went about a second after the first                                             |
-| ProfileStore                  | 31.16 to 31.47 | 0.12 to 0.27 | 0.15 to 0.32 | 2 UpdateAsync. The first was dropped at once, the retry a second later sat in Roblox's queue for about 30 s                                                                      |
-| ProfileService                | 30.19 to 31.74 | 0.13 to 0.47 | 7.03 to 7.25 | 1 UpdateAsync, sent 5.5 s in and queued by Roblox until it went through. The release waits out the 7 second per key cooldown                                                     |
-| DataStore2                    | 31.04 to 31.10 | 1.12 to 1.18 | 0.10 to 0.20 | 61 to 63 GetAsync, all failed but the last: it retries at once until a request gets through                                                                                      |
+| Geode after                   | 32.70 to 32.91 | 1.15 to 1.31 | 0.17 to 0.40 | 1 UpdateAsync, none failed, sent about 32.6 s in                                                                                                                                 |
+| Geode after, `mailbox = true` | 33.77 to 34.10 | 0.22 to 1.20 | 0.18 to 0.27 | 1 GetAsync and 1 UpdateAsync, none failed. Both wait for the read budget, so here too the second went about a second after the first                                             |
+| ProfileStore                  | 31.22 to 31.74 | 0.22 to 0.45 | 0.23 to 0.50 | 2 UpdateAsync. The first was dropped at once, the retry a second later sat in Roblox's queue for about 30 s                                                                      |
+| ProfileService                | 31.17 to 31.59 | 0.20 to 0.35 | 6.98 to 7.28 | 1 UpdateAsync, sent 5.5 s in and queued by Roblox until it went through. The release waits out the 7 second per key cooldown                                                     |
+| DataStore2                    | 31.04 to 31.10 | 1.15 to 1.28 | 0.12 to 0.22 | 61 to 63 GetAsync, all failed but the last: it retries at once until a request gets through                                                                                      |
+
+<!-- bench:table throttling end -->
 
 Every library got its data in the end and none lost a write. Geode's, ProfileStore's and DataStore2's save and release there were two writes to one key back to back, and the second one wasn't held up. These numbers show how each one behaves behind a queue that Roblox drains at its own pace, not how fast any of them is. A server with players has bigger budgets, which wasn't measured.
+
+### Memory per loaded profile
+
+After loading and releasing one profile so the library has set itself up, the task reads the Lua heap with `collectgarbage("count")` every 0.1 s for 5 s, loads twenty fresh profiles with the same data as above and holds them, then reads the heap again. The number is the difference between the lowest readings, divided by twenty. The bench pauses its request log meanwhile so the log doesn't count. One sample per run.
+
+The number is noisy in both directions. A script can't make Luau finish a garbage collection cycle, so garbage left from before the load can make it high, and a cycle that ends between the two readings can make it low, even below zero. It covers what a library keeps in Lua per profile, not memory the engine holds.
+
+<!-- bench:table memory start -->
+
+| Library                       | Heap per profile (KB)  |
+| ----------------------------- | ---------------------- |
+| Geode after                   | 1.8 (-0.5 to 4.0, 2)   |
+| Geode after, `mailbox = true` | 5.2 (4.1 to 6.3, 2)    |
+| ProfileStore                  | 5.9 (0.5 to 11.3, 2)   |
+| ProfileService                | 10.3 (10.3 to 10.3, 2) |
+| DataStore2                    | 16.0 (10.1 to 21.9, 2) |
+
+<!-- bench:table memory end -->
+
+### Geode's edit time
+
+This one is Geode only, and runs in Lune on the machine that runs the bench, not on a Roblox server. One loaded profile with the same data takes batches of 1000 `profile:increment("coins")` calls, after one batch that isn't counted. Each edit goes through the profile's transaction pipeline and is recorded for the next save, without a DataStore request. One sample per batch. The time depends on the machine and the Lune version, which the run file records.
+
+<!-- bench:table geode-edits start -->
+
+| Library     | Time per edit (µs)    |
+| ----------- | --------------------- |
+| Geode after | 9.6 (7.9 to 11.5, 10) |
+
+<!-- bench:table geode-edits end -->
 
 ## Not measured
 
@@ -87,7 +133,7 @@ Every library got its data in the end and none lost a write. Geode's, ProfileSto
 - **Taking over a crashed server's lock.** That waits for the lock to time out (Geode 300 s, ProfileStore 630 s, ProfileService and Lapis 30 minutes), longer than a five minute task
 - **DataStore2's default OrderedBackups method**, which needs DataStores named per player. Only the Standard method ran
 - **Servers with players.** Request budgets grow with the player count, and every task here had none
-- Memory and CPU use
+- **Edit time in the other libraries.** A Geode edit runs through its transaction pipeline, while ProfileStore and ProfileService change a plain table and DataStore2 calls `:Update`, so the times side by side would compare different work
 
 ## How it runs
 
