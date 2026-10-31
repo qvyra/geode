@@ -1,7 +1,13 @@
 {
 	"version": "0.2",
 	"language": "en",
-	"ignorePaths": ["package-lock.json", "node_modules/**", ".cache/**", "rokit.toml"],
+	"ignorePaths": [
+		"package-lock.json",
+		"node_modules/**",
+		".cache/**",
+		"rokit.toml",
+		"benchmarks/runs/**"
+	],
 	"overrides": [
 		{
 			"filename": "**/*.luau",
