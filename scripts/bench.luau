@@ -423,6 +423,39 @@ local function summarize(records: { TaskRecord }): string
 			end
 		end
 	end
+
+	table.insert(lines, "")
+	table.insert(
+		lines,
+		"| Library | Profiles | Heap per profile (KB, upper bound) | Heap before (KB) | Heap after (KB) |"
+	)
+	table.insert(lines, "| --- | --- | --- | --- | --- |")
+	for _, library in LIBRARIES do
+		local blocked = notRunnable(records, { "memory" }, library)
+		if blocked then
+			table.insert(lines, `| {library} | not measured: {blocked} |`)
+			continue
+		end
+		for _, entry in records do
+			local result = entry.report and entry.report.result
+			if entry.mode == "memory" and entry.library == library and result then
+				if result.notReadable then
+					table.insert(lines, `| {library} | heap not readable: {result.notReadable} |`)
+					continue
+				end
+				local per = if result.perProfileKb
+					then string.format("%.1f", result.perProfileKb)
+					else "-"
+				table.insert(
+					lines,
+					`| {library} | {result.profiles} | {per} | {string.format(
+						"%.0f",
+						result.before.min
+					)} | {string.format("%.0f", result.after.min)} |`
+				)
+			end
+		end
+	end
 	return table.concat(lines, "\n") .. "\n"
 end
 
@@ -514,6 +547,9 @@ local function main()
 	end
 	for _, library in runnable do
 		table.insert(records, runOne(client, version, "throttle", library, run))
+	end
+	for _, library in runnable do
+		table.insert(records, runOne(client, version, "memory", library, run))
 	end
 
 	local pinned = {}
