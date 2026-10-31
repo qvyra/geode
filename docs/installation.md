@@ -45,6 +45,23 @@ playerData.onLoaded((player, profile) => {
 
 The typings cover the whole API with the same names and shapes as Luau. Luau `nil` is `undefined`, and a result is narrowed by checking its `ok` field first. The npm package has the same version number as the Wally one.
 
+## Model file
+
+Without Rojo or a package manager, use the model file. Every [release](https://github.com/qvyra/geode/releases) has `Geode.rbxm` under its Assets, the same Geode the Wally and npm packages hold:
+
+1. Download `Geode.rbxm` from the [latest release](https://github.com/qvyra/geode/releases/latest)
+2. In Studio, right-click ReplicatedStorage in the Explorer, choose Insert from File and pick the file. A ModuleScript named `Geode` appears
+3. Require it from there:
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Geode)
+```
+
+The examples in these docs use `ReplicatedStorage.Packages.Geode`; with the model file, it's `ReplicatedStorage.Geode` instead, or put it in a `Packages` folder of your own. To update, download the newer file and replace the module with it. Saved data isn't in the module, so it stays as it is.
+
+A Creator Store copy of the model may come later, as one more way to get the same file.
+
 ## Studio
 
 Out of the box, Studio keeps player data in memory, so playtests never touch real data and don't need DataStore access. To test against real DataStores, either in a separate scope or against live data, turn on Studio access to API Services in the experience's settings and set the Studio mode, as shown in [Profiles](profiles).
