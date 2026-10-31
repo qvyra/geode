@@ -6,7 +6,8 @@
 		"node_modules/**",
 		".cache/**",
 		"rokit.toml",
-		"benchmarks/runs/**"
+		"benchmarks/runs/**",
+		".moonwave/static/data/**"
 	],
 	"overrides": [
 		{
