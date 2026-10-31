@@ -4,6 +4,10 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-31
+
+Custom ops can say what their arguments are called and what they do, so development tools can show a readable form for them. Nothing else changes.
+
 ### Added
 
 - Custom ops can name their arguments and say what they do: `Geode.op(name, handler, { args = { ... }, names = { "item", "coins" }, description = "Give the player an item and some coins" })`. Neither changes how the op runs. The bridge's `ops` answer uses the names instead of `arg1`, `arg2` and adds the description, so development tools can show a readable form. `names` needs `args` and may name fewer arguments than it declares
@@ -115,7 +119,8 @@ The first public release.
 - Hand-written typings for the whole API in `types/`, ahead of a roblox-ts package
 - An API reference generated from the doc comments, and guides for every part of Geode
 
-[Unreleased]: https://github.com/qvyra/geode/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/qvyra/geode/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/qvyra/geode/releases/tag/v0.6.1
 [0.6.0]: https://github.com/qvyra/geode/releases/tag/v0.6.0
 [0.5.0]: https://github.com/qvyra/geode/releases/tag/v0.5.0
 [0.4.0]: https://github.com/qvyra/geode/releases/tag/v0.4.0
