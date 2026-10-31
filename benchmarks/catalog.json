@@ -1,0 +1,229 @@
+{
+	"currentRuns": 5,
+	"current": "geode",
+	"rule": "Current subjects all take the same runs: the last ones in which the current Geode build line ran, up to currentRuns. A historical subject keeps the runs of its own build line, so results from before and after a behavior change never mix.",
+	"caveat": "Runs differ more than the libraries do: one library's median load moved by a third between two runs a quarter of an hour apart. Compare libraries within one run, and treat differences under one timing step as ties. Request counts don't depend on the run.",
+	"suites": [
+		{
+			"id": "load-save-release",
+			"name": "Load, save and release",
+			"environment": "roblox-live",
+			"timingResolution": 0.016666666666666666,
+			"description": "Each run loads five fresh profiles, saves each, releases each after a change, loads them again and releases them again, with the steps on one key at least 8 seconds apart. Times are seconds from calling the library until its DataStore request finished.",
+			"scenarios": [
+				{ "id": "load-new", "name": "Load, new profile", "metrics": ["time", "requests"] },
+				{
+					"id": "load-stored",
+					"name": "Load, stored profile",
+					"metrics": ["time", "requests"]
+				},
+				{ "id": "save", "name": "Save", "metrics": ["time", "requests"] },
+				{ "id": "release", "name": "Release", "metrics": ["time", "requests"] }
+			]
+		},
+		{
+			"id": "server-hop",
+			"name": "Server hops",
+			"environment": "roblox-live",
+			"timingResolution": 0.016666666666666666,
+			"description": "Two Luau Execution tasks at once play the old and the new server. The old server loads a profile, saves 777, waits 8 seconds, then changes it to 888 (999 when it keeps the profile) without saving. Times are seconds from the new server's load call until it has the data.",
+			"scenarios": [
+				{
+					"id": "old-releases",
+					"name": "Old server releases",
+					"description": "The old server releases when the new one starts loading, the way a server releases when a player leaves for another one.",
+					"metrics": ["time", "final-save-seen", "requests"]
+				},
+				{
+					"id": "old-keeps",
+					"name": "Old server keeps it",
+					"description": "The old server never releases on its own. 999 means the library got it to hand the profile over with its last change, 777 means the new server went ahead without it.",
+					"metrics": ["time", "value-seen", "requests"]
+				}
+			]
+		},
+		{
+			"id": "throttling",
+			"name": "Throttling",
+			"environment": "roblox-live",
+			"timingResolution": 0.016666666666666666,
+			"timeKind": "range",
+			"description": "A burst of 160 or 161 UpdateAsync calls on throwaway keys uses up the server's request budget, then the library loads, saves and releases one profile back to back. One sample per run.",
+			"caveat": "Shows how each library behaves behind a queue Roblox drains at its own pace, not how fast it is.",
+			"scenarios": [
+				{ "id": "load", "name": "Load", "metrics": ["time", "requests"] },
+				{ "id": "save", "name": "Save", "metrics": ["time", "requests"] },
+				{ "id": "release", "name": "Release", "metrics": ["time", "requests"] }
+			]
+		}
+	],
+	"metrics": [
+		{
+			"id": "time",
+			"name": "Time",
+			"kind": "timing",
+			"description": "Seconds per sample. The median, lowest and highest, the samples and how many failed."
+		},
+		{
+			"id": "requests",
+			"name": "DataStore requests",
+			"kind": "requests",
+			"description": "Requests the library sent for the key during the step, retries included, as the bench's stand-in for DataStoreService counted them."
+		},
+		{
+			"id": "final-save-seen",
+			"name": "Saw the final save",
+			"kind": "count",
+			"description": "Hops in which the new server saw 888, the old server's last change."
+		},
+		{
+			"id": "value-seen",
+			"name": "Value seen",
+			"kind": "values",
+			"description": "What the new server read, and how often."
+		}
+	],
+	"requestMethods": [
+		{ "id": "GetAsync", "label": "GetAsync", "bench": "GetAsync" },
+		{
+			"id": "GetAsync:noCache",
+			"label": "GetAsync past the cache",
+			"bench": "GetAsync (no cache)",
+			"description": "A GetAsync with DataStoreGetOptions.UseCache set to false"
+		},
+		{ "id": "UpdateAsync", "label": "UpdateAsync", "bench": "UpdateAsync" },
+		{ "id": "SetAsync", "label": "SetAsync", "bench": "SetAsync" },
+		{ "id": "RemoveAsync", "label": "RemoveAsync", "bench": "RemoveAsync" },
+		{ "id": "IncrementAsync", "label": "IncrementAsync", "bench": "IncrementAsync" },
+		{ "id": "GetVersionAsync", "label": "GetVersionAsync", "bench": "GetVersionAsync" },
+		{
+			"id": "GetVersionAtTimeAsync",
+			"label": "GetVersionAtTimeAsync",
+			"bench": "GetVersionAtTimeAsync"
+		},
+		{ "id": "ListVersionsAsync", "label": "ListVersionsAsync", "bench": "ListVersionsAsync" },
+		{ "id": "RemoveVersionAsync", "label": "RemoveVersionAsync", "bench": "RemoveVersionAsync" },
+		{ "id": "ListKeysAsync", "label": "ListKeysAsync", "bench": "ListKeysAsync" }
+	],
+	"lines": [
+		{
+			"id": "mailbox-every-load",
+			"description": "Geode 0.5 and earlier read a mailbox after taking the lease on every load."
+		},
+		{
+			"id": "mailbox-opt-in",
+			"description": "From 0.6.0 a store reads a mailbox only when made with mailbox = true, and then at the same time as the UpdateAsync."
+		}
+	],
+	"builds": [
+		{
+			"id": "0.5.0",
+			"line": "mailbox-every-load",
+			"release": "v0.5.0",
+			"sourceTrees": ["27dbad2dbbc64f127f83e8cb97b6c0f5cf54c092"],
+			"note": "The same src as the v0.5.0 release."
+		},
+		{
+			"id": "0.5.0+format",
+			"line": "mailbox-every-load",
+			"sourceTrees": ["798a6449783d8f1d251699cdf54cd3c5d0aed7c4"],
+			"note": "0.5.0 with the record format field on every write, never released. Same requests and steps."
+		},
+		{
+			"id": "0.6.0-pre",
+			"line": "mailbox-opt-in",
+			"sourceTrees": ["de79ff4b26f0d707d273c76e3273fd55208d76f8"],
+			"note": "Differs from the v0.6.0 release only in comments, mock-only code and the version stamp."
+		},
+		{
+			"id": "0.6.0",
+			"line": "mailbox-opt-in",
+			"release": "v0.6.0",
+			"sourceTrees": [
+				"e99dc2faf9e2e317bc280cf5e3f4f32d7a58b87f",
+				"66e7dce0ae8e0804b9131cd963ed69fe96d90ac5"
+			],
+			"note": "The first id differs from the v0.6.0 release only in the version stamp."
+		},
+		{
+			"id": "0.6.1",
+			"line": "mailbox-opt-in",
+			"release": "v0.6.1",
+			"sourceTrees": ["1c0a3221774d8f93266705d413deee65c2cb0384"],
+			"note": "Same load, save, release and hop code as 0.6.0. 0.6.1 only adds checks on op names and descriptions."
+		}
+	],
+	"subjects": [
+		{
+			"id": "geode",
+			"library": "Geode",
+			"bench": "Geode",
+			"lines": ["mailbox-opt-in"],
+			"repository": "https://github.com/qvyra/geode",
+			"config": { "label": "Geode", "options": {} }
+		},
+		{
+			"id": "geode-mailbox",
+			"library": "Geode",
+			"bench": "GeodeMail",
+			"lines": ["mailbox-opt-in"],
+			"repository": "https://github.com/qvyra/geode",
+			"config": { "label": "Geode, mailbox = true", "options": { "mailbox": true } }
+		},
+		{
+			"id": "geode-0.5",
+			"library": "Geode",
+			"bench": "Geode",
+			"lines": ["mailbox-every-load"],
+			"historical": true,
+			"repository": "https://github.com/qvyra/geode",
+			"config": { "label": "Geode 0.5, mailbox read after every load", "options": {} }
+		},
+		{
+			"id": "profilestore",
+			"library": "ProfileStore",
+			"bench": "ProfileStore",
+			"config": { "label": "ProfileStore", "options": {} }
+		},
+		{
+			"id": "profileservice",
+			"library": "ProfileService",
+			"bench": "ProfileService",
+			"config": { "label": "ProfileService", "options": {} }
+		},
+		{
+			"id": "datastore2",
+			"library": "DataStore2",
+			"bench": "DataStore2",
+			"config": {
+				"label": "DataStore2, Standard saving",
+				"options": { "savingMethod": "Standard" }
+			}
+		},
+		{
+			"id": "lapis",
+			"library": "Lapis",
+			"bench": "Lapis",
+			"config": { "label": "Lapis", "options": {} }
+		}
+	],
+	"notMeasured": [
+		{
+			"subject": "lapis",
+			"reason": "Lapis sends every DataStore request from a RunService.PostSimulation handler, and in a Luau Execution task PostSimulation, PreSimulation and Stepped never fired while Heartbeat fired about 62 times a second. Measuring it needs a server that steps physics, such as a live game server."
+		},
+		{
+			"scenario": "lock-takeover",
+			"reason": "Taking over a crashed server's lock waits for the lock to time out (Geode 300 s, ProfileStore 630 s, ProfileService and Lapis 30 minutes), longer than a five minute task."
+		},
+		{
+			"subject": "datastore2",
+			"config": "OrderedBackups",
+			"reason": "DataStore2's default OrderedBackups method needs DataStores named per player, which the bench's one allowed DataStore rules out. Only the Standard method ran."
+		},
+		{
+			"scenario": "servers-with-players",
+			"reason": "Request budgets grow with the player count, and every task here had none."
+		}
+	]
+}

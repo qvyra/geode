@@ -127,6 +127,7 @@ local STEPS: { Step } = {
 	{ name = "tests", program = "lune", args = { "run", "test" } },
 	{ name = "model", program = "lune", args = { "run", "model" } },
 	{ name = "docs", program = "lune", args = { "run", "docs" } },
+	{ name = "bench data", program = "lune", args = { "run", "benchdata", "check" } },
 	prettier(),
 	node("eslint", "eslint/bin/eslint.js", {}),
 	node("tsc", "typescript/bin/tsc", { "--noEmit", "-p", "." }),
