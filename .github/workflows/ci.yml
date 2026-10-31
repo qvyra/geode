@@ -3,6 +3,8 @@ name: CI
 on:
   push:
   pull_request:
+  # the bench data workflow starts it on the branches it pushes, since its pushes start nothing
+  workflow_dispatch:
 
 permissions:
   contents: read
