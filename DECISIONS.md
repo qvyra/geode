@@ -546,3 +546,15 @@ So the main module carries the `Geode` tag and a `GeodeVersion` attribute holdin
 The version now sits in four files, so a test keeps the attribute, `wally.toml` and `package.json` equal to `Version.luau`, and `lune run model` builds the release model file and reads it back to check the tag, the attribute and the bridge are really in it. The check suite runs it, so every PR proves the model still builds. Geodes from before the tag have neither; tools need another way to spot those, such as their module layout.
 
 **PR:** #25
+
+## 44. Ops name their arguments in a list next to args
+
+**Date:** 2026-10-31
+
+Tools showed a custom op's arguments as `arg1`, `arg2`, since a schema says what a value may be but not what it means. `Geode.op` now takes `names`, one string per argument by index, and `description`, a line saying what the op does. Both are only for tools: the handler, the argument checks and replication don't look at them.
+
+The names sit in their own list rather than on the schemas. A schema is a value that can be shared, so one schema may check arguments of several ops, and a name on it would either show up in every use or need a copy per argument. A separate list also leaves `args` exactly as it was. The cost is that the two lists have to line up, so registration checks it: `names` needs `args`, can't be longer, and holds only non-empty strings. It may be shorter, and the arguments past it keep their numbered names, so an op can name the ones that need it.
+
+`Transaction.opInfo` hands both to tools, and the bridge's `ops` answer uses the names in each argument's `name` and adds `description` to custom ops. That only adds fields to an answer old tools already read field by field, so the protocol stays at 1, as the bridge's rule asks (entry 34). No feature flag either: a tool sees whether a description is there, and a name it gets is the one to show either way.
+
+**PR:** #28
