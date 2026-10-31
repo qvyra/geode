@@ -128,6 +128,8 @@ local STEPS: { Step } = {
 	{ name = "model", program = "lune", args = { "run", "model" } },
 	{ name = "docs", program = "lune", args = { "run", "docs" } },
 	{ name = "bench data", program = "lune", args = { "run", "benchdata", "check" } },
+	-- runs after the bench data step, which writes the files it checks
+	{ name = "bench schema", program = "node", args = { "scripts/validate-bench-data.mjs" } },
 	prettier(),
 	node("eslint", "eslint/bin/eslint.js", {}),
 	node("tsc", "typescript/bin/tsc", { "--noEmit", "-p", "." }),
