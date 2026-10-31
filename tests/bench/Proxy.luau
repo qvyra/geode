@@ -35,6 +35,9 @@ export type Proxy = {
 	service: any,
 	calls: { Call },
 	allowed: string,
+	-- whether calls are added to `calls`. The memory mode turns it off while it measures, so the
+	-- log doesn't grow the heap it reads
+	recording: boolean,
 }
 
 -- Store methods that reach the DataStore backend. Anything else on a store is refused, so a
@@ -61,6 +64,12 @@ end
 function Proxy.new(options: Options): Proxy
 	local calls: { Call } = {}
 	local aliases = options.aliases or {}
+	local proxy: Proxy = {
+		service = nil,
+		calls = calls,
+		allowed = options.allowed,
+		recording = true,
+	}
 
 	local function wrapStore(real: any, store: string, scope: string?): any
 		local methods: { [string]: (...any) -> ...any } = {}
@@ -83,7 +92,9 @@ function Proxy.new(options: Options): Proxy
 					end)
 					call.noCache = getOptions ~= nil and read and useCache == false
 				end
-				table.insert(calls, call)
+				if proxy.recording then
+					table.insert(calls, call)
+				end
 				local results = table.pack(pcall(real[method], real, ...))
 				call.finished = options.clock()
 				call.ok = results[1]
@@ -147,11 +158,8 @@ function Proxy.new(options: Options): Proxy
 		end,
 	})
 
-	return {
-		service = proxied,
-		calls = calls,
-		allowed = options.allowed,
-	}
+	proxy.service = proxied
+	return proxy
 end
 
 -- ProfileStore and ProfileService take DataStoreService when they're first required. The runner

@@ -62,6 +62,20 @@ return function(spec: Spec.Api)
 			expect(proxy.calls[2].noCache).toBe(false)
 		end)
 
+		it("forwards without logging while recording is off", function()
+			local real = fakeService()
+			local proxy = Proxy.new({ real = real, allowed = "Bench_A", clock = clock() })
+			local store = proxy.service:GetDataStore("Bench_A")
+			proxy.recording = false
+			store:UpdateAsync("k", function()
+				return 1
+			end)
+			expect(#proxy.calls).toBe(0)
+			proxy.recording = true
+			expect(store:GetAsync("k")).toBe(1)
+			expect(#proxy.calls).toBe(1)
+		end)
+
 		it("marks reads that skip the cache", function()
 			local real = fakeService()
 			local proxy = Proxy.new({ real = real, allowed = "Bench_A", clock = clock() })
