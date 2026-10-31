@@ -4,8 +4,9 @@
 -- services. Downloads each library at the commit pinned in tests/bench/libraries.json, refuses
 -- any whose license no longer matches the recorded hash, builds a place holding the usual Studio
 -- checks plus the bench, uploads it to the test place as a saved version, and runs the bench
--- modes as Luau Execution tasks. Results land in .cache/bench as JSON and a markdown summary.
--- The API key comes from ROBLOX_API_KEY and is never printed
+-- modes as Luau Execution tasks. Geode's edit timings from `lune run benchcpu` go in too. Results
+-- land in .cache/bench as JSON and a markdown summary. The API key comes from ROBLOX_API_KEY and
+-- is never printed
 --
 --   lune run bench [library,library,...]
 
@@ -459,6 +460,20 @@ local function summarize(records: { TaskRecord }): string
 	return table.concat(lines, "\n") .. "\n"
 end
 
+--// Geode's edits in Lune
+
+local function cpu(): { [string]: any }
+	local result = process.exec("lune", { "run", "benchcpu" })
+	if not result.ok then
+		return { problem = `lune run benchcpu failed: {result.stderr}` }
+	end
+	local ok, decoded = pcall(serde.decode, "json" :: "json", result.stdout)
+	if not ok then
+		return { problem = "lune run benchcpu printed something that isn't JSON" }
+	end
+	return decoded
+end
+
 --// what ran
 
 -- git's id for a folder at the checked out commit. Runs with the same id ran the same code. A
@@ -526,6 +541,9 @@ local function main()
 		end
 	end
 
+	print("timing Geode's edits in Lune")
+	local cpuReport = cpu()
+
 	print("building the bench place")
 	writeProject(mounted)
 	-- everything up to here works without the key, which helps when changing the bench
@@ -570,12 +588,19 @@ local function main()
 		geodeSourceTree = treeId("src"),
 		benchTree = treeId("tests/bench"),
 		workflowRun = workflowRun(),
+		lune = { cpu = cpuReport },
 		pins = pinned,
 		refused = refused,
 		tasks = records,
 	}
 	writeFile(RESULTS_PATH, serde.encode("json", results, true))
-	local summary = `## Bench run {run}, place version {version}\n\n{summarize(records)}`
+	local cpuLine = if cpuReport.batches
+		then `Geode in Lune, {cpuReport.editsPerBatch} edits per batch: {table.concat(
+			cpuReport.batches,
+			", "
+		)} s\n`
+		else `Geode in Lune: {cpuReport.problem}\n`
+	local summary = `## Bench run {run}, place version {version}\n\n{summarize(records)}\n{cpuLine}`
 	writeFile(SUMMARY_PATH, summary)
 	print(`\n{summary}`)
 
