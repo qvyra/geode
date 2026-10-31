@@ -253,6 +253,10 @@ declare namespace Geode {
 	interface OpOptions {
 		/** One schema per argument. A call with other arguments fails with `invalidArgs` before the handler runs */
 		args?: Schema[];
+		/** A name per argument, by index, for development tools to show. Needs `args` and may name fewer */
+		names?: string[];
+		/** What the op does, for development tools to show */
+		description?: string;
 	}
 
 	interface SchemaBuilders {
