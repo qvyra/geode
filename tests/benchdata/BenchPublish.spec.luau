@@ -366,6 +366,27 @@ return function(api: Spec.Api)
 			expect(latest.subjects[1].bench).toBeNil()
 		end)
 
+		it("leaves out a suite that is only recorded, which the run file keeps", function()
+			local data = run("00000001", "2026-01-01T00:00:00Z", "2.0.0", { 0.2 })
+			table.insert(data.tasks, {
+				mode = "memory",
+				library = "Other",
+				report = { result = { profiles = 20, perProfileKb = 4 } },
+			})
+			local recorded = catalog()
+			recorded.suites[4].recordedOnly = true
+			local latest = BenchPublish.latest(recorded, { data })
+			expect(
+				resultFor(latest.results, "memory", "loaded-profiles", "heap-per-profile", "other")
+			).toBeNil()
+			expect(resultFor(latest.results, "load-save-release", "load-new", "time", "other")).never.toBeNil()
+			expect(latest.suites[4].recordedOnly).toBe(true)
+			local file = BenchPublish.runFile(recorded, data)
+			expect(
+				resultFor(file.results, "memory", "loaded-profiles", "heap-per-profile", "other")
+			).never.toBeNil()
+		end)
+
 		it("is the same file for the same runs in any order", function()
 			local a = run("00000001", "2026-01-01T00:00:00Z", "2.0.0", { 0.5 })
 			local b = run("00000002", "2026-01-02T00:00:00Z", "2.0.0", { 0.6 })

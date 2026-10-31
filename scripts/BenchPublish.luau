@@ -536,9 +536,22 @@ function BenchPublish.latest(catalog: any, runs: { any }): { [string]: any }
 		local found = samplesOf(catalog, run)
 		table.move(found, 1, #found, #samples + 1, samples)
 	end
-	local results = resultsOf(catalog, samples, function(subject: string)
-		return chosen[subject]
-	end)
+	-- a suite marked recordedOnly stays in the run files, but its numbers aren't steady enough to
+	-- stand as the current ones
+	local recordedOnly: { [string]: boolean } = {}
+	for _, suite in catalog.suites do
+		recordedOnly[suite.id] = suite.recordedOnly == true
+	end
+	local results = array({})
+	for _, result in
+		resultsOf(catalog, samples, function(subject: string)
+			return chosen[subject]
+		end)
+	do
+		if not recordedOnly[result.suite] then
+			table.insert(results, result)
+		end
+	end
 
 	local used: { [string]: boolean } = {}
 	for _, result in results do

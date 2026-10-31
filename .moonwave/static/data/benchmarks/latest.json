@@ -169,6 +169,10 @@
 			"reason": "DataStore2's default OrderedBackups method needs DataStores named per player, which the bench's one allowed DataStore rules out. Only the Standard method ran."
 		},
 		{
+			"suite": "memory",
+			"reason": "Every run still records it, but the numbers are noise. A script can't make Luau finish a garbage collection cycle, and a cycle that ends between the two heap readings moves the heap by more than twenty profiles take, in either direction. Two runs on the same build gave Geode -0.5 and 4.0 KB per profile, ProfileStore 11.3 and 0.5, DataStore2 10.1 and 21.9, so the order of the libraries flips from one run to the next."
+		},
+		{
 			"scenario": "edit-time-across-libraries",
 			"reason": "Only Geode's edits are timed. A Geode edit runs through its transaction pipeline, while ProfileStore and ProfileService change a plain table and DataStore2 calls :Update, so per-edit times side by side would compare different work."
 		},
@@ -2310,86 +2314,6 @@
 			}
 		},
 		{
-			"suite": "memory",
-			"scenario": "loaded-profiles",
-			"metric": "heap-per-profile",
-			"subject": "geode",
-			"runs": ["080eceb1", "3e27444c"],
-			"value": {
-				"kind": "amount",
-				"max": 3.95,
-				"median": 1.75,
-				"min": -0.45,
-				"n": 2,
-				"samples": [-0.45, 3.95],
-				"unit": "KB"
-			}
-		},
-		{
-			"suite": "memory",
-			"scenario": "loaded-profiles",
-			"metric": "heap-per-profile",
-			"subject": "geode-mailbox",
-			"runs": ["080eceb1", "3e27444c"],
-			"value": {
-				"kind": "amount",
-				"max": 6.3,
-				"median": 5.2,
-				"min": 4.1,
-				"n": 2,
-				"samples": [4.1, 6.3],
-				"unit": "KB"
-			}
-		},
-		{
-			"suite": "memory",
-			"scenario": "loaded-profiles",
-			"metric": "heap-per-profile",
-			"subject": "profilestore",
-			"runs": ["080eceb1", "3e27444c"],
-			"value": {
-				"kind": "amount",
-				"max": 11.3,
-				"median": 5.9,
-				"min": 0.5,
-				"n": 2,
-				"samples": [11.3, 0.5],
-				"unit": "KB"
-			}
-		},
-		{
-			"suite": "memory",
-			"scenario": "loaded-profiles",
-			"metric": "heap-per-profile",
-			"subject": "profileservice",
-			"runs": ["080eceb1", "3e27444c"],
-			"value": {
-				"kind": "amount",
-				"max": 10.35,
-				"median": 10.325,
-				"min": 10.3,
-				"n": 2,
-				"samples": [10.3, 10.35],
-				"unit": "KB"
-			}
-		},
-		{
-			"suite": "memory",
-			"scenario": "loaded-profiles",
-			"metric": "heap-per-profile",
-			"subject": "datastore2",
-			"runs": ["080eceb1", "3e27444c"],
-			"value": {
-				"kind": "amount",
-				"max": 21.9,
-				"median": 15.975,
-				"min": 10.05,
-				"n": 2,
-				"samples": [10.05, 21.9],
-				"unit": "KB"
-			}
-		},
-		{
 			"suite": "geode-edits",
 			"scenario": "increment",
 			"metric": "time-per-edit",
@@ -2557,6 +2481,7 @@
 			"description": "After loading and releasing one profile so the library has set itself up, the task reads the Lua heap with collectgarbage(\"count\") every 0.1 s for 5 s, loads twenty fresh profiles with the same data as the other suites and holds them, then reads the heap again. The result is the difference between the lowest readings, divided by the profiles held. The bench's request log is paused meanwhile so it doesn't count. One sample per run.",
 			"environment": "roblox-live",
 			"name": "Memory per loaded profile",
+			"recordedOnly": true,
 			"scenarios": [
 				{
 					"id": "loaded-profiles",

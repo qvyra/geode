@@ -97,24 +97,6 @@ What can be provoked fairly is a used up request budget on the library's own ser
 
 Every library got its data in the end and none lost a write. Geode's, ProfileStore's and DataStore2's save and release there were two writes to one key back to back, and the second one wasn't held up. These numbers show how each one behaves behind a queue that Roblox drains at its own pace, not how fast any of them is. A server with players has bigger budgets, which wasn't measured.
 
-### Memory per loaded profile
-
-After loading and releasing one profile so the library has set itself up, the task reads the Lua heap with `collectgarbage("count")` every 0.1 s for 5 s, loads twenty fresh profiles with the same data as above and holds them, then reads the heap again. The number is the difference between the lowest readings, divided by twenty. The bench pauses its request log meanwhile so the log doesn't count. One sample per run.
-
-The number is noisy in both directions. A script can't make Luau finish a garbage collection cycle, so garbage left from before the load can make it high, and a cycle that ends between the two readings can make it low, even below zero. It covers what a library keeps in Lua per profile, not memory the engine holds.
-
-<!-- bench:table memory start -->
-
-| Library                       | Heap per profile (KB)  |
-| ----------------------------- | ---------------------- |
-| Geode after                   | 1.8 (-0.5 to 4.0, 2)   |
-| Geode after, `mailbox = true` | 5.2 (4.1 to 6.3, 2)    |
-| ProfileStore                  | 5.9 (0.5 to 11.3, 2)   |
-| ProfileService                | 10.3 (10.3 to 10.3, 2) |
-| DataStore2                    | 16.0 (10.1 to 21.9, 2) |
-
-<!-- bench:table memory end -->
-
 ### Geode's edit time
 
 This one is Geode only, and runs in Lune on the machine that runs the bench, not on a Roblox server. One loaded profile with the same data takes batches of 1000 `profile:increment("coins")` calls, after one batch that isn't counted. Each edit goes through the profile's transaction pipeline and is recorded for the next save, without a DataStore request. One sample per batch. The time depends on the machine and the Lune version, which the run file records.
@@ -133,6 +115,7 @@ This one is Geode only, and runs in Lune on the machine that runs the bench, not
 - **Taking over a crashed server's lock.** That waits for the lock to time out (Geode 300 s, ProfileStore 630 s, ProfileService and Lapis 30 minutes), longer than a five minute task
 - **DataStore2's default OrderedBackups method**, which needs DataStores named per player. Only the Standard method ran
 - **Servers with players.** Request budgets grow with the player count, and every task here had none
+- **Memory per loaded profile.** Every run reads the Lua heap before and after loading twenty profiles, and the run files keep it, but the numbers are noise. A script can't make Luau finish a garbage collection cycle, and one that ends between the two readings moves the heap by more than twenty profiles take, in either direction. Two runs on the same build gave Geode -0.5 and 4.0 KB per profile, ProfileStore 11.3 and 0.5 and DataStore2 10.1 and 21.9, so the order of the libraries flips from one run to the next
 - **Edit time in the other libraries.** A Geode edit runs through its transaction pipeline, while ProfileStore and ProfileService change a plain table and DataStore2 calls `:Update`, so the times side by side would compare different work
 
 ## How it runs
