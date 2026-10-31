@@ -205,6 +205,10 @@
 					"exclusiveMinimum": 0,
 					"description": "Seconds per timing step, for suites that time things. Times differing by less are ties"
 				},
+				"recordedOnly": {
+					"type": "boolean",
+					"description": "Measured and kept in run files, but left out of latest.json's results because the numbers don't hold steady between runs. notMeasured says why"
+				},
 				"description": { "type": "string" },
 				"caveat": { "type": "string" },
 				"scenarios": {
