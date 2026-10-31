@@ -563,7 +563,7 @@ function BenchPublish.latest(catalog: any, runs: { any }): { [string]: any }
 	end
 	local subjects = array({})
 	for _, subject in catalog.subjects do
-		table.insert(subjects, without(subject, { "bench" }))
+		table.insert(subjects, without(subject, { "bench", "docsLabel" }))
 	end
 
 	return {

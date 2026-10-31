@@ -15,13 +15,15 @@
 -- results.json; runs from before it did need them given, from `git rev-parse <commit>:src` and
 -- `git rev-parse <commit>:tests/bench`
 --
--- build writes the published files under .moonwave/static/data/benchmarks. check fails when they
--- don't match the runs and the catalog, or when a run doesn't fit the catalog
+-- build writes the published files under .moonwave/static/data/benchmarks and fills the marked
+-- tables in docs/benchmarks.md. check fails when either doesn't match the runs and the catalog,
+-- or when a run doesn't fit the catalog
 
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 local stdio = require("@lune/stdio")
 
+local BenchDocs = require("./BenchDocs")
 local BenchPublish = require("./BenchPublish")
 local BenchResults = require("./BenchResults")
 
@@ -29,6 +31,7 @@ local RUNS_DIR = "benchmarks/runs"
 local CATALOG_PATH = "benchmarks/catalog.json"
 local SCHEMA_PATH = "benchmarks/schema.json"
 local OUT_DIR = ".moonwave/static/data/benchmarks"
+local DOCS_PATH = "docs/benchmarks.md"
 -- check writes a copy here for scripts/validate-bench-data.mjs to hold against the schema
 local CHECK_DIR = ".cache/bench-data"
 
@@ -167,9 +170,16 @@ local function readRuns(): { any }
 	return runs
 end
 
-local function published(): { [string]: string }
+-- A file's text with Windows line endings made plain, as git may check it out either way
+local function readText(path: string): string
+	return (string.gsub(fs.readFile(path), "\r\n", "\n"))
+end
+
+local function published(): ({ [string]: string }, string)
 	local catalog = BenchResults.decode(fs.readFile(CATALOG_PATH))
-	return BenchPublish.files(catalog, readRuns(), fs.readFile(SCHEMA_PATH))
+	local runs = readRuns()
+	local docs = BenchDocs.fill(catalog, BenchPublish.latest(catalog, runs), readText(DOCS_PATH))
+	return BenchPublish.files(catalog, runs, fs.readFile(SCHEMA_PATH)), docs
 end
 
 local function listOut(dir: string, prefix: string, into: { string })
@@ -201,13 +211,20 @@ local function writeAll(dir: string, files: { [string]: string }): number
 end
 
 local function build()
-	local count = writeAll(OUT_DIR, published())
-	print(`wrote {count} files to {OUT_DIR}`)
+	local files, docs = published()
+	local count = writeAll(OUT_DIR, files)
+	fs.writeFile(DOCS_PATH, docs)
+	print(`wrote {count} files to {OUT_DIR} and the tables in {DOCS_PATH}`)
 end
 
 local function check()
-	local files = published()
+	local files, docs = published()
 	writeAll(CHECK_DIR, files)
+	if readText(DOCS_PATH) ~= docs then
+		fail(
+			`the tables in {DOCS_PATH} don't match the bench data\nlune run benchdata build writes them again`
+		)
+	end
 	if not fs.isDir(OUT_DIR) then
 		print(`every run fits the catalog; nothing published in {OUT_DIR} yet`)
 		return
@@ -224,7 +241,7 @@ local function check()
 		local full = `{OUT_DIR}/{path}`
 		if not fs.isFile(full) then
 			table.insert(problems, `{path} is missing`)
-		elseif string.gsub(fs.readFile(full), "\r\n", "\n") ~= contents then
+		elseif readText(full) ~= contents then
 			table.insert(problems, `{path} is out of date`)
 		end
 	end

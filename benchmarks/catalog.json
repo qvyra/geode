@@ -121,6 +121,7 @@
 		}
 	],
 	"requestMethods": [
+		{ "id": "UpdateAsync", "label": "UpdateAsync", "bench": "UpdateAsync" },
 		{ "id": "GetAsync", "label": "GetAsync", "bench": "GetAsync" },
 		{
 			"id": "GetAsync:noCache",
@@ -128,7 +129,6 @@
 			"bench": "GetAsync (no cache)",
 			"description": "A GetAsync with DataStoreGetOptions.UseCache set to false"
 		},
-		{ "id": "UpdateAsync", "label": "UpdateAsync", "bench": "UpdateAsync" },
 		{ "id": "SetAsync", "label": "SetAsync", "bench": "SetAsync" },
 		{ "id": "RemoveAsync", "label": "RemoveAsync", "bench": "RemoveAsync" },
 		{ "id": "IncrementAsync", "label": "IncrementAsync", "bench": "IncrementAsync" },
@@ -192,11 +192,22 @@
 	],
 	"subjects": [
 		{
+			"id": "geode-0.5",
+			"library": "Geode",
+			"bench": "Geode",
+			"lines": ["mailbox-every-load"],
+			"historical": true,
+			"repository": "https://github.com/qvyra/geode",
+			"docsLabel": "Geode before",
+			"config": { "label": "Geode 0.5, mailbox read after every load", "options": {} }
+		},
+		{
 			"id": "geode",
 			"library": "Geode",
 			"bench": "Geode",
 			"lines": ["mailbox-opt-in"],
 			"repository": "https://github.com/qvyra/geode",
+			"docsLabel": "Geode after",
 			"config": { "label": "Geode", "options": {} }
 		},
 		{
@@ -205,16 +216,8 @@
 			"bench": "GeodeMail",
 			"lines": ["mailbox-opt-in"],
 			"repository": "https://github.com/qvyra/geode",
+			"docsLabel": "Geode after, `mailbox = true`",
 			"config": { "label": "Geode, mailbox = true", "options": { "mailbox": true } }
-		},
-		{
-			"id": "geode-0.5",
-			"library": "Geode",
-			"bench": "Geode",
-			"lines": ["mailbox-every-load"],
-			"historical": true,
-			"repository": "https://github.com/qvyra/geode",
-			"config": { "label": "Geode 0.5, mailbox read after every load", "options": {} }
 		},
 		{
 			"id": "profilestore",
@@ -232,6 +235,7 @@
 			"id": "datastore2",
 			"library": "DataStore2",
 			"bench": "DataStore2",
+			"docsLabel": "DataStore2",
 			"config": {
 				"label": "DataStore2, Standard saving",
 				"options": { "savingMethod": "Standard" }
