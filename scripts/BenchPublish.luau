@@ -48,6 +48,7 @@ local SUITE_OF_MODE = table.freeze({
 	hold = "server-hop",
 	join = "server-hop",
 	throttle = "throttling",
+	memory = "memory",
 })
 
 --// lookups
@@ -214,6 +215,16 @@ local function samplesOf(catalog: any, run: any): ({ Sample }, { any }, { any })
 			for _, data in result.steps do
 				step(data.op, data)
 			end
+		elseif entry.mode == "memory" then
+			if result.notReadable then
+				table.insert(notRunnable, {
+					subject = subject,
+					suite = suite,
+					reason = `collectgarbage("count") failed: {result.notReadable}`,
+				})
+			elseif result.perProfileKb then
+				add("loaded-profiles", "heap-per-profile", result.perProfileKb)
+			end
 		elseif entry.mode == "join" then
 			for _, attempt in result.attempts do
 				if attempt.step then
@@ -230,6 +241,26 @@ local function samplesOf(catalog: any, run: any): ({ Sample }, { any }, { any })
 					if keep.coins == nil then "none" else tostring(keep.coins)
 				)
 			end
+		end
+	end
+
+	-- Geode's edits in Lune, timed by the runner rather than a task
+	local cpu = run.lune and run.lune.cpu
+	if cpu then
+		local subject = BenchPublish.subjectOf(catalog, "Geode", run.build)
+		if cpu.problem then
+			table.insert(problems, { subject = subject, mode = "cpu", problem = cpu.problem })
+		end
+		for _, seconds in cpu.batches or {} do
+			table.insert(samples, {
+				suite = "geode-edits",
+				scenario = "increment",
+				metric = "time-per-edit",
+				subject = subject,
+				run = run.run,
+				-- microseconds
+				value = seconds / cpu.editsPerBatch * 1e6,
+			})
 		end
 	end
 	return samples, notRunnable, problems
@@ -318,9 +349,30 @@ local function valuesValue(values: { any }): Value
 	return { kind = "values", counts = counts, total = #values }
 end
 
+-- A measured quantity that isn't a time in seconds, like KB or microseconds
+local function amountValue(unit: string, values: { any }): Value
+	local rounded = array({})
+	for index, value in values do
+		rounded[index] = round(value)
+	end
+	local sorted = table.clone(values)
+	table.sort(sorted)
+	return {
+		kind = "amount",
+		unit = unit,
+		n = #values,
+		median = round(median(sorted)),
+		min = round(sorted[1]),
+		max = round(sorted[#sorted]),
+		samples = rounded,
+	}
+end
+
 local function valueOf(catalog: any, suiteId: string, metricId: string, values: { any }): Value
 	local metric = find(catalog.metrics, metricId)
-	if metric.kind == "timing" then
+	if metric.kind == "amount" then
+		return amountValue(metric.unit, values)
+	elseif metric.kind == "timing" then
 		local suite = find(catalog.suites, suiteId)
 		return timeValue(suite.timeKind or "timing", values)
 	elseif metric.kind == "requests" then
@@ -339,7 +391,9 @@ local function resultsOf(
 	runsOf: (subject: string) -> { string }?
 ): { Result }
 	local grouped: { [string]: { any } } = {}
-	local present: { [string]: boolean } = {}
+	-- the runs that gave each result samples, which can be fewer than the subject takes when an
+	-- older run didn't measure something yet
+	local contributed: { [string]: { [string]: boolean } } = {}
 	for _, sample in samples do
 		local runs = runsOf(sample.subject)
 		if runs == nil or not table.find(runs, sample.run) then
@@ -353,7 +407,8 @@ local function resultsOf(
 		end
 		-- a failed step's time is nil, which a list can't hold
 		table.insert(list, if sample.value == nil then false else sample.value)
-		present[key] = true
+		contributed[key] = contributed[key] or {}
+		contributed[key][sample.run] = true
 	end
 
 	local results = array({})
@@ -362,15 +417,22 @@ local function resultsOf(
 			for _, metric in scenario.metrics do
 				for _, subject in catalog.subjects do
 					local key = `{suite.id}|{scenario.id}|{metric}|{subject.id}`
-					if not present[key] then
+					local from = contributed[key]
+					if from == nil then
 						continue
+					end
+					local runs = array({})
+					for _, id in runsOf(subject.id) :: { string } do
+						if from[id] then
+							table.insert(runs, id)
+						end
 					end
 					table.insert(results, {
 						suite = suite.id,
 						scenario = scenario.id,
 						metric = metric,
 						subject = subject.id,
-						runs = array(table.clone(runsOf(subject.id) :: { string })),
+						runs = runs,
 						value = valueOf(catalog, suite.id, metric, grouped[key]),
 					})
 				end
@@ -432,6 +494,7 @@ function BenchPublish.runFile(catalog: any, run: any): { [string]: any }
 		notRunnable = notRunnable,
 		problems = problems,
 		tasks = tasks,
+		lune = run.lune,
 	}
 end
 
