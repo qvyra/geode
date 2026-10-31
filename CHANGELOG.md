@@ -4,6 +4,10 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+
+- Custom ops can name their arguments and say what they do: `Geode.op(name, handler, { args = { ... }, names = { "item", "coins" }, description = "Give the player an item and some coins" })`. Neither changes how the op runs. The bridge's `ops` answer uses the names instead of `arg1`, `arg2` and adds the description, so development tools can show a readable form. `names` needs `args` and may name fewer arguments than it declares
+
 ## [0.6.0] - 2026-10-24
 
 Faster loads and server hops, Geode on npm for roblox-ts, and what tools need to edit Geode's records safely and find Geode wherever it's installed.

@@ -107,6 +107,8 @@ A profile's writes go through the transaction pipeline: `set`, `increment`, `dec
 
 `Geode.op` registers an op once for the whole game, and a store lists the ones it allows in `ops`. Give it `args`, one schema per argument, and every call is checked before the handler runs, whoever made it: game code, mail or a development tool. A call that doesn't match fails with `invalidArgs` and writes nothing. Tools also use the schemas to describe the op and to decode values like a `Vector3` that crossed in stored form.
 
+`names` gives the arguments names, one per schema in the same order, and `description` says in a line what the op does. They change nothing about how the op runs. Development tools show them, so an edit form reads `item` and `amount` instead of `arg1` and `arg2`. `names` needs `args` and can stop early; the rest keep their numbered names.
+
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Geode = require(ReplicatedStorage.Packages.Geode)
@@ -116,7 +118,11 @@ Geode.op("guideGrantItem", function(tx, item: string, amount: number)
 	tx:update({ "inventory", item }, function(current)
 		return (current or 0) + amount
 	end)
-end, { args = { t.string(), t.integer({ min = 1 }) } })
+end, {
+	args = { t.string(), t.integer({ min = 1 }) },
+	names = { "item", "amount" },
+	description = "Give the player some of an item",
+})
 
 local PlayerData = Geode.players({
 	name = "PlayerData",
