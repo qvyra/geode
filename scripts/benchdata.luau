@@ -2,11 +2,12 @@
 
 -- Keeps bench runs in benchmarks/runs, cleaned of anything that identifies the place or a server
 --
---   lune run benchdata import <results.json> --build <name> --source-tree <id> --bench-tree <id>
---       [--workflow-run <url>]
+--   lune run benchdata import <results.json> --build <name> [--source-tree <id>]
+--       [--bench-tree <id>] [--workflow-run <url>]
 --
--- The build name says which Geode it measured, for example 0.6.0. The tree ids are git's ids for
--- src and tests/bench at the commit the bench ran on (`git rev-parse <commit>:src`)
+-- The build name says which Geode it measured, for example 0.6.0. The bench records the rest in
+-- results.json. Older runs need them given: the tree ids are git's ids for src and tests/bench at
+-- the commit the bench ran on (`git rev-parse <commit>:src`)
 
 local fs = require("@lune/fs")
 local process = require("@lune/process")
@@ -41,8 +42,11 @@ local function import(args: { string })
 	local given = options(args, 3)
 	local results = BenchResults.decode(fs.readFile(path))
 	local build = given.build or fail("import needs --build")
-	local sourceTree = given["source-tree"] or fail("import needs --source-tree")
-	local benchTree = given["bench-tree"] or fail("import needs --bench-tree")
+	-- runs from before the bench recorded these need them given
+	local sourceTree = given["source-tree"]
+		or results.geodeSourceTree
+		or fail("import needs --source-tree")
+	local benchTree = given["bench-tree"] or results.benchTree or fail("import needs --bench-tree")
 	for _, tree in { sourceTree, benchTree } do
 		if not string.match(tree, "^%x+$") or #tree ~= 40 then
 			fail(`{tree} isn't a full git id`)
@@ -53,7 +57,7 @@ local function import(args: { string })
 		build = build,
 		sourceTree = sourceTree,
 		benchTree = benchTree,
-		workflowRun = given["workflow-run"],
+		workflowRun = given["workflow-run"] or results.workflowRun,
 	})
 	if not fs.isDir(RUNS_DIR) then
 		fs.writeDir(RUNS_DIR)
