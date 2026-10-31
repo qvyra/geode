@@ -1,0 +1,436 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://qvyra.github.io/geode/data/benchmarks/schema/v1.json",
+	"title": "Geode bench data, version 1",
+	"description": "latest.json, index.json and runs/<run>.json. Version 1 may gain optional fields. A change that breaks readers gets version 2 under a new path.",
+	"oneOf": [{ "$ref": "#/$defs/latest" }, { "$ref": "#/$defs/index" }, { "$ref": "#/$defs/run" }],
+	"$defs": {
+		"id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.+-]*$" },
+		"runId": { "type": "string", "pattern": "^[0-9a-f]{8}$" },
+		"gitId": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"date": { "type": "string", "format": "date-time" },
+		"seconds": { "type": "number", "minimum": 0 },
+
+		"latest": {
+			"type": "object",
+			"required": [
+				"schemaVersion",
+				"kind",
+				"updatedAt",
+				"aggregation",
+				"suites",
+				"metrics",
+				"requestMethods",
+				"lines",
+				"builds",
+				"subjects",
+				"runs",
+				"results",
+				"notMeasured"
+			],
+			"properties": {
+				"$schema": { "type": "string" },
+				"schemaVersion": { "const": 1 },
+				"kind": { "const": "latest" },
+				"updatedAt": { "$ref": "#/$defs/date" },
+				"aggregation": {
+					"type": "object",
+					"required": ["currentRuns", "rule", "caveat"],
+					"properties": {
+						"currentRuns": { "type": "integer", "minimum": 1 },
+						"rule": { "type": "string" },
+						"caveat": { "type": "string" }
+					}
+				},
+				"suites": { "type": "array", "items": { "$ref": "#/$defs/suite" } },
+				"metrics": { "type": "array", "items": { "$ref": "#/$defs/metric" } },
+				"requestMethods": { "type": "array", "items": { "$ref": "#/$defs/requestMethod" } },
+				"lines": { "type": "array", "items": { "$ref": "#/$defs/line" } },
+				"builds": { "type": "array", "items": { "$ref": "#/$defs/build" } },
+				"subjects": { "type": "array", "items": { "$ref": "#/$defs/subject" } },
+				"runs": { "type": "array", "items": { "$ref": "#/$defs/runRef" } },
+				"results": { "type": "array", "items": { "$ref": "#/$defs/result" } },
+				"notMeasured": { "type": "array", "items": { "$ref": "#/$defs/notMeasured" } }
+			}
+		},
+
+		"index": {
+			"type": "object",
+			"required": ["schemaVersion", "kind", "updatedAt", "latest", "runs"],
+			"properties": {
+				"$schema": { "type": "string" },
+				"schemaVersion": { "const": 1 },
+				"kind": { "const": "index" },
+				"updatedAt": { "$ref": "#/$defs/date" },
+				"latest": { "type": "string" },
+				"runs": { "type": "array", "items": { "$ref": "#/$defs/runRef" } }
+			}
+		},
+
+		"run": {
+			"type": "object",
+			"description": "One bench run: its results in the same shape as latest.json's, and the raw tasks they came from.",
+			"required": [
+				"schemaVersion",
+				"kind",
+				"id",
+				"date",
+				"build",
+				"geode",
+				"bench",
+				"libraries",
+				"refused",
+				"results",
+				"notRunnable",
+				"problems",
+				"tasks"
+			],
+			"properties": {
+				"$schema": { "type": "string" },
+				"schemaVersion": { "const": 1 },
+				"kind": { "const": "run" },
+				"id": { "$ref": "#/$defs/runId" },
+				"date": { "$ref": "#/$defs/date" },
+				"build": { "$ref": "#/$defs/id" },
+				"geode": {
+					"type": "object",
+					"required": ["sourceTree"],
+					"properties": {
+						"sourceTree": {
+							"$ref": "#/$defs/gitId",
+							"description": "git's id for src at the commit the bench ran on"
+						}
+					}
+				},
+				"bench": {
+					"type": "object",
+					"required": ["tree"],
+					"properties": {
+						"tree": {
+							"$ref": "#/$defs/gitId",
+							"description": "git's id for tests/bench. Runs with the same tree ran the same steps"
+						},
+						"workflowRun": { "type": "string", "format": "uri" }
+					}
+				},
+				"libraries": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": ["name", "repo", "ref", "version", "license", "licenseSha256"],
+						"properties": {
+							"name": { "type": "string" },
+							"repo": { "type": "string", "description": "owner/name on GitHub" },
+							"ref": { "type": "string", "description": "The pinned commit" },
+							"version": { "type": "string" },
+							"license": { "type": "string" },
+							"licenseSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+						}
+					}
+				},
+				"refused": {
+					"type": "object",
+					"description": "Libraries the bench refused to run, with the reason",
+					"additionalProperties": { "type": "string" }
+				},
+				"results": { "type": "array", "items": { "$ref": "#/$defs/result" } },
+				"notRunnable": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": ["subject", "suite", "reason"],
+						"properties": {
+							"subject": { "$ref": "#/$defs/id" },
+							"suite": { "$ref": "#/$defs/id" },
+							"reason": { "type": "string" }
+						}
+					}
+				},
+				"problems": {
+					"type": "array",
+					"description": "Tasks that failed as tasks, timed out or returned no report, and a Lune suite that failed (mode cpu)",
+					"items": {
+						"type": "object",
+						"required": ["subject", "mode", "problem"],
+						"properties": {
+							"subject": { "$ref": "#/$defs/id" },
+							"mode": { "type": "string" },
+							"problem": { "type": "string" }
+						}
+					}
+				},
+				"lune": {
+					"type": "object",
+					"description": "What the runner measured in Lune itself, with the Lune version, OS and architecture it ran on. The shape may change with the bench"
+				},
+				"tasks": {
+					"type": "array",
+					"description": "What each Luau Execution task reported, with place ids, JobIds, keys and topics left out. The shape of report.result depends on the mode and may change with the bench",
+					"items": {
+						"type": "object",
+						"required": ["mode", "library", "subject"],
+						"properties": {
+							"mode": { "enum": ["perf", "hold", "join", "throttle", "memory"] },
+							"library": { "type": "string", "description": "The bench's name for it" },
+							"subject": { "$ref": "#/$defs/id" },
+							"problem": { "type": "string" },
+							"report": { "type": "object" },
+							"logTail": { "type": "array", "items": { "type": "string" } }
+						}
+					}
+				}
+			}
+		},
+
+		"runRef": {
+			"type": "object",
+			"required": ["id", "date", "build", "data"],
+			"properties": {
+				"id": { "$ref": "#/$defs/runId" },
+				"date": { "$ref": "#/$defs/date" },
+				"build": { "$ref": "#/$defs/id" },
+				"data": { "type": "string", "description": "The run's file, relative to this one" }
+			}
+		},
+
+		"suite": {
+			"type": "object",
+			"required": ["id", "name", "environment", "description", "scenarios"],
+			"properties": {
+				"id": { "$ref": "#/$defs/id" },
+				"name": { "type": "string" },
+				"environment": { "enum": ["roblox-live", "lune"] },
+				"timingResolution": {
+					"type": "number",
+					"exclusiveMinimum": 0,
+					"description": "Seconds per timing step, for suites that time things. Times differing by less are ties"
+				},
+				"description": { "type": "string" },
+				"caveat": { "type": "string" },
+				"scenarios": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"required": ["id", "name", "metrics"],
+						"properties": {
+							"id": { "$ref": "#/$defs/id" },
+							"name": { "type": "string" },
+							"description": { "type": "string" },
+							"metrics": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+						}
+					}
+				}
+			}
+		},
+
+		"metric": {
+			"type": "object",
+			"required": ["id", "name", "kind", "description"],
+			"properties": {
+				"id": { "$ref": "#/$defs/id" },
+				"name": { "type": "string" },
+				"kind": { "enum": ["timing", "requests", "count", "values", "amount"] },
+				"unit": { "type": "string", "description": "For amounts: KB, or us for microseconds" },
+				"description": { "type": "string" }
+			}
+		},
+
+		"requestMethod": {
+			"type": "object",
+			"required": ["id", "label"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^[A-Za-z]+(:[A-Za-z]+)?$",
+					"description": "The DataStore method, with a qualifier such as :noCache when the bench tells calls apart"
+				},
+				"label": { "type": "string" },
+				"description": { "type": "string" }
+			}
+		},
+
+		"line": {
+			"type": "object",
+			"description": "Geode builds that behave the same in what the bench measures",
+			"required": ["id", "description"],
+			"properties": {
+				"id": { "$ref": "#/$defs/id" },
+				"description": { "type": "string" }
+			}
+		},
+
+		"build": {
+			"type": "object",
+			"required": ["id", "line", "sourceTrees"],
+			"properties": {
+				"id": { "$ref": "#/$defs/id" },
+				"line": { "$ref": "#/$defs/id" },
+				"release": { "type": "string", "description": "The release tag with this src" },
+				"sourceTrees": { "type": "array", "items": { "$ref": "#/$defs/gitId" } },
+				"note": { "type": "string" }
+			}
+		},
+
+		"subject": {
+			"type": "object",
+			"description": "One library with one config. Geode with mailbox = true is its own subject, and so is Geode from before mail became opt-in",
+			"required": ["id", "library", "config"],
+			"properties": {
+				"id": { "$ref": "#/$defs/id" },
+				"library": { "type": "string" },
+				"lines": {
+					"type": "array",
+					"description": "For Geode: the build lines this subject covers",
+					"items": { "$ref": "#/$defs/id" }
+				},
+				"historical": {
+					"type": "boolean",
+					"description": "Kept for comparison, no longer how the library behaves"
+				},
+				"repository": { "type": "string", "format": "uri" },
+				"config": {
+					"type": "object",
+					"required": ["label", "options"],
+					"properties": {
+						"label": { "type": "string" },
+						"options": { "type": "object" }
+					}
+				}
+			}
+		},
+
+		"result": {
+			"type": "object",
+			"required": ["suite", "scenario", "metric", "subject", "runs", "value"],
+			"properties": {
+				"suite": { "$ref": "#/$defs/id" },
+				"scenario": { "$ref": "#/$defs/id" },
+				"metric": { "$ref": "#/$defs/id" },
+				"subject": { "$ref": "#/$defs/id" },
+				"runs": {
+					"type": "array",
+					"description": "The runs that gave this result samples",
+					"items": { "$ref": "#/$defs/runId" },
+					"minItems": 1
+				},
+				"value": {
+					"oneOf": [
+						{ "$ref": "#/$defs/timing" },
+						{ "$ref": "#/$defs/range" },
+						{ "$ref": "#/$defs/requests" },
+						{ "$ref": "#/$defs/count" },
+						{ "$ref": "#/$defs/values" },
+						{ "$ref": "#/$defs/amount" }
+					]
+				}
+			}
+		},
+
+		"samples": {
+			"type": "array",
+			"description": "Every successful sample in the order measured, rounded to milliseconds",
+			"items": { "$ref": "#/$defs/seconds" }
+		},
+		"timing": {
+			"type": "object",
+			"description": "min, max and median are left out when no sample succeeded",
+			"required": ["kind", "unit", "n", "failed", "samples"],
+			"properties": {
+				"kind": { "const": "timing" },
+				"unit": { "const": "s" },
+				"median": { "$ref": "#/$defs/seconds" },
+				"min": { "$ref": "#/$defs/seconds" },
+				"max": { "$ref": "#/$defs/seconds" },
+				"n": { "type": "integer", "minimum": 0, "description": "Successful samples" },
+				"failed": { "type": "integer", "minimum": 0, "description": "Samples that failed" },
+				"samples": { "$ref": "#/$defs/samples" }
+			}
+		},
+		"range": {
+			"type": "object",
+			"description": "A time to read as lowest to highest, where a median wouldn't mean much",
+			"required": ["kind", "unit", "n", "failed", "samples"],
+			"properties": {
+				"kind": { "const": "range" },
+				"unit": { "const": "s" },
+				"min": { "$ref": "#/$defs/seconds" },
+				"max": { "$ref": "#/$defs/seconds" },
+				"n": { "type": "integer", "minimum": 0 },
+				"failed": { "type": "integer", "minimum": 0 },
+				"samples": { "$ref": "#/$defs/samples" }
+			}
+		},
+		"requests": {
+			"type": "object",
+			"description": "DataStore requests per sample by request method id. exact is true when every sample had the same counts",
+			"required": ["kind", "exact", "n", "byMethod"],
+			"properties": {
+				"kind": { "const": "requests" },
+				"exact": { "type": "boolean" },
+				"n": { "type": "integer", "minimum": 1 },
+				"byMethod": {
+					"type": "object",
+					"additionalProperties": {
+						"type": "object",
+						"required": ["min", "max"],
+						"properties": {
+							"min": { "type": "integer", "minimum": 0 },
+							"max": { "type": "integer", "minimum": 0 }
+						}
+					}
+				}
+			}
+		},
+		"count": {
+			"type": "object",
+			"description": "A yes or no check, passed in so many of the total",
+			"required": ["kind", "passed", "total"],
+			"properties": {
+				"kind": { "const": "count" },
+				"passed": { "type": "integer", "minimum": 0 },
+				"total": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"values": {
+			"type": "object",
+			"description": "How often each value was seen",
+			"required": ["kind", "counts", "total"],
+			"properties": {
+				"kind": { "const": "values" },
+				"counts": { "type": "object", "additionalProperties": { "type": "integer" } },
+				"total": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"amount": {
+			"type": "object",
+			"description": "A measured quantity that isn't a time in seconds, such as KB or microseconds",
+			"required": ["kind", "unit", "n", "median", "min", "max", "samples"],
+			"properties": {
+				"kind": { "const": "amount" },
+				"unit": { "type": "string" },
+				"n": { "type": "integer", "minimum": 1 },
+				"median": { "type": "number" },
+				"min": { "type": "number" },
+				"max": { "type": "number" },
+				"samples": { "type": "array", "items": { "type": "number" } }
+			}
+		},
+
+		"notMeasured": {
+			"type": "object",
+			"required": ["reason"],
+			"anyOf": [
+				{ "required": ["subject"] },
+				{ "required": ["suite"] },
+				{ "required": ["scenario"] }
+			],
+			"properties": {
+				"subject": { "$ref": "#/$defs/id" },
+				"suite": { "$ref": "#/$defs/id" },
+				"scenario": { "$ref": "#/$defs/id" },
+				"config": { "type": "string" },
+				"reason": { "type": "string" }
+			}
+		}
+	}
+}

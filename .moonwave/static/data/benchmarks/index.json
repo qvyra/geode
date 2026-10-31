@@ -1,0 +1,81 @@
+{
+	"$schema": "https://qvyra.github.io/geode/data/benchmarks/schema/v1.json",
+	"schemaVersion": 1,
+	"kind": "index",
+	"runs": [
+		{
+			"id": "1d449b46",
+			"date": "2026-10-19T18:25:18Z",
+			"build": "0.5.0",
+			"data": "runs/1d449b46.json"
+		},
+		{
+			"id": "25532752",
+			"date": "2026-10-19T18:56:42Z",
+			"build": "0.5.0",
+			"data": "runs/25532752.json"
+		},
+		{
+			"id": "3561e8c8",
+			"date": "2026-10-19T19:13:34Z",
+			"build": "0.5.0",
+			"data": "runs/3561e8c8.json"
+		},
+		{
+			"id": "76954271",
+			"date": "2026-10-19T19:27:09Z",
+			"build": "0.5.0",
+			"data": "runs/76954271.json"
+		},
+		{
+			"id": "0f6881b6",
+			"date": "2026-10-20T20:42:12Z",
+			"build": "0.5.0+format",
+			"data": "runs/0f6881b6.json"
+		},
+		{
+			"id": "1b5acb20",
+			"date": "2026-10-20T20:56:35Z",
+			"build": "0.6.0-pre",
+			"data": "runs/1b5acb20.json"
+		},
+		{
+			"id": "7d89ae32",
+			"date": "2026-10-20T21:32:35Z",
+			"build": "0.6.0-pre",
+			"data": "runs/7d89ae32.json"
+		},
+		{
+			"id": "0ba4d5bc",
+			"date": "2026-10-20T21:49:56Z",
+			"build": "0.6.0-pre",
+			"data": "runs/0ba4d5bc.json"
+		},
+		{
+			"id": "1faf45fa",
+			"date": "2026-10-24T12:40:18Z",
+			"build": "0.6.0",
+			"data": "runs/1faf45fa.json"
+		},
+		{
+			"id": "3abd0330",
+			"date": "2026-10-31T15:12:12Z",
+			"build": "0.6.1",
+			"data": "runs/3abd0330.json"
+		},
+		{
+			"id": "080eceb1",
+			"date": "2026-10-31T15:31:09Z",
+			"build": "0.6.1",
+			"data": "runs/080eceb1.json"
+		},
+		{
+			"id": "3e27444c",
+			"date": "2026-10-31T15:50:29Z",
+			"build": "0.6.1",
+			"data": "runs/3e27444c.json"
+		}
+	],
+	"latest": "latest.json",
+	"updatedAt": "2026-10-31T15:50:29Z"
+}
