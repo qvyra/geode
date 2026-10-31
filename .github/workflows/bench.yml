@@ -1,7 +1,9 @@
 name: Benchmarks
 
 # Runs the library benchmarks against live Roblox services through Open Cloud. Same rules as the
-# live checks: pull requests from forks and Dependabot never run it, since it needs the API key
+# live checks: pull requests from forks and Dependabot never run it, since it needs the API key.
+# A run that isn't for a pull request then opens a pull request with its data: the run kept in
+# benchmarks/runs and the published files built again, for review before they reach the site
 
 on:
   # Every run uploads a version of the test place and takes about half an hour, so only changes to
@@ -14,6 +16,11 @@ on:
       - ".lune/bench.luau"
       - ".github/workflows/bench.yml"
   workflow_dispatch:
+  push:
+    tags: ["v*"]
+  # once a month, so the numbers keep up with Roblox's side as well
+  schedule:
+    - cron: "17 6 1 * *"
 
 permissions:
   contents: read
@@ -26,7 +33,7 @@ concurrency:
 jobs:
   bench:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      github.event_name != 'pull_request' ||
       (github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'dependabot[bot]')
     runs-on: ubuntu-latest
@@ -53,3 +60,70 @@ jobs:
           path: |
             .cache/bench/results.json
             .cache/bench/summary.md
+
+  # also after a run where a task failed: the run file lists the problem for the review
+  data:
+    needs: bench
+    if: >-
+      !cancelled() && github.event_name != 'pull_request' &&
+      (needs.bench.result == 'success' || needs.bench.result == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      # to start CI on the new branch, which a push with this token doesn't
+      actions: write
+    steps:
+      # the data goes to main whatever the run was started from. Tags are needed to name a build
+      # after the release it matches
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: CompeyDev/setup-rokit@v0.2.1
+        with:
+          cache: true
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: bench-results
+          path: .cache/bench
+
+      - name: Keep the run and build the data again
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          BENCH_RESULT: ${{ needs.bench.result }}
+        run: |
+          run=$(jq -r .run .cache/bench/results.json)
+          echo "RUN=$run" >> "$GITHUB_ENV"
+          {
+            echo "Data from the Benchmarks run $RUN_URL, started by $EVENT on \`$REF_NAME\`. The bench job ended with $BENCH_RESULT."
+            echo
+          } > .cache/bench/notes.md
+          lune run benchdata import .cache/bench/results.json --notes .cache/bench/notes.md
+          npx prettier --write benchmarks/catalog.json
+          lune run benchdata build
+
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="docs/bench-run-$RUN"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add benchmarks .moonwave/static/data
+          git commit -m "docs(bench): data from run $RUN"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" --title "Bench data from run $RUN" --body-file .cache/bench/notes.md
+          gh workflow run ci.yml --ref "$branch"
