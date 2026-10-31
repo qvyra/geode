@@ -426,6 +426,32 @@ local function summarize(records: { TaskRecord }): string
 	return table.concat(lines, "\n") .. "\n"
 end
 
+--// what ran
+
+-- git's id for a folder at the checked out commit. Runs with the same id ran the same code. A
+-- folder with uncommitted changes gets none, since the id wouldn't match what ran
+local function treeId(path: string): string?
+	local status = process.exec("git", { "status", "--porcelain", "--", path })
+	if not status.ok or status.stdout ~= "" then
+		return nil
+	end
+	local result = process.exec("git", { "rev-parse", `HEAD:{path}` })
+	if not result.ok then
+		return nil
+	end
+	return (string.gsub(result.stdout, "%s+$", ""))
+end
+
+-- The Actions run this is part of, when it runs in one
+local function workflowRun(): string?
+	local env = process.env
+	local server, repository, id = env.GITHUB_SERVER_URL, env.GITHUB_REPOSITORY, env.GITHUB_RUN_ID
+	if server and repository and id then
+		return `{server}/{repository}/actions/runs/{id}`
+	end
+	return nil
+end
+
 --// main
 
 local function main()
@@ -505,6 +531,9 @@ local function main()
 		run = run,
 		date = os.date("!%Y-%m-%dT%H:%M:%SZ"),
 		placeVersion = version,
+		geodeSourceTree = treeId("src"),
+		benchTree = treeId("tests/bench"),
+		workflowRun = workflowRun(),
 		pins = pinned,
 		refused = refused,
 		tasks = records,

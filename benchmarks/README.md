@@ -12,7 +12,7 @@ Anything that only identifies the test place, a server or a key is left out: pla
 To add a run, download the `bench-results` artifact of a Benchmarks run and import it:
 
 ```sh
-lune run benchdata import results.json --build 0.6.1 --source-tree <id> --bench-tree <id> --workflow-run <url>
+lune run benchdata import results.json --build 0.6.1
 ```
 
-where the tree ids come from `git rev-parse <commit>:src` and `git rev-parse <commit>:tests/bench`.
+The bench records the tree ids and the workflow run in `results.json`. Runs from before it did need them given with `--source-tree`, `--bench-tree` and `--workflow-run`, where the tree ids come from `git rev-parse <commit>:src` and `git rev-parse <commit>:tests/bench`.
