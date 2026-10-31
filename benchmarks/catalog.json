@@ -61,7 +61,7 @@
 			"name": "Memory per loaded profile",
 			"environment": "roblox-live",
 			"description": "After loading and releasing one profile so the library has set itself up, the task reads the Lua heap with collectgarbage(\"count\") every 0.1 s for 5 s, loads twenty fresh profiles with the same data as the other suites and holds them, then reads the heap again. The result is the difference between the lowest readings, divided by the profiles held. The bench's request log is paused meanwhile so it doesn't count. One sample per run.",
-			"caveat": "An upper bound, and noisy: a script can't make Luau finish a garbage collection cycle, so some of the difference can be garbage not yet collected. It covers what the library keeps in Lua per profile, not memory the engine holds.",
+			"caveat": "Noisy in both directions. A script can't make Luau finish a garbage collection cycle, so garbage left from before the load can make the result high, and a cycle that ends between the two readings can make it low, even below zero. It covers what the library keeps in Lua per profile, not memory the engine holds.",
 			"scenarios": [
 				{
 					"id": "loaded-profiles",
@@ -110,7 +110,7 @@
 			"name": "Heap per profile",
 			"kind": "amount",
 			"unit": "KB",
-			"description": "Growth of the Lua heap per loaded profile, an upper bound."
+			"description": "Growth of the Lua heap per loaded profile."
 		},
 		{
 			"id": "time-per-edit",

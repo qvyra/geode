@@ -428,7 +428,7 @@ local function summarize(records: { TaskRecord }): string
 	table.insert(lines, "")
 	table.insert(
 		lines,
-		"| Library | Profiles | Heap per profile (KB, upper bound) | Heap before (KB) | Heap after (KB) |"
+		"| Library | Profiles | Heap per profile (KB, noisy) | Heap before (KB) | Heap after (KB) |"
 	)
 	table.insert(lines, "| --- | --- | --- | --- | --- |")
 	for _, library in LIBRARIES do

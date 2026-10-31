@@ -660,8 +660,9 @@ local HEAP_WINDOW = 5
 local HEAP_INTERVAL = 0.1
 
 -- The Lua heap in KB, sampled over a few seconds. Luau collects garbage in steps and a script
--- can't make it finish a cycle, so the lowest sample is the closest to what's still in use and
--- still an upper bound
+-- can't make it finish a cycle, so the lowest sample is the closest to what's still in use. It
+-- isn't a bound either way: garbage still there before the load makes the difference high, and
+-- garbage collected between the two windows makes it low
 local function heap(): { [string]: any }
 	local samples: { number } = {}
 	local stop = os.clock() + HEAP_WINDOW
