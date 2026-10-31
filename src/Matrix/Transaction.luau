@@ -61,6 +61,16 @@ export type OpHandler = (tx: Transaction, ...any) -> ()
 export type OpOptions = {
 	-- One schema per argument. A call with other arguments fails before the handler runs
 	args: { Schema.Schema }?,
+	-- A name per argument, by index, for tools to show. Needs `args`, and can name fewer
+	names: { string }?,
+	-- A line saying what the op does, for tools to show
+	description: string?,
+}
+
+-- What a custom op said about itself for tools: argument names and a description
+export type OpInfo = {
+	names: { string }?,
+	description: string?,
 }
 
 type Fields = {
@@ -114,6 +124,8 @@ local BUILT_IN: { [string]: boolean } = {
 local registry: { [string]: OpHandler } = {}
 -- argument schemas of the custom ops that declared them
 local argSchemas: { [string]: { Schema.Schema } } = {}
+-- argument names and descriptions of the custom ops that gave them
+local infos: { [string]: OpInfo } = {}
 
 -- Errors and sources
 
@@ -166,6 +178,10 @@ end
 	can run there. With `args`, every call is checked against one schema per argument before the
 	handler runs, and development tools can describe and decode the arguments
 
+	`names` gives the arguments names by index and `description` says what the op does. Neither
+	changes how the op runs; development tools show them instead of `arg1, arg2`. `names` needs
+	`args` and may name fewer arguments than it declares
+
 	@function op
 	@within Geode
 	@param name string
@@ -173,11 +189,14 @@ end
 	@param options OpOptions?
 
 	```lua
-	Geode.op("grantItem", function(tx, itemId: string, amount: number)
-		tx:update({ "inventory", itemId }, function(current)
-			return (current or 0) + amount
-		end)
-	end, { args = { Geode.t.string(), Geode.t.integer({ min = 1 }) } })
+	Geode.op("reward", function(tx, itemId: string, coins: number)
+		tx:increment({ "inventory", itemId })
+		tx:increment("coins", coins)
+	end, {
+		args = { Geode.t.string(), Geode.t.integer({ min = 1, max = 1000 }) },
+		names = { "item", "coins" },
+		description = "Give the player an item and some coins",
+	})
 	```
 ]=]
 function Transaction.register(name: string, handler: OpHandler, options: OpOptions?)
@@ -194,7 +213,41 @@ function Transaction.register(name: string, handler: OpHandler, options: OpOptio
 				`argument {index} of op {name} isn't a schema`
 			)
 		end
+	end
+	local names = options and options.names
+	if names ~= nil then
+		assert(args ~= nil, `op {name} names its arguments but declares no args to name`)
+		assert(type(names) == "table", `op {name}'s names must be a list of strings`)
+		local count = 0
+		for index, argName in names do
+			count += 1
+			assert(type(index) == "number", `op {name}'s names must be a list of strings`)
+			assert(
+				type(argName) == "string" and argName ~= "",
+				`name {index} of op {name} must be a non-empty string`
+			)
+		end
+		assert(count == #names, `op {name}'s names must be a list of strings`)
+		assert(
+			#names <= #(args :: { Schema.Schema }),
+			`op {name} names {#names} arguments but declares {#(args :: { Schema.Schema })}`
+		)
+	end
+	local description = options and options.description
+	if description ~= nil then
+		assert(
+			type(description) == "string" and description ~= "",
+			`op {name}'s description must be a non-empty string`
+		)
+	end
+	if args ~= nil then
 		argSchemas[name] = table.clone(args)
+	end
+	if names ~= nil or description ~= nil then
+		infos[name] = table.freeze({
+			names = if names then table.freeze(table.clone(names)) else nil,
+			description = description,
+		})
 	end
 	registry[name] = handler
 end
@@ -203,6 +256,15 @@ end
 function Transaction.opArgs(name: string): { Schema.Schema }?
 	local args = argSchemas[name]
 	return if args then table.clone(args) else nil
+end
+
+-- The argument names and description a custom op gave, both nil when it gave neither. Nil for
+-- built-in ops and names nothing registered. The answer is frozen
+function Transaction.opInfo(name: string): OpInfo?
+	if registry[name] == nil then
+		return nil
+	end
+	return infos[name] or table.freeze({})
 end
 
 -- Checks a call's arguments against the op's schemas. Fewer is fine when the missing ones are

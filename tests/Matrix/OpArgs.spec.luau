@@ -103,6 +103,131 @@ return function(spec: Spec.Api)
 		end)
 	end)
 
+	describe("op names and descriptions", function()
+		it("are kept for tools without changing how the op runs", function()
+			local name = uniqueOp(function(tx, item: string, coins: number)
+				tx:set({ "inventory", item }, coins)
+			end, {
+				args = { t.string(), t.integer({ min = 1, max = 1000 }) },
+				names = { "item", "coins" },
+				description = "Give the player an item and some coins",
+			})
+			local info = Transaction.opInfo(name) :: Transaction.OpInfo
+			expect(info.names).toEqual({ "item", "coins" })
+			expect(info.description).toBe("Give the player an item and some coins")
+			expect(table.isfrozen(info)).toBe(true)
+			expect(table.isfrozen(info.names :: { string })).toBe(true)
+			local doc = newDoc({ name })
+			expect(doc:op(name, "sword", 5).ok).toBe(true)
+			expect((doc:op(name, "sword", 0) :: Any).error.kind).toBe("invalidArgs")
+		end)
+
+		it("can name fewer arguments than the op declares", function()
+			local name = uniqueOp(function() end, {
+				args = { t.string(), t.number() },
+				names = { "item" },
+			})
+			local info = Transaction.opInfo(name) :: Transaction.OpInfo
+			expect(info.names).toEqual({ "item" })
+			expect(info.description).toBeNil()
+		end)
+
+		it("allow a description on an op without args", function()
+			local name = uniqueOp(function() end, { description = "Reset the daily quests" })
+			local info = Transaction.opInfo(name) :: Transaction.OpInfo
+			expect(info.description).toBe("Reset the daily quests")
+			expect(info.names).toBeNil()
+		end)
+
+		it("are empty for ops that gave neither, and nil for others", function()
+			local name = uniqueOp(function() end, { args = { t.string() } })
+			local info = Transaction.opInfo(name) :: Transaction.OpInfo
+			expect(info.names).toBeNil()
+			expect(info.description).toBeNil()
+			expect(Transaction.opInfo("set")).toBeNil()
+			expect(Transaction.opInfo("noSuchOpAnywhere")).toBeNil()
+		end)
+
+		it("copy the names the op was given", function()
+			local names = { "item" }
+			local name = uniqueOp(function() end, { args = { t.string() }, names = names })
+			names[1] = "changed"
+			expect((Transaction.opInfo(name) :: Transaction.OpInfo).names).toEqual({ "item" })
+		end)
+
+		it("need args to name", function()
+			expect(function()
+				Transaction.register("namesOpNoArgs", function() end, { names = { "item" } })
+			end).toThrow("declares no args")
+			expect(Transaction.isRegistered("namesOpNoArgs")).toBe(false)
+		end)
+
+		it("can't name more arguments than the op declares", function()
+			expect(function()
+				Transaction.register("namesOpTooMany", function() end, {
+					args = { t.string() },
+					names = { "item", "coins" },
+				})
+			end).toThrow("names 2 arguments but declares 1")
+			expect(Transaction.isRegistered("namesOpTooMany")).toBe(false)
+			expect(Transaction.opArgs("namesOpTooMany")).toBeNil()
+		end)
+
+		it("must be a list of non-empty strings", function()
+			local args = { t.string(), t.string() }
+			expect(function()
+				Transaction.register("namesOpBad", function() end, {
+					args = args,
+					names = "item" :: any,
+				})
+			end).toThrow("must be a list of strings")
+			expect(function()
+				Transaction.register("namesOpBad", function() end, {
+					args = args,
+					names = { "item", "" },
+				})
+			end).toThrow("name 2 of op namesOpBad must be a non%-empty string")
+			expect(function()
+				Transaction.register("namesOpBad", function() end, {
+					args = args,
+					names = { "item", 2 :: any },
+				})
+			end).toThrow("must be a non%-empty string")
+			expect(function()
+				Transaction.register("namesOpBad", function() end, {
+					args = args,
+					names = { first = "item" } :: any,
+				})
+			end).toThrow("must be a list of strings")
+			expect(Transaction.isRegistered("namesOpBad")).toBe(false)
+		end)
+
+		it("need a non-empty string for the description", function()
+			expect(function()
+				Transaction.register("descriptionOpBad", function() end, { description = "" })
+			end).toThrow("description must be a non%-empty string")
+			expect(function()
+				Transaction.register("descriptionOpBad", function() end, {
+					description = 42 :: any,
+				})
+			end).toThrow("description must be a non%-empty string")
+			expect(Transaction.isRegistered("descriptionOpBad")).toBe(false)
+		end)
+
+		it("are reachable through Geode.op", function()
+			opCount += 1
+			local name = `geodeNamesOp{opCount}`
+			Geode.op(name, function() end, {
+				args = { Geode.t.string() },
+				names = { "item" },
+				description = "Grant an item",
+			})
+			local info = Transaction.opInfo(name) :: Transaction.OpInfo
+			expect(info.names).toEqual({ "item" })
+			expect(info.description).toBe("Grant an item")
+		end)
+	end)
+
 	describe("custom op arguments for tools", function()
 		it("are described from their schemas", function()
 			local name = uniqueOp(function() end, {
