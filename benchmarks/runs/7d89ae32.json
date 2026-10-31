@@ -1,0 +1,5139 @@
+{
+	"run": "7d89ae32",
+	"date": "2026-10-20T21:32:35Z",
+	"build": "0.6.0-pre",
+	"benchTree": "de496eb073ccd7f8d548a09c3319e1962fd9eb0a",
+	"geodeSourceTree": "de79ff4b26f0d707d273c76e3273fd55208d76f8",
+	"libraries": [
+		{
+			"license": "Apache-2.0",
+			"licenseSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			"name": "ProfileStore",
+			"ref": "45c9847cbcf1fc260369c50eb335aba7c35aecdd",
+			"repo": "MadStudioRoblox/ProfileStore",
+			"version": "no releases, latest commit on main (2025-07-31)"
+		},
+		{
+			"license": "Apache-2.0",
+			"licenseSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+			"name": "ProfileService",
+			"ref": "d736800444eda6bf75b18397f77dfb2c8f31f60f",
+			"repo": "MadStudioRoblox/ProfileService",
+			"version": "no releases, latest commit on master (2024-10-13)"
+		},
+		{
+			"license": "MIT",
+			"licenseSha256": "d852c6331e685424a7d95eb0b9c6c2907521a91590ab4698abbf56a80668970e",
+			"name": "Lapis",
+			"ref": "f140acaac4eb569e5d0588bc63315ecaa4972518",
+			"repo": "nezuo/lapis",
+			"version": "v0.3.3"
+		},
+		{
+			"license": "MIT",
+			"licenseSha256": "1b326bf4c7bb9ba78d58347790d2898fb41843b8be826f63a544b086a8cd185a",
+			"name": "Promise",
+			"ref": "2c6f433903275e689ba1d48402d4a9d6fdc605a5",
+			"repo": "evaera/roblox-lua-promise",
+			"version": "v4.0.0, the version Lapis 0.3.3 asks for"
+		},
+		{
+			"license": "custom: copying and changing allowed, changes to a published game's copy must be shared",
+			"licenseSha256": "a79875c87e509a665df4110ee73eb631b0a353b94802932c896d7b97e576d49b",
+			"name": "DataStore2",
+			"ref": "ab81664caa0236aa38878d10d082e045e8ea5f79",
+			"repo": "Kampfkarren/Roblox",
+			"version": "ds2-1.4.0"
+		}
+	],
+	"refused": {},
+	"tasks": [
+		{
+			"library": "Geode",
+			"mode": "perf",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531234644,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531192476
+				},
+				"library": "Geode",
+				"mode": "perf",
+				"requestsTotal": 25,
+				"result": {
+					"gap": 8,
+					"iterations": 5,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.3997868250589818,
+							"timeline": [
+								["UpdateAsync", 0.11649161495734006, 0.3996729260543362, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.29951606795657426,
+							"timeline": [
+								["UpdateAsync", 4.5406981371343136e-05, 0.2994219090323895, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.23278492607641968,
+							"timeline": [
+								["UpdateAsync", 5.094497464597225e-05, 0.23270239308476448, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.3328085159882903,
+							"timeline": [
+								["UpdateAsync", 4.6298024244606495e-05, 0.3327156079467386, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.316130289924331,
+							"timeline": [
+								["UpdateAsync", 4.529696889221668e-05, 0.3160319239832461, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.21645883203018457,
+							"timeline": [
+								["UpdateAsync", 5.645409692078829e-05, 0.21639835205860436, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.24981105793267488,
+							"timeline": [
+								["UpdateAsync", 5.9497891925275326e-05, 0.24975860095582905, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.19964636606164277,
+							"timeline": [
+								["UpdateAsync", 4.4636079110205173e-05, 0.19959377800114456, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2831168259726838,
+							"timeline": [
+								["UpdateAsync", 5.468097515404225e-05, 0.2830641579348594, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2158239099662751,
+							"timeline": [
+								["UpdateAsync", 4.94540436193347e-05, 0.21577670995611695, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.24994887202046812,
+							"timeline": [
+								["UpdateAsync", 6.549700628966093e-05, 0.24973169004078957, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2499349620193243,
+							"timeline": [
+								["UpdateAsync", 6.737001240253448e-05, 0.2497393620433286, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.26624916901346296,
+							"timeline": [
+								["UpdateAsync", 5.403009708970785e-05, 0.2660423220368102, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.21652316802646968,
+							"timeline": [
+								["UpdateAsync", 8.056999649852514e-05, 0.21630917000584304, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2499367439886555,
+							"timeline": [
+								["UpdateAsync", 6.42749946564436e-05, 0.24970703397411856, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.19980975799262524,
+							"timeline": [
+								["UpdateAsync", 6.610795389860868e-05, 0.19970931892748925, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.2998019019141793,
+							"timeline": [
+								["UpdateAsync", 6.430491339415312e-05, 0.2996954639675096, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.21628852002322677,
+							"timeline": [
+								["UpdateAsync", 4.645902663469315e-05, 0.21618245192803445, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.24981877009849995,
+							"timeline": [
+								["UpdateAsync", 6.77210045978427e-05, 0.24972684402018783, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.24983814801089468,
+							"timeline": [
+								["UpdateAsync", 6.046006456017494e-05, 0.2497395119862631, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.2832344400230795,
+							"timeline": [
+								["UpdateAsync", 6.554706487804651e-05, 0.2830516090616584, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.2665454880334437,
+							"timeline": [
+								["UpdateAsync", 6.756000220775604e-05, 0.2663199841044843, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.1995279099792242,
+							"timeline": [
+								["UpdateAsync", 4.330393858253956e-05, 0.19932674197480085, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.23324272397439927,
+							"timeline": [
+								["UpdateAsync", 5.426001735031605e-05, 0.23302052496001124, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.2331287859706208,
+							"timeline": [
+								["UpdateAsync", 5.970790516585112e-05, 0.2328740879893303, true]
+							]
+						}
+					],
+					"truncated": false
+				},
+				"seconds": 42.16842958901543
+			}
+		},
+		{
+			"library": "GeodeMail",
+			"mode": "perf",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531283761,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531241263
+				},
+				"library": "GeodeMail",
+				"mode": "perf",
+				"requestsTotal": 35,
+				"result": {
+					"gap": 8,
+					"iterations": 5,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": 2,
+								"SetIncrementAsync": 1,
+								"StandardRead": 2,
+								"StandardWrite": 1,
+								"UpdateAsync": 2
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 2,
+							"seconds": 0.5496306900022319,
+							"timeline": [
+								["GetAsync", 0.19961276100366376, 0.3163804960058769, true],
+								["UpdateAsync", 0.1999784460058436, 0.5494989389990224, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRead": 1,
+								"StandardRemove": -1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 2,
+							"seconds": 0.31578361699939705,
+							"timeline": [
+								["GetAsync", 4.9740992835722864e-05, 0.11568686799728312, true],
+								["UpdateAsync", 0.00026323398924432695, 0.3156613149913028, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 2,
+								"SetIncrementAsync": 1,
+								"StandardRead": 2,
+								"StandardWrite": 1,
+								"UpdateAsync": 2
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 2,
+							"seconds": 0.3324956930009648,
+							"timeline": [
+								["GetAsync", 5.249101377557963e-05, 0.0989531130035175, true],
+								["UpdateAsync", 0.00025440400349907577, 0.3323769609996816, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 2,
+								"SetIncrementAsync": 1,
+								"StandardRead": 2,
+								"StandardWrite": 1,
+								"UpdateAsync": 2
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 2,
+							"seconds": 0.3489061130094342,
+							"timeline": [
+								["GetAsync", 5.306000821292401e-05, 0.08210147501085885, true],
+								["UpdateAsync", 0.0002957340038847178, 0.34874857000249904, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"OrderedRead": -1,
+								"StandardRead": 1,
+								"StandardRemove": -1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 2,
+							"seconds": 0.349045834998833,
+							"timeline": [
+								["GetAsync", 5.5020995205268264e-05, 0.11553804599680008, true],
+								["UpdateAsync", 0.0003049249935429543, 0.34891892300220206, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2661630679940572,
+							"timeline": [
+								["UpdateAsync", 8.544100273866206e-05, 0.26606432600237895, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.3161875830119243,
+							"timeline": [
+								["UpdateAsync", 0.00010051100980490446, 0.3160975310020149, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.3329309589898912,
+							"timeline": [
+								["UpdateAsync", 8.311099372804165e-05, 0.3328337669954635, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.315980289989966,
+							"timeline": [
+								["UpdateAsync", 0.00010318199929315595, 0.31589308798720594, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.31626616399444174,
+							"timeline": [
+								["UpdateAsync", 8.380100189242512e-05, 0.316185553005198, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.3161141620075796,
+							"timeline": [
+								["UpdateAsync", 0.00014790199929848313, 0.3157209460041486, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.31665904000692535,
+							"timeline": [
+								["UpdateAsync", 0.0001234619994647801, 0.3163024050008971, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2498616289958591,
+							"timeline": [
+								["UpdateAsync", 0.00010862199997063726, 0.24953301399364136, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.3164196059951792,
+							"timeline": [
+								["UpdateAsync", 0.00013258200488053262, 0.3160572010092437, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2831797179969726,
+							"timeline": [
+								["UpdateAsync", 0.0001062219962477684, 0.2827794019976864, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 2,
+								"SetIncrementAsync": 1,
+								"StandardRead": 2,
+								"StandardWrite": 1,
+								"UpdateAsync": 2
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 2,
+							"seconds": 0.2995921590045328,
+							"timeline": [
+								["GetAsync", 0.00012774199421983212, 0.0993244080018485, true],
+								["UpdateAsync", 0.0005245380016276613, 0.2993539159942884, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"OrderedRead": -1,
+								"StandardRead": 1,
+								"StandardRemove": -1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 2,
+							"seconds": 0.2992644250043668,
+							"timeline": [
+								["GetAsync", 0.00014833200839348135, 0.11574443000426982, true],
+								["UpdateAsync", 0.0004107260028831661, 0.2990742020047037, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 2,
+								"SetIncrementAsync": 1,
+								"StandardRead": 2,
+								"StandardWrite": 1,
+								"UpdateAsync": 2
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 2,
+							"seconds": 0.29921953300072346,
+							"timeline": [
+								["GetAsync", 0.00030467400210909545, 0.11561428700224496, true],
+								["UpdateAsync", 0.0005482880078488961, 0.2990251910086954, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 2,
+								"SetIncrementAsync": 1,
+								"StandardRead": 2,
+								"StandardWrite": 1,
+								"UpdateAsync": 2
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 2,
+							"seconds": 0.2831042469915701,
+							"timeline": [
+								["GetAsync", 9.498199506197123e-05, 0.11611396499210969, true],
+								["UpdateAsync", 0.000360834994353354, 0.2828882539906772, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRead": 1,
+								"StandardRemove": -1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 2,
+							"seconds": 0.3495980330044404,
+							"timeline": [
+								["GetAsync", 0.0003255440096836537, 0.08271769400744233, true],
+								["UpdateAsync", 0.0005837880016770214, 0.3494170799967833, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.34990404700511135,
+							"timeline": [
+								["UpdateAsync", 0.0001212210045196116, 0.34948784099833574, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.38229368400061503,
+							"timeline": [
+								["UpdateAsync", 7.039100455585867e-05, 0.3819794690061826, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3324955229909392,
+							"timeline": [
+								["UpdateAsync", 7.100099173840135e-05, 0.33213717699982226, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3158935389947146,
+							"timeline": [
+								["UpdateAsync", 7.616099901497364e-05, 0.3154989229951753, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.2999689449934522,
+							"timeline": [
+								["UpdateAsync", 0.00010058098996523768, 0.29955142899416387, true]
+							]
+						}
+					],
+					"truncated": false
+				},
+				"seconds": 42.49822295499325
+			}
+		},
+		{
+			"library": "ProfileStore",
+			"mode": "perf",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531331053,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531288977
+				},
+				"library": "ProfileStore",
+				"mode": "perf",
+				"requestsTotal": 25,
+				"result": {
+					"gap": 8,
+					"iterations": 5,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.24986163299763575,
+							"timeline": [
+								["UpdateAsync", 2.517702523618937e-05, 0.2495854549924843, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.33244950900552794,
+							"timeline": [
+								["UpdateAsync", 1.970696030184627e-05, 0.3323151670047082, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.2992930089822039,
+							"timeline": [
+								["UpdateAsync", 1.946598058566451e-05, 0.2991526550031267, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.3158385920105502,
+							"timeline": [
+								["UpdateAsync", 2.391502493992448e-05, 0.3157001530053094, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.28268887498416007,
+							"timeline": [
+								["UpdateAsync", 1.732201781123877e-05, 0.28251679200911894, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.24962343595689165,
+							"timeline": [
+								["UpdateAsync", 2.620898885652423e-05, 0.2495822389610112, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2827681439812295,
+							"timeline": [
+								["UpdateAsync", 2.832402242347598e-05, 0.28272701700916514, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.23290652100695297,
+							"timeline": [
+								["UpdateAsync", 2.2711989004164938e-05, 0.23284693900495768, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2661103500286117,
+							"timeline": [
+								["UpdateAsync", 2.8353009838610888e-05, 0.2660670590121299, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2329986530239694,
+							"timeline": [
+								["UpdateAsync", 2.6660040020942688e-05, 0.2329402540344745, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetSortedAsync": -1,
+								"GetVersionAsync": -1,
+								"ListAsync": -1,
+								"OrderedList": -1,
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"RemoveVersionAsync": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardList": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.283994173980318,
+							"timeline": [
+								["UpdateAsync", 0.00010806298814713956, 0.2839532769867219, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2995042949914932,
+							"timeline": [
+								["UpdateAsync", 9.017001139000058e-05, 0.29945754801156, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.24946972803445536,
+							"timeline": [
+								["UpdateAsync", 6.774801295250654e-05, 0.2494132820283994, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.3161866159643978,
+							"timeline": [
+								["UpdateAsync", 8.280598558485508e-05, 0.31613973795901984, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2826687269844115,
+							"timeline": [
+								["UpdateAsync", 0.00011155899846926332, 0.2826201559510082, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.29973969695856795,
+							"timeline": [
+								["UpdateAsync", 2.690096152946353e-05, 0.29958165995776653, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.2663225580472499,
+							"timeline": [
+								["UpdateAsync", 2.349400892853737e-05, 0.2662093050312251, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.24936404899926856,
+							"timeline": [
+								["UpdateAsync", 1.7412006855010986e-05, 0.2492174640065059, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.28301753202686086,
+							"timeline": [
+								["UpdateAsync", 2.465600846335292e-05, 0.2828702449915, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.21598458103835583,
+							"timeline": [
+								["UpdateAsync", 2.0648993086069822e-05, 0.21582834800938144, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.29959107801551,
+							"timeline": [
+								["UpdateAsync", 9.673199383541942e-05, 0.2995477369986475, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.2829297169810161,
+							"timeline": [
+								["UpdateAsync", 7.635302608832717e-05, 0.2828855040133931, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.2659238100168295,
+							"timeline": [
+								["UpdateAsync", 6.477098213508725e-05, 0.2658822819939815, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.2329454839928076,
+							"timeline": [
+								["UpdateAsync", 7.720495341345668e-05, 0.23289357696194204, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.2658007289865054,
+							"timeline": [
+								["UpdateAsync", 9.288400178775193e-05, 0.2657504450180568, true]
+							]
+						}
+					],
+					"truncated": false
+				},
+				"seconds": 42.07651982596144
+			}
+		},
+		{
+			"library": "ProfileService",
+			"mode": "perf",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531379528,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531337006
+				},
+				"library": "ProfileService",
+				"mode": "perf",
+				"requestsTotal": 25,
+				"result": {
+					"gap": 8,
+					"iterations": 5,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.3660286089871079,
+							"timeline": [
+								["UpdateAsync", 3.6989920772612095e-05, 0.3659834179561585, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.3990130149759352,
+							"timeline": [
+								["UpdateAsync", 2.1141022443771366e-05, 0.39897094399202615, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.29888403695076704,
+							"timeline": [
+								["UpdateAsync", 2.322997897863388e-05, 0.2988363360054791, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.299226832925342,
+							"timeline": [
+								["UpdateAsync", 2.095999661833048e-05, 0.29916878091171384, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.3321653679013252,
+							"timeline": [
+								["UpdateAsync", 2.3420900106430057e-05, 0.33210823696572334, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2995800690259785,
+							"timeline": [
+								["UpdateAsync", 2.8160051442682743e-05, 0.299505528062582, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.314508984098211,
+							"timeline": [
+								["UpdateAsync", 2.7531059458851818e-05, 0.31444084306713194, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.33410334202926606,
+							"timeline": [
+								["UpdateAsync", 2.134102396667004e-05, 0.3340166809502989, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.3472083839587867,
+							"timeline": [
+								["UpdateAsync", 3.289000596851111e-05, 0.3471449629869312, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2325354489730671,
+							"timeline": [
+								["UpdateAsync", 2.1619955077767372e-05, 0.23242766689509153, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetSortedAsync": -1,
+								"GetVersionAsync": -1,
+								"ListAsync": -1,
+								"OrderedList": -1,
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"RemoveVersionAsync": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardList": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2661996460519731,
+							"timeline": [
+								["UpdateAsync", 3.423099406063557e-05, 0.2661053449846804, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2993961960310117,
+							"timeline": [
+								["UpdateAsync", 3.935093991458416e-05, 0.2993091549724341, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.36606250994373113,
+							"timeline": [
+								["UpdateAsync", 3.107101656496525e-05, 0.3659958189819008, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.34909491799771786,
+							"timeline": [
+								["UpdateAsync", 2.627994399517775e-05, 0.349047546973452, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.34919604007154703,
+							"timeline": [
+								["UpdateAsync", 3.350002225488424e-05, 0.3491254789987579, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.3661504209740088,
+							"timeline": [
+								["UpdateAsync", 2.8319889679551128e-05, 0.3661035499535501, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.3828859180212021,
+							"timeline": [
+								["UpdateAsync", 2.9469956643879417e-05, 0.38284118694718927, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.366252182982862,
+							"timeline": [
+								["UpdateAsync", 2.859998494386673e-05, 0.36620409204624593, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.33254368393681943,
+							"timeline": [
+								["UpdateAsync", 2.225092612206936e-05, 0.3324969339882955, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.2824595749843866,
+							"timeline": [
+								["UpdateAsync", 2.3580039851367477e-05, 0.28241951402742416, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3329319809563458,
+							"timeline": [
+								["UpdateAsync", 2.8949929401278496e-05, 0.3328460099874065, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3495017350651324,
+							"timeline": [
+								["UpdateAsync", 3.056006971746683e-05, 0.3494382840581238, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3661130899563432,
+							"timeline": [
+								["UpdateAsync", 2.7401023544371128e-05, 0.3660488890018314, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3326378660276532,
+							"timeline": [
+								["UpdateAsync", 2.0640087313950065e-05, 0.33256601507309824, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3658171249553561,
+							"timeline": [
+								["UpdateAsync", 3.662100061774254e-05, 0.3657430140301585, true]
+							]
+						}
+					],
+					"truncated": false
+				},
+				"seconds": 42.52197309199255
+			}
+		},
+		{
+			"library": "Lapis",
+			"mode": "perf",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531386632,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531385621
+				},
+				"library": "Lapis",
+				"mode": "perf",
+				"notRunnable": "RunService.PostSimulation didn't fire in this task, and Lapis sends its DataStore requests from that event"
+			}
+		},
+		{
+			"library": "DataStore2",
+			"logTail": ["player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2"],
+			"mode": "perf",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531432236,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531390894
+				},
+				"library": "DataStore2",
+				"mode": "perf",
+				"requestsTotal": 25,
+				"result": {
+					"gap": 8,
+					"iterations": 5,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.11627446301281452,
+							"timeline": [
+								["GetAsync", 0.00019525602692738175, 0.11620847904123366, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"SetIncrementAsync": -1,
+								"StandardRemove": -1,
+								"StandardWrite": -1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.09918827301589772,
+							"timeline": [
+								["GetAsync", 0.00013171700993552804, 0.09913927101297304, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.11599852598737924,
+							"timeline": [
+								["GetAsync", 0.00012042600428685546, 0.11594193999189883, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.11588938103523105,
+							"timeline": [
+								["GetAsync", 0.0001429180265404284, 0.11583627201616764, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "loadNew",
+							"requests": 1,
+							"seconds": 0.09920907096238808,
+							"timeline": [
+								["GetAsync", 0.00013961101649329066, 0.0991635259706527, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2997462350176648,
+							"timeline": [
+								["UpdateAsync", 0.01635299698682502, 0.2996775869978592, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.33259756898041815,
+							"timeline": [
+								["UpdateAsync", 0.015864239947404712, 0.3325199539540336, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.3825651709921658,
+							"timeline": [
+								["UpdateAsync", 0.01583483599824831, 0.3824996990151704, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.36589614202966914,
+							"timeline": [
+								["UpdateAsync", 0.015913623035885397, 0.36583753203740343, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.2991792520042509,
+							"timeline": [
+								["UpdateAsync", 0.015849792980588973, 0.2991219650139101, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2997140340157785,
+							"timeline": [
+								["UpdateAsync", 0.016313121013808995, 0.2996069439686835, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.3164444880094379,
+							"timeline": [
+								["UpdateAsync", 0.01632761798100546, 0.3163277090061456, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetSortedAsync": -1,
+								"GetVersionAsync": -1,
+								"ListAsync": -1,
+								"OrderedList": -1,
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"RemoveVersionAsync": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardList": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.26625703601166606,
+							"timeline": [
+								["UpdateAsync", 0.0162347549921833, 0.26617733598686755, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.26630790100898594,
+							"timeline": [
+								["UpdateAsync", 0.016245054022874683, 0.2662033949745819, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.3163866000249982,
+							"timeline": [
+								["UpdateAsync", 0.016317380010150373, 0.31627619301434606, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.06638564897002652,
+							"timeline": [
+								["GetAsync", 0.00013735698303207755, 0.06631090899463743, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.04961962898960337,
+							"timeline": [
+								["GetAsync", 0.0001488489797338843, 0.04956181097077206, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.06626061501447111,
+							"timeline": [
+								["GetAsync", 0.00015910901129245758, 0.06619705603225157, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.04963973700068891,
+							"timeline": [
+								["GetAsync", 0.0001444809604436159, 0.04957105795620009, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"SetIncrementAsync": -1,
+								"StandardRemove": -1,
+								"StandardWrite": -1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"check": "read back the released value",
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 0.06633393198717386,
+							"timeline": [
+								["GetAsync", 0.00013109599240124226, 0.06627221696544439, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3664521949831397,
+							"timeline": [
+								["UpdateAsync", 0.01628435798920691, 0.3663276110310108, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.28243026504060254,
+							"timeline": [
+								["UpdateAsync", 0.01573478803038597, 0.28234052599873394, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.34965839196229354,
+							"timeline": [
+								["UpdateAsync", 0.016268947976641357, 0.34955465799430385, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.3325414850260131,
+							"timeline": [
+								["UpdateAsync", 0.015815440041478723, 0.3324418190168217, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": 1,
+								"SetIncrementAsync": 1,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "releaseAgain",
+							"requests": 1,
+							"seconds": 0.26633664401015267,
+							"timeline": [
+								["UpdateAsync", 0.016262356017250568, 0.2662257160409354, true]
+							]
+						}
+					],
+					"truncated": false
+				},
+				"seconds": 41.34172964398749
+			}
+		},
+		{
+			"library": "Geode",
+			"mode": "hold",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531475910,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531437618
+				},
+				"library": "Geode",
+				"mode": "hold",
+				"requestsTotal": 12,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"goSeenAfterMs": 54,
+							"ok": true,
+							"releaseSeconds": 0.2337144580669701
+						},
+						{
+							"attempt": 2,
+							"goSeenAfterMs": 121,
+							"ok": true,
+							"releaseSeconds": 0.2836638690205291
+						},
+						{
+							"attempt": 3,
+							"goSeenAfterMs": 37,
+							"ok": true,
+							"releaseSeconds": 0.2504180140094832
+						}
+					],
+					"joinerMissing": false,
+					"keep": {
+						"joinerDone": true,
+						"lost": "released",
+						"lostAt": 1792531475276,
+						"ok": true
+					},
+					"messaging": {
+						"heard": {
+							"hold": 10,
+							"join": 10
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 38.292311268043704
+			}
+		},
+		{
+			"library": "Geode",
+			"mode": "join",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531475873,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531437988
+				},
+				"library": "Geode",
+				"mode": "join",
+				"requestsTotal": 16,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 1,
+									"OrderedRead": -1,
+									"OrderedRemove": -1,
+									"OrderedWrite": -1,
+									"SetIncrementSortedAsync": -1,
+									"StandardRead": 1,
+									"StandardRemove": -1,
+									"UpdateAsync": 1
+								},
+								"byMethod": {
+									"GetAsync (no cache)": 1,
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 3,
+								"seconds": 0.6165386900538579,
+								"timeline": [
+									["UpdateAsync", 0.03325304004829377, 0.08311522495932877, true],
+									["GetAsync (no cache)", 0.3673078760039062, 0.3997625110205263, true],
+									["UpdateAsync", 0.3998745169956237, 0.6164433490484953, true]
+								]
+							}
+						},
+						{
+							"attempt": 2,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 1,
+									"OrderedRead": -1,
+									"StandardRead": 1,
+									"StandardRemove": -1,
+									"UpdateAsync": 1
+								},
+								"byMethod": {
+									"GetAsync (no cache)": 1,
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 3,
+								"seconds": 0.6498228879645467,
+								"timeline": [
+									["UpdateAsync", 6.543693598359823e-05, 0.03306931792758405, true],
+									["GetAsync (no cache)", 0.4331483989953995, 0.4663977340096608, true],
+									["UpdateAsync", 0.466496450942941, 0.6497307609533891, true]
+								]
+							}
+						},
+						{
+							"attempt": 3,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 1,
+									"OrderedRead": -1,
+									"OrderedRemove": -1,
+									"OrderedWrite": -1,
+									"SetIncrementSortedAsync": -1,
+									"StandardRead": 1,
+									"StandardRemove": -1,
+									"UpdateAsync": 1
+								},
+								"byMethod": {
+									"GetAsync (no cache)": 1,
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 3,
+								"seconds": 0.6332021760754287,
+								"timeline": [
+									["UpdateAsync", 6.333400961011648e-05, 0.033104200032539666, true],
+									["GetAsync (no cache)", 0.3665639020036906, 0.3997532579815015, true],
+									["UpdateAsync", 0.39983145403675735, 0.6330913710407913, true]
+								]
+							}
+						}
+					],
+					"holderMissing": false,
+					"keep": {
+						"coins": 999,
+						"sameJobId": false,
+						"step": {
+							"budgetUsed": {
+								"GetAsync": 1,
+								"OrderedRead": -1,
+								"StandardRead": 1,
+								"StandardRemove": -1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync (no cache)": 1,
+								"UpdateAsync": 2
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "keepLoad",
+							"requests": 3,
+							"seconds": 0.733035757089965,
+							"timeline": [
+								["UpdateAsync", 7.519207429140806e-05, 0.03297820303123444, true],
+								["GetAsync (no cache)", 0.4830430520232767, 0.5162979250308126, true],
+								["UpdateAsync", 0.5164293800480664, 0.732946845004335, true]
+							]
+						}
+					},
+					"messaging": {
+						"heard": {
+							"hold": 9,
+							"join": 10
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 37.88485659903381
+			}
+		},
+		{
+			"library": "GeodeMail",
+			"mode": "hold",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531523417,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531486113
+				},
+				"library": "GeodeMail",
+				"mode": "hold",
+				"requestsTotal": 16,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"goSeenAfterMs": 213,
+							"ok": true,
+							"releaseSeconds": 0.2504947150009684
+						},
+						{
+							"attempt": 2,
+							"goSeenAfterMs": 246,
+							"ok": true,
+							"releaseSeconds": 0.05061115599528421
+						},
+						{
+							"attempt": 3,
+							"goSeenAfterMs": 296,
+							"ok": true,
+							"releaseSeconds": 0.03378366399556399
+						}
+					],
+					"joinerMissing": false,
+					"keep": {
+						"joinerDone": true,
+						"lost": "released",
+						"lostAt": 1792531522984,
+						"ok": true
+					},
+					"messaging": {
+						"heard": {
+							"hold": 10,
+							"join": 10
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 37.3039512129908
+			}
+		},
+		{
+			"library": "GeodeMail",
+			"mode": "join",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531523571,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531486632
+				},
+				"library": "GeodeMail",
+				"mode": "join",
+				"requestsTotal": 24,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 3,
+									"OrderedRead": -1,
+									"OrderedRemove": -1,
+									"OrderedWrite": -1,
+									"SetIncrementSortedAsync": -1,
+									"StandardRead": 3,
+									"StandardRemove": -1,
+									"UpdateAsync": 3
+								},
+								"byMethod": {
+									"GetAsync": 2,
+									"GetAsync (no cache)": 1,
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 5,
+								"seconds": 0.7496910090558231,
+								"timeline": [
+									["GetAsync", 0.03298960602842271, 0.11622410302516072, true],
+									["UpdateAsync", 0.03323150600772351, 0.06622538797091693, true],
+									["GetAsync (no cache)", 0.4663110190303996, 0.4995476830517873, true],
+									["GetAsync", 0.49965567397885025, 0.5828590750461444, true],
+									["UpdateAsync", 0.4998509839642793, 0.7495560790412128, true]
+								]
+							}
+						},
+						{
+							"attempt": 2,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 4,
+									"SetIncrementAsync": 1,
+									"StandardRead": 4,
+									"StandardWrite": 1,
+									"UpdateAsync": 4
+								},
+								"byMethod": {
+									"GetAsync": 2,
+									"GetAsync (no cache)": 1,
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 5,
+								"seconds": 0.5664574899710715,
+								"timeline": [
+									["GetAsync", 7.67239835113287e-05, 0.0663377259625122, true],
+									["UpdateAsync", 0.0002692309208214283, 0.03299767791759223, true],
+									["GetAsync (no cache)", 0.34975783596746624, 0.3829599479213357, true],
+									["GetAsync", 0.3830759609118104, 0.4663321810076013, true],
+									["UpdateAsync", 0.383281186921522, 0.5663237909320742, true]
+								]
+							}
+						},
+						{
+							"attempt": 3,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 4,
+									"SetIncrementAsync": 1,
+									"StandardRead": 4,
+									"StandardWrite": 1,
+									"UpdateAsync": 4
+								},
+								"byMethod": {
+									"GetAsync": 2,
+									"GetAsync (no cache)": 1,
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 5,
+								"seconds": 0.5998271920252591,
+								"timeline": [
+									["GetAsync", 5.703500937670469e-05, 0.08302757900673896, true],
+									["UpdateAsync", 0.00022960198111832145, 0.03303035697899759, true],
+									["GetAsync (no cache)", 0.3998056340496987, 0.4330423780484125, true],
+									["GetAsync", 0.4331697269808501, 0.5330279889749363, true],
+									["UpdateAsync", 0.4333837360609323, 0.5997172390343621, true]
+								]
+							}
+						}
+					],
+					"holderMissing": false,
+					"keep": {
+						"coins": 999,
+						"sameJobId": false,
+						"step": {
+							"budgetUsed": {
+								"GetAsync": 4,
+								"SetIncrementAsync": 1,
+								"StandardRead": 4,
+								"StandardWrite": 1,
+								"UpdateAsync": 4
+							},
+							"byMethod": {
+								"GetAsync": 2,
+								"GetAsync (no cache)": 1,
+								"UpdateAsync": 2
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "keepLoad",
+							"requests": 5,
+							"seconds": 0.6831349590793252,
+							"timeline": [
+								["GetAsync", 5.470204632729292e-05, 0.06639826600439847, true],
+								["UpdateAsync", 0.00021438999101519585, 0.032995925983414054, true],
+								["GetAsync (no cache)", 0.3664380150148645, 0.3997024199925363, true],
+								["GetAsync", 0.3998055240372196, 0.4663790710037574, true],
+								["UpdateAsync", 0.40000744501594454, 0.6830280399881303, true]
+							]
+						}
+					},
+					"messaging": {
+						"heard": {
+							"hold": 9,
+							"join": 10
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 36.93896341393702
+			}
+		},
+		{
+			"library": "ProfileStore",
+			"mode": "hold",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531585434,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531536293
+				},
+				"library": "ProfileStore",
+				"mode": "hold",
+				"requestsTotal": 12,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"goSeenAfterMs": 188,
+							"ok": true,
+							"releaseSeconds": 0.7501964890107047
+						},
+						{
+							"attempt": 2,
+							"goSeenAfterMs": 388,
+							"ok": true,
+							"releaseSeconds": 0.7661502650007606
+						},
+						{
+							"attempt": 3,
+							"goSeenAfterMs": 204,
+							"ok": true,
+							"releaseSeconds": 0.9335883349995128
+						}
+					],
+					"joinerMissing": false,
+					"keep": {
+						"joinerDone": true,
+						"lost": "OnLastSave: External",
+						"lostAt": 1792531580011,
+						"ok": true
+					},
+					"messaging": {
+						"heard": {
+							"hold": 10,
+							"join": 9
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 49.14089201499883
+			}
+		},
+		{
+			"library": "ProfileStore",
+			"mode": "join",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531585313,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531535880
+				},
+				"library": "ProfileStore",
+				"mode": "join",
+				"requestsTotal": 12,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": -4,
+									"GetSortedAsync": -1,
+									"GetVersionAsync": -1,
+									"ListAsync": -1,
+									"OrderedList": -1,
+									"OrderedRead": -6,
+									"OrderedRemove": -3,
+									"OrderedWrite": -3,
+									"RemoveVersionAsync": -1,
+									"SetIncrementAsync": -4,
+									"SetIncrementSortedAsync": -3,
+									"StandardList": -1,
+									"StandardRead": -4,
+									"StandardRemove": -6,
+									"StandardWrite": -4,
+									"UpdateAsync": -4
+								},
+								"byMethod": {
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 2,
+								"seconds": 5.549651190056466,
+								"timeline": [
+									["UpdateAsync", 2.3415079340338707e-05, 0.2837757560191676, true],
+									["UpdateAsync", 5.299558796104975, 5.549525894108228, true]
+								]
+							}
+						},
+						{
+							"attempt": 2,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": -3,
+									"GetSortedAsync": -1,
+									"GetVersionAsync": -1,
+									"ListAsync": -1,
+									"OrderedList": -1,
+									"OrderedRead": -5,
+									"OrderedRemove": -2,
+									"OrderedWrite": -2,
+									"RemoveVersionAsync": -1,
+									"SetIncrementAsync": -3,
+									"SetIncrementSortedAsync": -2,
+									"StandardList": -1,
+									"StandardRead": -3,
+									"StandardRemove": -5,
+									"StandardWrite": -3,
+									"UpdateAsync": -3
+								},
+								"byMethod": {
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 2,
+								"seconds": 5.566357349045575,
+								"timeline": [
+									["UpdateAsync", 2.210307866334915e-05, 0.28306680102832615, true],
+									["UpdateAsync", 5.299595089047216, 5.566200505010784, true]
+								]
+							}
+						},
+						{
+							"attempt": 3,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": -4,
+									"GetSortedAsync": -1,
+									"GetVersionAsync": -1,
+									"ListAsync": -1,
+									"OrderedList": -1,
+									"OrderedRead": -6,
+									"OrderedRemove": -3,
+									"OrderedWrite": -3,
+									"RemoveVersionAsync": -1,
+									"SetIncrementAsync": -4,
+									"SetIncrementSortedAsync": -3,
+									"StandardList": -1,
+									"StandardRead": -4,
+									"StandardRemove": -6,
+									"StandardWrite": -4,
+									"UpdateAsync": -4
+								},
+								"byMethod": {
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 2,
+								"seconds": 5.54954641405493,
+								"timeline": [
+									["UpdateAsync", 2.500705886632204e-05, 0.2163010120857507, true],
+									["UpdateAsync", 5.232755110017024, 5.549395890091546, true]
+								]
+							}
+						}
+					],
+					"holderMissing": false,
+					"keep": {
+						"coins": 999,
+						"sameJobId": false,
+						"step": {
+							"budgetUsed": {
+								"GetAsync": -4,
+								"GetSortedAsync": -1,
+								"GetVersionAsync": -1,
+								"ListAsync": -1,
+								"OrderedList": -1,
+								"OrderedRead": -6,
+								"OrderedRemove": -3,
+								"OrderedWrite": -3,
+								"RemoveVersionAsync": -1,
+								"SetIncrementAsync": -4,
+								"SetIncrementSortedAsync": -3,
+								"StandardList": -1,
+								"StandardRead": -4,
+								"StandardRemove": -6,
+								"StandardWrite": -4,
+								"UpdateAsync": -4
+							},
+							"byMethod": {
+								"UpdateAsync": 2
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "keepLoad",
+							"requests": 2,
+							"seconds": 5.548592214938253,
+							"timeline": [
+								["UpdateAsync", 2.7290894649922848e-05, 0.31527871498838067, true],
+								["UpdateAsync", 5.331823747954331, 5.548447689972818, true]
+							]
+						}
+					},
+					"messaging": {
+						"heard": {
+							"hold": 10,
+							"join": 10
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 49.43292932107579
+			}
+		},
+		{
+			"library": "ProfileService",
+			"mode": "hold",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531686778,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531594961
+				},
+				"library": "ProfileService",
+				"mode": "hold",
+				"requestsTotal": 12,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"goSeenAfterMs": 165,
+							"ok": true,
+							"releaseSeconds": 0.4988002260070062
+						},
+						{
+							"attempt": 2,
+							"goSeenAfterMs": 330,
+							"ok": true,
+							"releaseSeconds": 0.3672887619904941
+						},
+						{
+							"attempt": 3,
+							"goSeenAfterMs": 380,
+							"ok": true,
+							"releaseSeconds": 0.3172871700080578
+						}
+					],
+					"joinerMissing": false,
+					"keep": {
+						"joinerDone": true,
+						"lost": "ListenToRelease",
+						"lostAt": 1792531680610,
+						"ok": true
+					},
+					"messaging": {
+						"heard": {
+							"hold": 10,
+							"join": 9
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 91.81640163798876
+			}
+		},
+		{
+			"library": "ProfileService",
+			"mode": "join",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531693613,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531594995
+				},
+				"library": "ProfileService",
+				"mode": "join",
+				"requestsTotal": 14,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": -5,
+									"GetSortedAsync": -1,
+									"GetVersionAsync": -1,
+									"ListAsync": -1,
+									"OrderedList": -1,
+									"OrderedRead": -7,
+									"OrderedRemove": -3,
+									"OrderedWrite": -3,
+									"RemoveVersionAsync": -1,
+									"SetIncrementAsync": -5,
+									"SetIncrementSortedAsync": -3,
+									"StandardList": -1,
+									"StandardRead": -5,
+									"StandardRemove": -7,
+									"StandardWrite": -5,
+									"UpdateAsync": -5
+								},
+								"byMethod": {
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 2,
+								"seconds": 7.266234705923125,
+								"timeline": [
+									["UpdateAsync", 1.9167782738804817e-05, 0.2997530838474632, true],
+									["UpdateAsync", 7.016215419862419, 7.266189088812098, true]
+								]
+							}
+						},
+						{
+							"attempt": 2,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": -5,
+									"OrderedRead": -7,
+									"OrderedRemove": -3,
+									"OrderedWrite": -3,
+									"SetIncrementAsync": -5,
+									"SetIncrementSortedAsync": -3,
+									"StandardRead": -5,
+									"StandardRemove": -7,
+									"StandardWrite": -5,
+									"UpdateAsync": -5
+								},
+								"byMethod": {
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 2,
+								"seconds": 7.282792829209939,
+								"timeline": [
+									["UpdateAsync", 1.665414310991764e-05, 0.21637268410995605, true],
+									["UpdateAsync", 7.016115000005812, 7.282754081068561, true]
+								]
+							}
+						},
+						{
+							"attempt": 3,
+							"coins": 888,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": -5,
+									"GetSortedAsync": -1,
+									"GetVersionAsync": -1,
+									"ListAsync": -1,
+									"OrderedList": -1,
+									"OrderedRead": -6,
+									"OrderedRemove": -3,
+									"OrderedWrite": -3,
+									"RemoveVersionAsync": -1,
+									"SetIncrementAsync": -5,
+									"SetIncrementSortedAsync": -3,
+									"StandardList": -1,
+									"StandardRead": -5,
+									"StandardRemove": -6,
+									"StandardWrite": -5,
+									"UpdateAsync": -5
+								},
+								"byMethod": {
+									"UpdateAsync": 2
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 2,
+								"seconds": 7.29951695818454,
+								"timeline": [
+									["UpdateAsync", 1.892796717584133e-05, 0.2830753040034324, true],
+									["UpdateAsync", 7.016154729994014, 7.299481165129691, true]
+								]
+							}
+						}
+					],
+					"holderMissing": false,
+					"keep": {
+						"coins": 999,
+						"sameJobId": false,
+						"step": {
+							"budgetUsed": {
+								"GetAsync": 1,
+								"GetSortedAsync": -2,
+								"GetVersionAsync": -2,
+								"ListAsync": -2,
+								"OrderedList": -2,
+								"OrderedRemove": -10,
+								"OrderedWrite": -10,
+								"RemoveVersionAsync": -2,
+								"SetIncrementAsync": 1,
+								"SetIncrementSortedAsync": -10,
+								"StandardList": -2,
+								"StandardRead": 1,
+								"StandardWrite": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 4
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "keepLoad",
+							"requests": 4,
+							"seconds": 21.265540175838396,
+							"timeline": [
+								["UpdateAsync", 1.7565907910466198e-05, 0.1830187370069325, true],
+								["UpdateAsync", 7.016095943050459, 7.2994108509738, true],
+								["UpdateAsync", 14.032502034911886, 14.315780178876594, true],
+								["UpdateAsync", 21.03298955084756, 21.265500106848776, true]
+							]
+						}
+					},
+					"messaging": {
+						"heard": {
+							"hold": 10,
+							"join": 10
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 98.6181753850542
+			}
+		},
+		{
+			"library": "Lapis",
+			"mode": "hold",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531696518,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531695514
+				},
+				"library": "Lapis",
+				"mode": "hold",
+				"notRunnable": "RunService.PostSimulation didn't fire in this task, and Lapis sends its DataStore requests from that event"
+			}
+		},
+		{
+			"library": "Lapis",
+			"mode": "join",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531698994,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531697982
+				},
+				"library": "Lapis",
+				"mode": "join",
+				"notRunnable": "RunService.PostSimulation didn't fire in this task, and Lapis sends its DataStore requests from that event"
+			}
+		},
+		{
+			"library": "DataStore2",
+			"logTail": ["player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2"],
+			"mode": "hold",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531744903,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531707310
+				},
+				"library": "DataStore2",
+				"mode": "hold",
+				"requestsTotal": 12,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"goSeenAfterMs": 104,
+							"ok": true,
+							"releaseSeconds": 0.3670577589655295
+						},
+						{
+							"attempt": 2,
+							"goSeenAfterMs": 220,
+							"ok": true,
+							"releaseSeconds": 0.21693501505069435
+						},
+						{
+							"attempt": 3,
+							"goSeenAfterMs": 154,
+							"ok": true,
+							"releaseSeconds": 0.4670399739407003
+						}
+					],
+					"joinerMissing": false,
+					"keep": {
+						"joinerDone": true,
+						"ok": true
+					},
+					"messaging": {
+						"heard": {
+							"hold": 10,
+							"join": 10
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 37.59259829693474
+			}
+		},
+		{
+			"library": "DataStore2",
+			"logTail": ["player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2", "player left, saved GeodeStudioCheck_Bench_DataStore2"],
+			"mode": "join",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531744716,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531707814
+				},
+				"library": "DataStore2",
+				"mode": "join",
+				"requestsTotal": 8,
+				"result": {
+					"attempts": [
+						{
+							"attempt": 1,
+							"coins": 777,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 1,
+									"StandardRead": 1,
+									"UpdateAsync": 1
+								},
+								"byMethod": {
+									"GetAsync": 1
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 1,
+								"seconds": 0.0664456450031139,
+								"timeline": [
+									["GetAsync", 0.00022520602215081453, 0.06635600602021441, true]
+								]
+							}
+						},
+						{
+							"attempt": 2,
+							"coins": 777,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 1,
+									"StandardRead": 1,
+									"UpdateAsync": 1
+								},
+								"byMethod": {
+									"GetAsync": 1
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 1,
+								"seconds": 0.04972352297045291,
+								"timeline": [
+									["GetAsync", 0.00020883698016405103, 0.04964354395633564, true]
+								]
+							}
+						},
+						{
+							"attempt": 3,
+							"coins": 777,
+							"sameJobId": false,
+							"step": {
+								"budgetUsed": {
+									"GetAsync": 1,
+									"StandardRead": 1,
+									"UpdateAsync": 1
+								},
+								"byMethod": {
+									"GetAsync": 1
+								},
+								"failedRequests": 0,
+								"ok": true,
+								"op": "hopLoad",
+								"requests": 1,
+								"seconds": 0.06648182502249256,
+								"timeline": [
+									["GetAsync", 0.0018531609675846996, 0.06638761598151177, true]
+								]
+							}
+						}
+					],
+					"holderMissing": false,
+					"keep": {
+						"coins": 777,
+						"sameJobId": false,
+						"step": {
+							"budgetUsed": {
+								"GetAsync": 1,
+								"StandardRead": 1,
+								"UpdateAsync": 1
+							},
+							"byMethod": {
+								"GetAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "keepLoad",
+							"requests": 1,
+							"seconds": 0.06652432301780209,
+							"timeline": [
+								["GetAsync", 0.00019244698341935873, 0.06643054401502013, true]
+							]
+						}
+					},
+					"messaging": {
+						"heard": {
+							"hold": 9,
+							"join": 10
+						},
+						"sent": 10,
+						"subscribed": true
+					}
+				},
+				"seconds": 36.901852540962864
+			}
+		},
+		{
+			"library": "Geode",
+			"logTail": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-123", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-124", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-147", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-148", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-149", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-150", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-151", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-152", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_Geode"],
+			"mode": "throttle",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531791169,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531755796
+				},
+				"library": "Geode",
+				"mode": "throttle",
+				"requestsTotal": 3,
+				"result": {
+					"budgetsAfterBurst": {
+						"GetAsync": 0,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 121,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 121,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 0,
+						"StandardRemove": 121,
+						"StandardWrite": 121,
+						"UpdateAsync": 0
+					},
+					"budgetsBefore": {
+						"GetAsync": 121,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 121,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 121,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 121,
+						"StandardRemove": 121,
+						"StandardWrite": 121,
+						"UpdateAsync": 121
+					},
+					"burst": {
+						"errors": ["StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full."],
+						"failed": 9,
+						"ok": 152,
+						"pending": 0,
+						"sent": 161
+					},
+					"seconds": 34.360520203830674,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": -30,
+								"GetSortedAsync": -2,
+								"GetVersionAsync": -2,
+								"ListAsync": -2,
+								"OrderedList": -2,
+								"OrderedRead": -32,
+								"OrderedRemove": -16,
+								"OrderedWrite": -16,
+								"RemoveVersionAsync": -2,
+								"SetIncrementAsync": -31,
+								"SetIncrementSortedAsync": -16,
+								"StandardList": -2,
+								"StandardRemove": -32,
+								"StandardWrite": -31,
+								"UpdateAsync": -30
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 32.89363519009203,
+							"timeline": [
+								["UpdateAsync", 32.610059283906594, 32.89349506190047, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": -2,
+								"OrderedRead": -2,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementAsync": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRead": -2,
+								"StandardRemove": -2,
+								"StandardWrite": -1,
+								"UpdateAsync": -2
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 1.249227195978165,
+							"timeline": [
+								["UpdateAsync", 1.015945479972288, 1.249160957057029, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"SetIncrementAsync": 1,
+								"StandardWrite": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.21625338401645425,
+							"timeline": [
+								["UpdateAsync", 4.982389509677887e-05, 0.2160337578970939, true]
+							]
+						}
+					],
+					"warnings": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-123", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-124", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-147"]
+				},
+				"seconds": 35.373801179928705
+			}
+		},
+		{
+			"library": "GeodeMail",
+			"logTail": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-122", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-123", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-124", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-147", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-148", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-149", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-150", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-151", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_GeodeMail"],
+			"mode": "throttle",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531828597,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531793298
+				},
+				"library": "GeodeMail",
+				"mode": "throttle",
+				"requestsTotal": 4,
+				"result": {
+					"budgetsAfterBurst": {
+						"GetAsync": 0,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 0,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 0
+					},
+					"budgetsBefore": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"burst": {
+						"errors": ["StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full."],
+						"failed": 9,
+						"ok": 151,
+						"pending": 0,
+						"sent": 160
+					},
+					"seconds": 34.29348502197536,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": -30,
+								"GetSortedAsync": -2,
+								"GetVersionAsync": -2,
+								"ListAsync": -2,
+								"OrderedList": -2,
+								"OrderedRead": -33,
+								"OrderedRemove": -16,
+								"OrderedWrite": -16,
+								"RemoveVersionAsync": -2,
+								"SetIncrementAsync": -32,
+								"SetIncrementSortedAsync": -16,
+								"StandardList": -2,
+								"StandardRemove": -33,
+								"StandardWrite": -32,
+								"UpdateAsync": -30
+							},
+							"byMethod": {
+								"GetAsync": 1,
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 2,
+							"seconds": 32.92623955401359,
+							"timeline": [
+								["GetAsync", 31.643001052027103, 31.74294467398431, true],
+								["UpdateAsync", 32.659647809981834, 32.926132025022525, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": -2,
+								"OrderedRead": -2,
+								"OrderedRemove": -1,
+								"OrderedWrite": -1,
+								"SetIncrementAsync": -1,
+								"SetIncrementSortedAsync": -1,
+								"StandardRead": -2,
+								"StandardRemove": -2,
+								"StandardWrite": -1,
+								"UpdateAsync": -2
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 1.182557819003705,
+							"timeline": [
+								["UpdateAsync", 1.0160048749530688, 1.1825039399554953, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"SetIncrementAsync": 1,
+								"StandardWrite": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.18295321200275796,
+							"timeline": [
+								["UpdateAsync", 5.81190106458962e-05, 0.18272346502635628, true]
+							]
+						}
+					],
+					"warnings": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-122", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-123", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-124", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146"]
+				},
+				"seconds": 35.29958238499239
+			}
+		},
+		{
+			"library": "ProfileStore",
+			"logTail": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-147", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-148", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-149", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-150", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-151", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-152", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileStore", "[ProfileStore]: DataStore API error (STORE:GeodeStudioCheck_Bench_ProfileStore; KEY:7d89ae32-throttle-1) - StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full.", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-throttle-1"],
+			"mode": "throttle",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531863885,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531831220
+				},
+				"library": "ProfileStore",
+				"mode": "throttle",
+				"requestsTotal": 4,
+				"result": {
+					"budgetsAfterBurst": {
+						"GetAsync": 0,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 121,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 121,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 0,
+						"StandardRemove": 121,
+						"StandardWrite": 121,
+						"UpdateAsync": 0
+					},
+					"budgetsBefore": {
+						"GetAsync": 121,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 121,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 121,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 121,
+						"StandardRemove": 121,
+						"StandardWrite": 121,
+						"UpdateAsync": 121
+					},
+					"burst": {
+						"errors": ["StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full."],
+						"failed": 9,
+						"ok": 152,
+						"pending": 0,
+						"sent": 161
+					},
+					"seconds": 31.63119080697652,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": -29,
+								"GetSortedAsync": -2,
+								"GetVersionAsync": -2,
+								"ListAsync": -2,
+								"OrderedList": -2,
+								"OrderedRead": -31,
+								"OrderedRemove": -16,
+								"OrderedWrite": -16,
+								"RemoveVersionAsync": -2,
+								"SetIncrementAsync": -30,
+								"SetIncrementSortedAsync": -16,
+								"StandardList": -2,
+								"StandardRemove": -31,
+								"StandardWrite": -30,
+								"UpdateAsync": -29
+							},
+							"byMethod": {
+								"UpdateAsync": 2
+							},
+							"failedRequests": 1,
+							"ok": true,
+							"op": "load",
+							"requests": 2,
+							"seconds": 31.16377373598516,
+							"timeline": [
+								["UpdateAsync", 2.4536042474210266e-05, 0.00029799097683280706, false],
+								["UpdateAsync", 1.0147623140364885, 31.163508375990208, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"SetIncrementAsync": 1,
+								"StandardWrite": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.18362896295730025,
+							"timeline": [
+								["UpdateAsync", 2.254301216453314e-05, 0.18357531202491376, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"SetIncrementAsync": 1,
+								"StandardWrite": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.2812449660850689,
+							"timeline": [
+								["UpdateAsync", 0.0001067310804501176, 0.2811786010861397, true]
+							]
+						}
+					],
+					"warnings": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-123", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-124", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-147"]
+				},
+				"seconds": 32.66540985403117
+			}
+		},
+		{
+			"library": "ProfileService",
+			"logTail": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-123", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-124", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-147", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-148", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-149", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-150", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-151", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-152", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: UpdateAsync, Data Store: GeodeStudioCheck_Bench_ProfileService", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-throttle-1"],
+			"mode": "throttle",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531909994,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 61,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531869521
+				},
+				"library": "ProfileService",
+				"mode": "throttle",
+				"requestsTotal": 3,
+				"result": {
+					"budgetsAfterBurst": {
+						"GetAsync": 0,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 121,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 121,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 0,
+						"StandardRemove": 121,
+						"StandardWrite": 121,
+						"UpdateAsync": 0
+					},
+					"budgetsBefore": {
+						"GetAsync": 121,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 121,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 121,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 121,
+						"StandardRemove": 121,
+						"StandardWrite": 121,
+						"UpdateAsync": 121
+					},
+					"burst": {
+						"errors": ["StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full."],
+						"failed": 9,
+						"ok": 152,
+						"pending": 0,
+						"sent": 161
+					},
+					"seconds": 39.45806350000203,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": -29,
+								"GetSortedAsync": -2,
+								"GetVersionAsync": -2,
+								"ListAsync": -2,
+								"OrderedList": -2,
+								"OrderedRead": -31,
+								"OrderedRemove": -16,
+								"OrderedWrite": -16,
+								"RemoveVersionAsync": -2,
+								"SetIncrementAsync": -30,
+								"SetIncrementSortedAsync": -16,
+								"StandardList": -2,
+								"StandardRemove": -31,
+								"StandardWrite": -30,
+								"UpdateAsync": -29
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "load",
+							"requests": 1,
+							"seconds": 31.74128505399858,
+							"timeline": [
+								["UpdateAsync", 5.125702928009559, 31.741254848995595, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": -1,
+								"OrderedRead": -1,
+								"StandardRemove": -1,
+								"UpdateAsync": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 0.4663129230029881,
+							"timeline": [
+								["UpdateAsync", 1.9329003407619897e-05, 0.466288297000574, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"GetAsync": -6,
+								"GetSortedAsync": -1,
+								"GetVersionAsync": -1,
+								"ListAsync": -1,
+								"OrderedList": -1,
+								"OrderedRead": -7,
+								"OrderedRemove": -4,
+								"OrderedWrite": -4,
+								"RemoveVersionAsync": -1,
+								"SetIncrementAsync": -6,
+								"SetIncrementSortedAsync": -4,
+								"StandardList": -1,
+								"StandardRead": -6,
+								"StandardRemove": -7,
+								"StandardWrite": -6,
+								"UpdateAsync": -6
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 7.249319556998671,
+							"timeline": [
+								["UpdateAsync", 6.549322467006277, 7.249281580996467, true]
+							]
+						}
+					],
+					"warnings": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-123", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-124", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-147"]
+				},
+				"seconds": 40.47295593800664
+			}
+		},
+		{
+			"library": "Lapis",
+			"mode": "throttle",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531913323,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531912312
+				},
+				"library": "Lapis",
+				"mode": "throttle",
+				"notRunnable": "RunService.PostSimulation didn't fire in this task, and Lapis sends its DataStore requests from that event"
+			}
+		},
+		{
+			"library": "DataStore2",
+			"logTail": ["DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStoreService: StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full. API: GetAsync, Data Store: GeodeStudioCheck_Bench_DataStore2", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 8227246401", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 8227246401", "player left, saved GeodeStudioCheck_Bench_DataStore2"],
+			"mode": "throttle",
+			"report": {
+				"run": "7d89ae32",
+				"endedAt": 1792531951999,
+				"environment": {
+					"budgets": {
+						"GetAsync": 120,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 120,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 120,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 120,
+						"StandardRemove": 120,
+						"StandardWrite": 120,
+						"UpdateAsync": 120
+					},
+					"checksScriptRan": false,
+					"frameEvents": {
+						"Heartbeat": 62,
+						"PostSimulation": 0,
+						"PreSimulation": 0,
+						"Stepped": 0
+					},
+					"isServer": true,
+					"isStudio": false,
+					"ownServer": true,
+					"startedAt": 1792531918567
+				},
+				"library": "DataStore2",
+				"mode": "throttle",
+				"requestsTotal": 63,
+				"result": {
+					"budgetsAfterBurst": {
+						"GetAsync": 0,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 121,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 121,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 0,
+						"StandardRemove": 121,
+						"StandardWrite": 121,
+						"UpdateAsync": 0
+					},
+					"budgetsBefore": {
+						"GetAsync": 121,
+						"GetSortedAsync": 6,
+						"GetVersionAsync": 6,
+						"ListAsync": 6,
+						"OnUpdate": 30,
+						"OrderedList": 6,
+						"OrderedRead": 121,
+						"OrderedRemove": 15,
+						"OrderedWrite": 15,
+						"RemoveVersionAsync": 6,
+						"SetIncrementAsync": 121,
+						"SetIncrementSortedAsync": 15,
+						"StandardList": 6,
+						"StandardRead": 121,
+						"StandardRemove": 121,
+						"StandardWrite": 121,
+						"UpdateAsync": 121
+					},
+					"burst": {
+						"errors": ["StandardReadGameServerThrottled: StandardRead request was throttled by game server limits or the request queue was full."],
+						"failed": 9,
+						"ok": 152,
+						"pending": 0,
+						"sent": 161
+					},
+					"seconds": 32.407614083000226,
+					"steps": [
+						{
+							"budgetUsed": {
+								"GetAsync": -29,
+								"GetSortedAsync": -2,
+								"GetVersionAsync": -2,
+								"ListAsync": -2,
+								"OrderedList": -2,
+								"OrderedRead": -31,
+								"OrderedRemove": -16,
+								"OrderedWrite": -16,
+								"RemoveVersionAsync": -2,
+								"SetIncrementAsync": -31,
+								"SetIncrementSortedAsync": -16,
+								"StandardList": -2,
+								"StandardRemove": -31,
+								"StandardWrite": -31,
+								"UpdateAsync": -29
+							},
+							"byMethod": {
+								"GetAsync": 61
+							},
+							"failedRequests": 60,
+							"ok": true,
+							"op": "load",
+							"requests": 61,
+							"seconds": 31.05724745600037,
+							"timeline": [
+								["GetAsync", 0.00011037400054192403, 0.00023641100051463584, false],
+								["GetAsync", 0.008475741999973252, 0.008639925000352378, false],
+								["GetAsync", 0.025145456999780436, 0.025296881000031135, false],
+								["GetAsync", 0.041805828000178735, 0.04196751800009224, false],
+								["GetAsync", 0.05846938400009094, 0.0586196470003415, false],
+								["GetAsync", 0.0751438560000679, 0.07529397800044535, false],
+								["GetAsync", 0.09181901900046796, 0.0919852950000859, false],
+								["GetAsync", 0.10851746700063813, 0.10873474900017756, false],
+								["GetAsync", 0.12519067700031883, 0.1254327260003265, false],
+								["GetAsync", 0.14186234499993589, 0.14209810400006972, false],
+								["GetAsync", 0.15855827900031727, 0.15877490999992006, false],
+								["GetAsync", 0.1752184599999964, 0.17540289299995493, false]
+							]
+						},
+						{
+							"budgetUsed": {
+								"OrderedRead": -1,
+								"StandardRemove": -1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "save",
+							"requests": 1,
+							"seconds": 1.149500495999746,
+							"timeline": [
+								["UpdateAsync", 0.016193849000046612, 1.1494487399995705, true]
+							]
+						},
+						{
+							"budgetUsed": {
+								"SetIncrementAsync": 1,
+								"StandardWrite": 1
+							},
+							"byMethod": {
+								"UpdateAsync": 1
+							},
+							"failedRequests": 0,
+							"ok": true,
+							"op": "release",
+							"requests": 1,
+							"seconds": 0.199636186999669,
+							"timeline": [
+								["UpdateAsync", 0.016240898999967612, 0.19952372999978252, true]
+							]
+						}
+					],
+					"warnings": ["DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-123", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-124", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-125", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-126", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-127", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-128", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-129", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-130", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-131", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-132", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-133", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-134", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-135", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-136", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-137", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-138", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-139", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-140", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-141", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-142", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-143", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-144", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-145", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-146", "DataStore request was added to queue. If request queue fills, further requests will be dropped. Try sending fewer requests.Key = 7d89ae32-burst-147"]
+				},
+				"seconds": 33.4317566159998
+			}
+		}
+	],
+	"workflowRun": "https://github.com/qvyra/geode/actions/runs/39497144360"
+}

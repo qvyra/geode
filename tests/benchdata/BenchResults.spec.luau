@@ -1,8 +1,11 @@
 --!strict
 
+local fs = require("@lune/fs")
+
 local BenchResults = require("../../scripts/BenchResults")
 local Spec = require("../_lib/Spec")
 
+local RUNS_DIR = "benchmarks/runs"
 local JOB_ID = "004f45b9-f359-48fe-bb12-a5ba3539b925"
 
 local function task(mode: string, jobId: string): { [string]: any }
@@ -107,6 +110,21 @@ return function(api: Spec.Api)
 			}, INFO)
 			expect(run.tasks[1].report.environment.ownServer).toBe(false)
 			expect(run.tasks[2].report.environment.ownServer).toBe(false)
+		end)
+	end)
+
+	describe("the kept runs", function()
+		it("hold no JobIds, place ids or keys", function()
+			for _, name in fs.readDir(RUNS_DIR) do
+				local text = fs.readFile(`{RUNS_DIR}/{name}`)
+				local run = BenchResults.decode(text)
+				expect(`{name} {run.run}.json`).toBe(`{name} {name}`)
+				expect((string.find(text, "%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-"))).toBeNil()
+				for _, field in { '"jobId"', '"placeId"', '"placeVersion"', '"key"', '"topic"' } do
+					expect((string.find(text, field, 1, true))).toBeNil()
+				end
+				expect(BenchResults.encode(run)).toBe(text)
+			end
 		end)
 	end)
 end
