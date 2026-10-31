@@ -571,6 +571,8 @@ Results from before and after a change in behavior never mix. Builds belong to l
 
 Each suite records its timing resolution. Bench times are wall clock seconds read at frame steps, and 95% of the samples so far are multiples of 1/60 s, so differences under that are ties. Memory per loaded profile is read from the Lua heap in every run, but a suite can be marked `recordedOnly`: its results stay in the run files and stay out of `latest.json` and the page. Memory is, since garbage collection moves it either way by more than the profiles take; two runs gave Geode -0.5 and 4.0 KB and flipped the order of the libraries. Edit time is measured for Geode alone, in Lune; the other libraries' edits do different work (a plain table change or a `:Update` call), so the catalog lists that comparison as not measured rather than putting the numbers side by side.
 
+Runs on a release tag, by hand or once a month open a pull request with their data, using the workflow's own token. Pushes with that token start no workflows, and dispatching CI on the branch didn't help either: GitHub doesn't count a dispatched run's checks for a pull request. What it does is hold the pull request's own CI run until a maintainer approves it, which is one click per data pull request. A personal token or a GitHub App would avoid the click, but each needs a secret to set up and look after, for a pull request a person reviews anyway.
+
 Tables keep a notes column written by hand, matched to rows by label. The prose around them stays hand written too, so when new runs change a number the prose quotes, the data pull request lists it for a person to rewrite.
 
 **PR:** #34

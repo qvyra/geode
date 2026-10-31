@@ -71,8 +71,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      # to start CI on the new branch, which a push with this token doesn't
-      actions: write
     steps:
       # the data goes to main whatever the run was started from. Tags are needed to name a build
       # after the release it matches
@@ -109,11 +107,15 @@ jobs:
           {
             echo "Data from the Benchmarks run $RUN_URL, started by $EVENT on \`$REF_NAME\`. The bench job ended with $BENCH_RESULT."
             echo
+            echo "CI on this pull request waits for a maintainer to approve it once (\"Approve and run\"), see CONTRIBUTING.md."
+            echo
           } > .cache/bench/notes.md
           lune run benchdata import .cache/bench/results.json --notes .cache/bench/notes.md
           npx prettier --write benchmarks/catalog.json
           lune run benchdata build
 
+      # A pull request opened with this token gets its CI held until a maintainer approves the
+      # run once, see CONTRIBUTING.md
       - name: Open a pull request
         env:
           GH_TOKEN: ${{ github.token }}
@@ -126,4 +128,3 @@ jobs:
           git commit -m "docs(bench): data from run $RUN"
           git push origin "$branch"
           gh pr create --base main --head "$branch" --title "Bench data from run $RUN" --body-file .cache/bench/notes.md
-          gh workflow run ci.yml --ref "$branch"

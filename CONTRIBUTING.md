@@ -49,6 +49,15 @@ Commits follow Conventional Commits:
 
 Branches are named `<type>/<short-slug>`, like `feat/shared-stores`. Changes are rebased and merged fast forward, so history stays linear.
 
+## Bench data pull requests
+
+After a bench run on a release tag, by hand or once a month, the Benchmarks workflow opens a pull request with the run's data, from a `docs/bench-run-<run>` branch. It opens it with the workflow's own token, so GitHub holds that pull request's CI until a maintainer approves it, and `check` has to pass before it can merge. Approve it once with "Approve and run" on the pull request, or with gh:
+
+```sh
+id=$(gh run list --workflow ci.yml --branch docs/bench-run-<run> --status action_required --json databaseId --jq '.[0].databaseId')
+gh api -X POST "repos/{owner}/{repo}/actions/runs/$id/approve"
+```
+
 ## Decisions
 
 When a change makes a real design choice, add an entry to [DECISIONS.md](DECISIONS.md) with the date, the context, the options considered, what was chosen and the commits that show it. Don't rewrite old entries. A new entry says which one it revises.
