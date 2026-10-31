@@ -10,6 +10,7 @@
 --   throttle  exhaust the request budget with a burst, then load, save and release once
 --   hold      the old server of a server hop: load, change, then release when asked or keep it
 --   join      the new server of a server hop, run in a second task at the same time as hold
+--   memory    the Lua heap before and after loading twenty profiles, per profile
 
 local DataStoreService = game:GetService("DataStoreService")
 local LogService = game:GetService("LogService")
@@ -20,7 +21,7 @@ local RunService = game:GetService("RunService")
 local Libraries = require("./Libraries")
 local Proxy = require("./Proxy")
 
-export type Mode = "env" | "perf" | "throttle" | "hold" | "join"
+export type Mode = "env" | "perf" | "throttle" | "hold" | "join" | "memory"
 
 export type Options = {
 	mode: Mode,
@@ -651,6 +652,97 @@ local function join(
 	return { attempts = attempts, keep = keep, holderMissing = holderMissing, messaging = probe }
 end
 
+--// memory
+
+-- Profiles the memory mode holds at once, and how long it watches the heap before and after
+local MEMORY_PROFILES = 20
+local HEAP_WINDOW = 5
+local HEAP_INTERVAL = 0.1
+
+-- The Lua heap in KB, sampled over a few seconds. Luau collects garbage in steps and a script
+-- can't make it finish a cycle, so the lowest sample is the closest to what's still in use and
+-- still an upper bound
+local function heap(): { [string]: any }
+	local samples: { number } = {}
+	local stop = os.clock() + HEAP_WINDOW
+	while os.clock() < stop do
+		table.insert(samples, collectgarbage("count"))
+		task.wait(HEAP_INTERVAL)
+	end
+	local low, high = math.huge, -math.huge
+	for _, sample in samples do
+		low = math.min(low, sample)
+		high = math.max(high, sample)
+	end
+	return { min = low, max = high, samples = samples }
+end
+
+local function memory(
+	adapter: Libraries.Adapter,
+	proxy: Proxy.Proxy,
+	options: Options,
+	deadline: number
+): { [string]: any }
+	local library = adapter.name
+	-- TODO(verify): Roblox documents collectgarbage("count") for scripts, this finds out whether
+	-- a Luau Execution task allows it
+	local readable, reason = pcall(function()
+		return collectgarbage("count")
+	end)
+	if not readable then
+		return { notReadable = tostring(reason) }
+	end
+
+	-- one profile first, so the library's own setup isn't counted as the profiles'
+	local warmKey = Libraries.key(library, options.run, "memory", 1)
+	local warm = adapter.load(warmKey)
+	adapter.set(warm, "inventory", INVENTORY)
+	adapter.set(warm, "coins", 1)
+	adapter.release(warm)
+
+	-- the log grows with every request, which isn't the library's memory
+	proxy.recording = false
+	table.clear(proxy.calls)
+	local before = heap()
+	local handles: { Libraries.Handle } = {}
+	local failed: { string } = {}
+	for index = 1, MEMORY_PROFILES do
+		if os.clock() > deadline - 60 then
+			table.insert(failed, `stopped before profile {index}, out of time`)
+			break
+		end
+		local key = Libraries.key(library, options.run, "memory", index + 1)
+		local ok, result = pcall(adapter.load, key)
+		if ok then
+			local handle = result :: Libraries.Handle
+			adapter.set(handle, "inventory", INVENTORY)
+			adapter.set(handle, "coins", index)
+			table.insert(handles, handle)
+		else
+			table.insert(failed, tostring(result))
+		end
+	end
+	local after = heap()
+	proxy.recording = true
+
+	-- nothing stays locked behind the task
+	local released = 0
+	for _, handle in handles do
+		if pcall(adapter.release, handle) then
+			released += 1
+		end
+	end
+	return {
+		profiles = #handles,
+		failed = failed,
+		released = released,
+		window = HEAP_WINDOW,
+		before = before,
+		after = after,
+		perProfileKb = if #handles > 0 then (after.min - before.min) / #handles else nil,
+	}
+end
+
 --// entry
 
 --[=[
@@ -704,6 +796,8 @@ function Bench.run(options: Options): { [string]: any }
 			return hold(adapter, proxy, options, deadline)
 		elseif options.mode == "join" then
 			return join(adapter, proxy, options, deadline)
+		elseif options.mode == "memory" then
+			return memory(adapter, proxy, options, deadline)
 		end
 		error(`unknown mode {options.mode}`)
 	end)

@@ -440,7 +440,7 @@ function Libraries.key(library: string, run: string, label: string, index: numbe
 	if library == "DataStore2" then
 		-- the run id is hex, its first six digits plus a label number make a unique id
 		local base = tonumber(string.sub(run, 1, 6), 16) :: number
-		local labels = { perf = 1, hop = 2, keep = 3, throttle = 4 }
+		local labels = { perf = 1, hop = 2, keep = 3, throttle = 4, memory = 5 }
 		return tostring(base * 1000 + (labels[label] or 9) * 100 + index)
 	end
 	return `{run}-{label}-{index}`
