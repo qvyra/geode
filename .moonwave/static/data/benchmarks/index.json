@@ -80,8 +80,14 @@
 			"date": "2026-10-31T16:47:03Z",
 			"build": "0.6.1",
 			"data": "runs/74d6b2a5.json"
+		},
+		{
+			"id": "49d506a2",
+			"date": "2026-11-01T13:39:38Z",
+			"build": "0.6.1",
+			"data": "runs/49d506a2.json"
 		}
 	],
 	"latest": "latest.json",
-	"updatedAt": "2026-10-31T16:47:03Z"
+	"updatedAt": "2026-11-01T13:39:38Z"
 }
