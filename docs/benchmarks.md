@@ -21,11 +21,11 @@ Each run loads five fresh profiles, saves each, releases each after a change, lo
 | Library                       | Load, new profile (s)   | Load, stored profile (s) | Save (s)                | Release (s)             |
 | ----------------------------- | ----------------------- | ------------------------ | ----------------------- | ----------------------- |
 | Geode before                  | 0.38 (0.28 to 0.52, 25) | 0.33 (0.27 to 0.40, 25)  | 0.23 (0.15 to 0.30, 25) | 0.25 (0.18 to 0.40, 25) |
-| Geode after                   | 0.28 (0.22 to 0.43, 25) | 0.27 (0.17 to 0.32, 25)  | 0.23 (0.17 to 0.30, 25) | 0.27 (0.18 to 0.77, 25) |
-| Geode after, `mailbox = true` | 0.30 (0.18 to 0.38, 25) | 0.25 (0.20 to 0.28, 25)  | 0.23 (0.17 to 0.32, 25) | 0.27 (0.22 to 0.45, 25) |
-| ProfileStore                  | 0.30 (0.22 to 0.37, 25) | 0.27 (0.20 to 0.35, 25)  | 0.25 (0.13 to 0.30, 25) | 0.27 (0.18 to 0.35, 25) |
-| ProfileService                | 0.32 (0.18 to 0.40, 25) | 0.28 (0.20 to 0.35, 25)  | 0.27 (0.15 to 0.32, 25) | 0.28 (0.20 to 0.35, 25) |
-| DataStore2                    | 0.08 (0.07 to 0.12, 25) | 0.03 (0.02 to 0.08, 25)  | 0.30 (0.20 to 0.42, 25) | 0.27 (0.20 to 0.35, 25) |
+| Geode after                   | 0.28 (0.22 to 0.40, 20) | 0.26 (0.17 to 0.32, 20)  | 0.23 (0.17 to 0.30, 20) | 0.27 (0.18 to 0.77, 20) |
+| Geode after, `mailbox = true` | 0.30 (0.18 to 0.42, 25) | 0.23 (0.20 to 0.30, 25)  | 0.23 (0.17 to 0.32, 25) | 0.27 (0.20 to 0.45, 25) |
+| ProfileStore                  | 0.30 (0.22 to 0.78, 25) | 0.27 (0.20 to 0.37, 25)  | 0.25 (0.13 to 0.33, 25) | 0.27 (0.18 to 0.35, 25) |
+| ProfileService                | 0.28 (0.18 to 0.40, 25) | 0.27 (0.20 to 0.33, 25)  | 0.25 (0.15 to 0.30, 25) | 0.27 (0.20 to 0.32, 25) |
+| DataStore2                    | 0.08 (0.07 to 0.27, 25) | 0.03 (0.02 to 0.10, 25)  | 0.30 (0.20 to 0.47, 25) | 0.27 (0.20 to 0.40, 25) |
 
 <!-- bench:table perf-times end -->
 
@@ -62,10 +62,10 @@ The old server loads a profile, saves a value (777), waits 8 seconds, then chang
 | Library                       | Old server releases (s) | Saw the final save | Old server keeps it (s)   | Value seen when kept | Requests by the new server                              | Notes                                    |
 | ----------------------------- | ----------------------- | ------------------ | ------------------------- | -------------------- | ------------------------------------------------------- | ---------------------------------------- |
 | Geode before                  | 4.95 (4.55 to 5.17, 15) | 15 of 15           | 4.98 (4.62 to 5.20, 5)    | 999 in 5 of 5        | 4 UpdateAsync and 1 GetAsync                            |                                          |
-| Geode after                   | 0.70 (0.48 to 0.88, 15) | 15 of 15           | 0.73 (0.65 to 0.83, 5)    | 999 in 5 of 5        | 2 UpdateAsync and 1 GetAsync past the cache             |                                          |
-| Geode after, `mailbox = true` | 0.68 (0.50 to 0.98, 15) | 15 of 15           | 0.72 (0.63 to 1.05, 5)    | 999 in 5 of 5        | 2 UpdateAsync, 2 GetAsync and 1 GetAsync past the cache | The plain GetAsync calls are its mailbox |
-| ProfileStore                  | 5.50 (0.63 to 5.63, 15) | 15 of 15           | 5.50 (5.43 to 5.63, 5)    | 999 in 5 of 5        | 1 or 2 UpdateAsync, when kept 2 UpdateAsync             |                                          |
-| ProfileService                | 7.30 (0.68 to 7.42, 15) | 15 of 15           | 21.35 (21.28 to 21.36, 5) | 999 in 5 of 5        | 1 or 2 UpdateAsync, when kept 4 UpdateAsync             |                                          |
+| Geode after                   | 0.67 (0.48 to 0.80, 15) | 15 of 15           | 0.73 (0.65 to 0.77, 5)    | 999 in 5 of 5        | 2 UpdateAsync and 1 GetAsync past the cache             |                                          |
+| Geode after, `mailbox = true` | 0.68 (0.50 to 0.92, 15) | 15 of 15           | 0.72 (0.63 to 0.92, 5)    | 999 in 5 of 5        | 2 UpdateAsync, 2 GetAsync and 1 GetAsync past the cache | The plain GetAsync calls are its mailbox |
+| ProfileStore                  | 5.52 (0.63 to 5.75, 15) | 15 of 15           | 5.60 (5.47 to 5.67, 5)    | 999 in 5 of 5        | 1 or 2 UpdateAsync, when kept 2 UpdateAsync             |                                          |
+| ProfileService                | 7.25 (0.68 to 7.42, 15) | 15 of 15           | 21.30 (21.25 to 21.36, 5) | 999 in 5 of 5        | 1 or 2 UpdateAsync, when kept 4 UpdateAsync             |                                          |
 | DataStore2                    | 0.03 (0.02 to 0.05, 15) | 0 of 15            | 0.03 (0.02 to 0.03, 5)    | 777 in 5 of 5        | 1 GetAsync                                              |                                          |
 
 <!-- bench:table hops end -->
@@ -90,10 +90,10 @@ What can be provoked fairly is a used up request budget on the library's own ser
 | ----------------------------- | -------------- | ------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Geode before                  | 33.79 to 34.11 | 0.20 to 1.23 | 0.17 to 0.28 | 1 UpdateAsync and 1 GetAsync, none failed. Geode's scheduler held the UpdateAsync back for about 32.6 s until the budget allowed it, and the mailbox GetAsync for another second |
 | Geode after                   | 32.70 to 32.88 | 1.13 to 1.31 | 0.17 to 0.40 | 1 UpdateAsync, none failed, sent about 32.6 s in                                                                                                                                 |
-| Geode after, `mailbox = true` | 33.70 to 34.10 | 0.22 to 1.23 | 0.22 to 0.27 | 1 GetAsync and 1 UpdateAsync, none failed. Both wait for the read budget, so here too the second went about a second after the first                                             |
-| ProfileStore                  | 31.20 to 31.35 | 0.18 to 0.28 | 0.17 to 0.28 | 2 UpdateAsync. The first was dropped at once, the retry a second later sat in Roblox's queue for about 30 s                                                                      |
-| ProfileService                | 31.17 to 31.59 | 0.13 to 0.35 | 6.98 to 7.28 | 1 UpdateAsync, sent 5.5 s in and queued by Roblox until it went through. The release waits out the 7 second per key cooldown                                                     |
-| DataStore2                    | 31.04 to 31.10 | 1.08 to 1.28 | 0.12 to 0.20 | 61 GetAsync, all failed but the last: it retries at once until a request gets through                                                                                            |
+| Geode after, `mailbox = true` | 33.70 to 34.07 | 0.18 to 1.23 | 0.20 to 0.27 | 1 GetAsync and 1 UpdateAsync, none failed. Both wait for the read budget, so here too the second went about a second after the first                                             |
+| ProfileStore                  | 31.20 to 31.29 | 0.18 to 0.25 | 0.17 to 0.28 | 2 UpdateAsync. The first was dropped at once, the retry a second later sat in Roblox's queue for about 30 s                                                                      |
+| ProfileService                | 31.22 to 31.59 | 0.13 to 0.35 | 7.05 to 7.28 | 1 UpdateAsync, sent 5.5 s in and queued by Roblox until it went through. The release waits out the 7 second per key cooldown                                                     |
+| DataStore2                    | 31.04 to 31.07 | 1.08 to 1.20 | 0.12 to 0.20 | 61 GetAsync, all failed but the last: it retries at once until a request gets through                                                                                            |
 
 <!-- bench:table throttling end -->
 
@@ -105,9 +105,9 @@ This one is Geode only, and runs in Lune on the machine that runs the bench, not
 
 <!-- bench:table geode-edits start -->
 
-| Library     | Time per edit (µs)     |
-| ----------- | ---------------------- |
-| Geode after | 11.0 (7.9 to 11.5, 15) |
+| Library     | Time per edit (µs)    |
+| ----------- | --------------------- |
+| Geode after | 9.6 (7.9 to 11.5, 20) |
 
 <!-- bench:table geode-edits end -->
 
