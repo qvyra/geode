@@ -1,6 +1,6 @@
-<p align="center"><img src="https://raw.githubusercontent.com/qvyra/geode/main/.moonwave/static/geode.png" alt="Geode logo" width="160"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/qvyra/geode/main/.github/assets/geode-cover.jpg" alt="Geode cover: a cartoon cave lined with glowing blue, teal, red and gold crystals, with the Geode logo and the tagline 'Roblox data that survives a server dying'." width="100%"></p>
 
-# Geode
+<p align="center"><sub><a href="https://quivery.dev/projects/geode">Portfolio page</a> · <a href="https://quivery.dev/projects/geode/benchmarks">Benchmarks</a> · <a href="https://qvyra.github.io/geode">Docs</a> · <a href="https://create.roblox.com/store/asset/134787455935323/Loupe">Loupe, the Studio plugin</a></sub></p>
 
 A data framework for Roblox. Geode puts DataStoreService, MemoryStoreService and MessagingService behind one API, with session-locked player data, guards, reactive data and replication on top.
 
