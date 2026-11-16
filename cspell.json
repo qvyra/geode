@@ -1,7 +1,14 @@
 {
 	"version": "0.2",
 	"language": "en",
-	"ignorePaths": ["package-lock.json", "node_modules/**", ".cache/**", "rokit.toml"],
+	"ignorePaths": [
+		"package-lock.json",
+		"node_modules/**",
+		".cache/**",
+		"rokit.toml",
+		"benchmarks/runs/**",
+		".moonwave/static/data/**"
+	],
 	"overrides": [
 		{
 			"filename": "**/*.luau",
@@ -19,6 +26,10 @@
 		"Luau",
 		"luaurc",
 		"Lune",
+		"benchdata",
+		"benchcpu",
+		"collectgarbage",
+		"profileservice",
 		"Rokit",
 		"Rojo",
 		"StyLua",
@@ -68,6 +79,10 @@
 		"udim",
 		"ipairs",
 		"millis",
-		"cooldown"
+		"cooldown",
+		"nezuo",
+		"evaera",
+		"loleris",
+		"profilestore"
 	]
 }

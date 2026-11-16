@@ -107,6 +107,8 @@ A profile's writes go through the transaction pipeline: `set`, `increment`, `dec
 
 `Geode.op` registers an op once for the whole game, and a store lists the ones it allows in `ops`. Give it `args`, one schema per argument, and every call is checked before the handler runs, whoever made it: game code, mail or a development tool. A call that doesn't match fails with `invalidArgs` and writes nothing. Tools also use the schemas to describe the op and to decode values like a `Vector3` that crossed in stored form.
 
+`names` gives the arguments names, one per schema in the same order, and `description` says in a line what the op does. They change nothing about how the op runs. Development tools show them, so an edit form reads `item` and `amount` instead of `arg1` and `arg2`. `names` needs `args` and can stop early; the rest keep their numbered names.
+
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Geode = require(ReplicatedStorage.Packages.Geode)
@@ -116,7 +118,11 @@ Geode.op("guideGrantItem", function(tx, item: string, amount: number)
 	tx:update({ "inventory", item }, function(current)
 		return (current or 0) + amount
 	end)
-end, { args = { t.string(), t.integer({ min = 1 }) } })
+end, {
+	args = { t.string(), t.integer({ min = 1 }) },
+	names = { "item", "amount" },
+	description = "Give the player some of an item",
+})
 
 local PlayerData = Geode.players({
 	name = "PlayerData",
@@ -163,11 +169,13 @@ Missing template fields are filled in on load, which other libraries call reconc
 
 `store:mail` queues an op for a profile wherever its player is. It applies, exactly once, the next time the profile loads.
 
+Mail is off unless the store is made with `mailbox = true`, so a store that never gets mail never reads a mailbox. Set it everywhere the store is made, on the servers that send mail too: a store without it refuses to send. A store that has it reads the mailbox while it takes the lease, so the load doesn't wait for one more request.
+
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Geode = require(ReplicatedStorage.Packages.Geode)
 
-local PlayerData = Geode.players({ name = "PlayerData", template = { coins = 0 } })
+local PlayerData = Geode.players({ name = "PlayerData", template = { coins = 0 }, mailbox = true })
 
 PlayerData.store:mail(PlayerData.store:keyForUser(1001), "increment", "coins", 50)
 ```

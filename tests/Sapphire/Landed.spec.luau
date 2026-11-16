@@ -243,7 +243,7 @@ return function(spec: Spec.Api)
 		it("mailbox: a send that landed is queued once", function()
 			local universe = Universe.new()
 			local server = universe:server()
-			local store = Helpers.store(server)
+			local store = Helpers.store(server, { mailbox = true })
 			server:inject({
 				store = `{Helpers.STORE}_mailbox`,
 				method = "update",

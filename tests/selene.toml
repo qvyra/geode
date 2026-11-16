@@ -1,2 +1,2 @@
 std = "luau"
-exclude = ["studio/*"]
+exclude = ["studio/*", "bench/*"]

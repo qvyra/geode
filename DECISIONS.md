@@ -480,3 +480,99 @@ Building the summary costs a walk over the diff on every commit, so it runs only
 Values aren't in the message. Before and after values can be big, and a change log can ask for the profile when it needs them. Shared stores don't publish it yet, since nothing reads their commits.
 
 **PR:** #18
+
+## 39. Tools that write records directly follow one rule
+
+**Date:** 2026-10-19
+
+Tools are starting to edit Geode records straight in their DataStore keys, with no Geode running. Two parts of Geode trip over a write like that. A server whose release reported failure takes the profile back on its next save when the lease is gone and `meta.lastSession` still names its own session at the current revision (entry 18), so an edit that left `lastSession` and the revision alone would be saved over. And shared store caches only take values at the same or a newer revision, and drop a cached value only for a message naming a newer one.
+
+So an external write raises `meta.revision` by one, sets `meta.lastSession` to `{ session = "external:" .. id, revision = <new revision> }` with an id fresh for every write, updates `meta.updatedAt`, and leaves everything else in `meta` alone. Geode's own sessions are GUIDs, so the prefix never matches one, and the reclaim check needed no change: both the session and the revision differ from what the server left. Servers already running 0.5.0 behave the same way. `Geode.Raw.externalWrite` applies the rule, so tools and tests share one definition, and a profile that loses its session to such an edit says so in the reason.
+
+The other options were clearing `lastSession`, the way erasure does, or a new field such as `meta.editedBy` for the reclaim check to read. Clearing works but forgets who wrote last. A new field would be ignored by older servers, which would still reclaim.
+
+The lease stays untouched on purpose. A tool can't keep a lease alive the way a server does, so a server that still holds one saves over any external edit. Tools edit only records with no lease and go through the holder otherwise (entry 35).
+
+Records also carry `meta.format`, `1` from 0.6.0, so tools can tell layouts apart without guessing from which fields are there. Missing means 0.4.0 to 0.5.0, and those records keep loading. An external write doesn't set it, since the tool didn't change the layout. Older servers keep the field on profiles, since they copy `meta`, but drop it when they write a shared record, so during an update a shared record can lose it until a newer server writes it again.
+
+**PR:** #21
+
+## 40. Mail is opt in, and its read runs next to the lease
+
+**Date:** 2026-10-20
+
+Every profile load read the store's mailbox with a GetAsync after taking the lease, so a load cost two round trips one after the other, even in games that never send mail. Nothing in a store's options says whether it gets mail: any store can be mailed a built-in op, and custom ops listed in `ops` are just as callable from game code.
+
+So a store says it with `mailbox = true`. Without it a load never touches the mailbox, and `store:mail` fails instead of queuing mail nothing would read. Mail already queued is left alone and applies once the option is on. The other choice was keeping mail on by default with `mailbox = false` to opt out, which would keep the extra request for nearly every game.
+
+A store with the option starts the mailbox read on its own thread next to each acquire attempt, and applies the mail once the lease is taken, before `load` returns, as before. Reading before the lease is ours changes nothing about exactly once: the cursor in the record the acquire returns decides what applies, and pruning only drops messages at or before that saved cursor. A read that saw less than the latest mailbox only leaves mail for the next load, which a cached GetAsync could already do. A read from an attempt that found the lease held is redone with the next attempt, so mail sent while a hop waits still lands.
+
+**PR:** #23
+
+## 41. A hop reads the record past the cache after the release announcement
+
+**Date:** 2026-10-20
+
+Live benchmark hops took about 5 s although the old server released within half a second. The new server's tries were at 0, 0.5, 2.5 and 4.6 s. The second and third answered in under 10 ms with the lease still held, and only the fourth, about 4 s after the first, reached the backend and got the profile. Those tries are UpdateAsync calls. Roblox documents a 4 second cache for GetAsync only, and says SetAsync and UpdateAsync write into it, so the documented cache doesn't explain it. The timings fit this server's cached copy of the key being handed to a transform that then writes nothing, so nothing goes to the backend to correct it. That part isn't documented.
+
+After a release announcement (the message, or the handoff key showing the release) the load now reads the record once with `DataStoreGetOptions.UseCache = false`, which the docs say always asks the backend. If the lease is free there, the UpdateAsync follows at once; if it's still held, the load keeps waiting without spending an UpdateAsync. The UpdateAsync still decides, so nothing about correctness rests on the read. The docs say a GetAsync that reaches the backend refreshes the cache, which is what lets the UpdateAsync after it see the release. The benchmarks bear that out: in all sixteen hops measured with this change the UpdateAsync right after the uncached read took the lease, and a hop went from about 5.1 s (5.02 to 5.17 s on the same day) to about 0.6 s (0.50 to 0.75 s). Both halves, the stale UpdateAsync and the refresh, are observed rather than documented.
+
+The adapter's `get` takes `{ useCache = false }`, and the mock can keep a per server copy of keys (`dataStoreCache`) so tests can reproduce the slow hop. Waiting longer before retrying was the other idea, but that only moves the 4 seconds around.
+
+**PR:** #23
+
+## 42. The npm package ships the Luau source with its Rojo project
+
+**Date:** 2026-10-21
+
+roblox-ts games get packages from npm, under `node_modules/@rbxts`, which their Rojo project puts in ReplicatedStorage. roblox-ts maps an import to a Luau file through the package's `main` and `types`, and works out the instance path from the Rojo tree. So `@rbxts/geode` ships the same `src` as Wally, with `main` at `src/init.luau` and `types` at `types/index.d.ts`, and no build step of its own.
+
+`default.project.json` ships too. With it, Rojo builds the package folder as one ModuleScript named `Geode`, the same as a Wally install, and roblox-ts resolves imports to that name. Without it the folder would be a Folder holding a `src` ModuleScript, which also works but differs from every other install. Both layouts were built with roblox-ts 3.0.0 and Rojo 7.7.1 before choosing.
+
+`package.json` drops `"type": "module"`. With it, TypeScript treats `types/index.d.ts` as an ES module under Node16 resolution and refuses its `export =`; the ESLint config moved to `.mjs` instead. The typings also moved into a `Geode` namespace merged with the value, so roblox-ts code can name `Geode.Profile` and the rest, the way Luau code names the exported types.
+
+The npm and Wally packages share one version number and are bumped in the same release PR.
+
+**PR:** #24
+
+## 43. The main module carries a tag and its version, for tools to find
+
+**Date:** 2026-10-24
+
+Geode will also ship as a model file, attached to GitHub releases and on the Creator Store, so it can end up in any folder under any name, not only where Wally or Rojo put it. The Studio bridge already works from anywhere, since it lives in its own folder in ServerStorage. What didn't was a tool looking for Geode itself while no bridge exists yet, to say that a game has Geode but hasn't made a store, or that its Geode predates the bridge. Guessing folder names breaks as soon as someone drops the model somewhere else.
+
+So the main module carries the `Geode` tag and a `GeodeVersion` attribute holding `Geode.version`. A tool calls `CollectionService:GetTagged("Geode")` and reads the attribute. Both come from `src/init.meta.json`, the one place every install path shares: Rojo reads it when building the project, Wally and npm ship `src` with it, and the model file is a Rojo build. Setting them at run time instead would only work once something required Geode, which is exactly what a tool can't count on.
+
+The version now sits in four files, so a test keeps the attribute, `wally.toml` and `package.json` equal to `Version.luau`, and `lune run model` builds the release model file and reads it back to check the tag, the attribute and the bridge are really in it. The check suite runs it, so every PR proves the model still builds. Geodes from before the tag have neither; tools need another way to spot those, such as their module layout.
+
+**PR:** #25
+
+## 44. Ops name their arguments in a list next to args
+
+**Date:** 2026-10-31
+
+Tools showed a custom op's arguments as `arg1`, `arg2`, since a schema says what a value may be but not what it means. `Geode.op` now takes `names`, one string per argument by index, and `description`, a line saying what the op does. Both are only for tools: the handler, the argument checks and replication don't look at them.
+
+The names sit in their own list rather than on the schemas. A schema is a value that can be shared, so one schema may check arguments of several ops, and a name on it would either show up in every use or need a copy per argument. A separate list also leaves `args` exactly as it was. The cost is that the two lists have to line up, so registration checks it: `names` needs `args`, can't be longer, and holds only non-empty strings. It may be shorter, and the arguments past it keep their numbered names, so an op can name the ones that need it.
+
+`Transaction.opInfo` hands both to tools, and the bridge's `ops` answer uses the names in each argument's `name` and adds `description` to custom ops. That only adds fields to an answer old tools already read field by field, so the protocol stays at 1, as the bridge's rule asks (entry 34). No feature flag either: a tool sees whether a description is there, and a name it gets is the one to show either way.
+
+**PR:** #28
+
+## 45. Bench runs are kept in the repo and published as data
+
+**Date:** 2026-10-31
+
+The numbers on the benchmarks page came from workflow artifacts, which GitHub deletes after 90 days, so nobody could check them later, not even against the page. Every run now lives in `benchmarks/runs`, cleaned of the ids that point at the test place or a server. `benchmarks/catalog.json` says what was measured and how: suites, scenarios, metrics, the Geode builds and the libraries. `lune run benchdata build` turns both into the files the docs site serves under `data/benchmarks` (a `latest.json`, an index, one file per run and the JSON Schema they follow) and writes the tables on the page between markers. The check suite fails when any of them doesn't match the runs, so the page can't drift from its data.
+
+A run names the Geode it measured by the git tree of `src` and the bench by the tree of `tests/bench`, plus a link to its workflow run. Commit ids don't work for that: the bench often runs on a pull request's merge commit, which isn't kept, and a rebase merge gives every commit a new id anyway. A tree id stays the same for the same files.
+
+Results from before and after a change in behavior never mix. Builds belong to lines, and a subject keeps to the runs of its line. All current subjects take the same runs, the last five in which the current Geode ran, so every row of a table compares the same conditions. Geode before the mailbox change stays on the page as a historical subject with its own runs.
+
+Each suite records its timing resolution. Bench times are wall clock seconds read at frame steps, and 95% of the samples so far are multiples of 1/60 s, so differences under that are ties. Memory per loaded profile is read from the Lua heap in every run, but a suite can be marked `recordedOnly`: its results stay in the run files and stay out of `latest.json` and the page. Memory is, since garbage collection moves it either way by more than the profiles take; two runs gave Geode -0.5 and 4.0 KB and flipped the order of the libraries. Edit time is measured for Geode alone, in Lune; the other libraries' edits do different work (a plain table change or a `:Update` call), so the catalog lists that comparison as not measured rather than putting the numbers side by side.
+
+Runs on a release tag, by hand or once a month open a pull request with their data, using the workflow's own token. Pushes with that token start no workflows, and dispatching CI on the branch didn't help either: GitHub doesn't count a dispatched run's checks for a pull request. What it does is hold the pull request's own CI run until a maintainer approves it, which is one click per data pull request. A personal token or a GitHub App would avoid the click, but each needs a secret to set up and look after, for a pull request a person reviews anyway.
+
+Tables keep a notes column written by hand, matched to rows by label. The prose around them stays hand written too, so when new runs change a number the prose quotes, the data pull request lists it for a person to rewrite.
+
+**PR:** #34

@@ -173,6 +173,66 @@ return function(spec: Spec.Api)
 			expect(second:isActive()).toBe(true)
 		end)
 
+		it("isn't held up by a cached copy of the key after the release", function()
+			-- Each server keeps a copy of the record and answers updates that write nothing from
+			-- it, the way the live hop timings look
+			local universe = Universe.new({
+				messagingLatency = LATENCY,
+				dataStoreCache = { seconds = 4, cancelledUpdates = true },
+			})
+			local serverA = universe:server({ jobId = "A" })
+			local profileA = load(universe, store(serverA), "1")
+			profileA:append("log", "from A")
+
+			local profileB, took = load(universe, store(universe:server({ jobId = "B" })), "1")
+			expect(took < 1).toBe(true)
+			expect(profileB:get("log")).toEqual({ "from A" })
+		end)
+
+		it("keeps waiting without an update when the fresh read finds the lease held", function()
+			local universe = Universe.new({ messagingLatency = LATENCY })
+			local serverA = universe:server({ jobId = "A" })
+			-- A never hears requests, so it holds on
+			load(universe, store(serverA, { handoff = false }), "1")
+
+			local serverB = universe:server({ jobId = "B" })
+			local calls: { string } = {}
+			local counted = table.clone(serverB)
+			counted.dataStore = function(name: string, scope: string?): any
+				local real: any = serverB.dataStore(name, scope)
+				return setmetatable({}, {
+					__index = function(_self: any, method: string): any
+						return function(_proxy: any, ...: any): any
+							table.insert(calls, `{name}.{method}`)
+							return real[method](real, ...)
+						end
+					end,
+				})
+			end
+			-- a release announcement that isn't true
+			universe.clock:delay(0.5, function()
+				serverA.messaging:publish(
+					`geode_release_{Helpers.STORE}`,
+					{ kind = "released", key = "1", from = "A" }
+				)
+			end)
+			local result = universe.clock:run(function()
+				return store(counted :: any, { stealAfter = 1, stealPolicy = "fail" }):load("1")
+			end)
+			expect(result.ok).toBe(false)
+			local updates, reads = 0, 0
+			for _, call in calls do
+				if call == `{Helpers.STORE}.update` then
+					updates += 1
+				elseif call == `{Helpers.STORE}.get` then
+					reads += 1
+				end
+			end
+			-- the first try and the one that gives up, none after the announcement
+			expect(updates).toBe(2)
+			expect(reads).toBe(1)
+		end)
+
 		it("costs nothing until a store loads", function()
 			local universe = Universe.new()
 			local server = universe:server()

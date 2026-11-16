@@ -15,6 +15,8 @@ type Fields = {
 	scope: string,
 	_context: Context,
 	_entries: { [string]: DataStoreEntry },
+	-- this server's copies of keys, only with `dataStoreCache` on
+	_cached: { [string]: { read: Types.Read, expiresAt: number } },
 }
 
 local MockDataStore = {}
@@ -33,6 +35,7 @@ function MockDataStore.new(context: Context, name: string, scope: string): MockD
 		scope = scope,
 		_context = context,
 		_entries = stores[id],
+		_cached = {},
 	}
 	return setmetatable(self, MockDataStore)
 end
@@ -82,6 +85,42 @@ local function readOf(entry: DataStoreEntry?, version: StoredVersion?): Types.Re
 		return { value = nil, info = nil }
 	end
 	return { value = Values.clone(version.value), info = infoOf(entry, version) }
+end
+
+local function cloneRead(read: Types.Read): Types.Read
+	local info = read.info
+	return {
+		value = Values.clone(read.value),
+		info = if info
+			then {
+				version = info.version,
+				createdTime = info.createdTime,
+				updatedTime = info.updatedTime,
+				userIds = table.clone(info.userIds),
+				metadata = Values.clone(info.metadata) :: { [string]: unknown },
+			}
+			else nil,
+	}
+end
+
+-- Keeps this server's copy of `key` and restarts its timer
+function MockDataStore._remember(self: MockDataStore, key: string, read: Types.Read)
+	local cache = self._context.shared.dataStoreCache
+	if cache == nil then
+		return
+	end
+	self._cached[key] = {
+		read = cloneRead(read),
+		expiresAt = self._context.shared.clock:now() + cache.seconds,
+	}
+end
+
+function MockDataStore._cachedRead(self: MockDataStore, key: string): Types.Read?
+	local entry = self._cached[key]
+	if entry == nil or self._context.shared.clock:now() >= entry.expiresAt then
+		return nil
+	end
+	return cloneRead(entry.read)
 end
 
 function MockDataStore._enter(
@@ -146,7 +185,18 @@ end
 
 --// adapter
 
-function MockDataStore.get(self: MockDataStore, key: string): Types.Result<Types.Read>
+function MockDataStore.get(
+	self: MockDataStore,
+	key: string,
+	options: Types.ReadOptions?
+): Types.Result<Types.Read>
+	-- a cached answer never reaches the backend, so it costs no budget
+	local cached = if options == nil or options.useCache ~= false
+		then self:_cachedRead(key)
+		else nil
+	if cached then
+		return Errors.ok(cached)
+	end
 	local err = self:_enter("get", key)
 	if err then
 		return Errors.failWith(err)
@@ -162,7 +212,9 @@ function MockDataStore.get(self: MockDataStore, key: string): Types.Result<Types
 	if readError then
 		return Errors.failWith(readError)
 	end
-	return Errors.ok(readOf(entry, latest(entry)))
+	local read = readOf(entry, latest(entry))
+	self:_remember(key, read)
+	return Errors.ok(read)
 end
 
 function MockDataStore.set(
@@ -179,6 +231,7 @@ function MockDataStore.set(
 	if writeError or stored == nil then
 		return Errors.failWith(writeError :: Types.AdapterError)
 	end
+	self:_remember(key, readOf(self._entries[key], stored))
 	if landed then
 		return Errors.failWith(landed)
 	end
@@ -193,6 +246,14 @@ function MockDataStore.update(
 	local err, foreign, landed = self:_enter("update", key)
 	if err then
 		return Errors.failWith(err)
+	end
+
+	local cache = self._context.shared.dataStoreCache
+	if foreign == nil and cache and cache.cancelledUpdates then
+		local cached = self:_cachedRead(key)
+		if cached and transform(cached.value, cached.info) == nil then
+			return Errors.ok({ value = cached.value, info = cached.info, cancelled = true })
+		end
 	end
 
 	if foreign then
@@ -211,6 +272,7 @@ function MockDataStore.update(
 	local current = readOf(entry, latest(entry))
 	local nextValue, options = transform(current.value, current.info)
 	if nextValue == nil then
+		self:_remember(key, current)
 		return Errors.ok({ value = current.value, info = current.info, cancelled = true })
 	end
 
@@ -226,6 +288,7 @@ function MockDataStore.update(
 	if writeError or stored == nil then
 		return Errors.failWith(writeError :: Types.AdapterError)
 	end
+	self:_remember(key, readOf(self._entries[key], stored))
 	if landed then
 		return Errors.failWith(landed)
 	end
@@ -258,6 +321,7 @@ function MockDataStore.remove(self: MockDataStore, key: string): Types.Result<Ty
 		userIds = {},
 		metadata = {},
 	})
+	self:_remember(key, { value = nil, info = nil })
 	if landed then
 		return Errors.failWith(landed)
 	end
@@ -287,6 +351,7 @@ function MockDataStore.increment(
 	if writeError or stored == nil then
 		return Errors.failWith(writeError :: Types.AdapterError)
 	end
+	self:_remember(key, readOf(self._entries[key], stored))
 	if landed then
 		return Errors.failWith(landed)
 	end

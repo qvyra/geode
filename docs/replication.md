@@ -79,4 +79,4 @@ client:op("guideBuyItem", "sword")
 
 `atom(path, userId)` reads another player's public paths. `computed` tracks the atoms it reads and runs again when any of them changes. To use Charm instead, pass the Charm module to `client:charm(Charm)` and its `atom(path)` returns Charm atoms that follow the replicated data.
 
-A roblox-ts package is coming soon. It will expose the same client with the same names, typed from the typings in `types/`.
+In roblox-ts the client has the same names: `Geode.Client.start()` from `@rbxts/geode`, then `client.atom("coins")` and the rest.

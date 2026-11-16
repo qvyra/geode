@@ -19,6 +19,16 @@ playerData.onLoaded((player, profile) => {
 	print(player.Name, profile.get("coins"));
 });
 
+// the types are reachable through the namespace
+function grant(profile: Geode.Profile, amount: number): Geode.TxResult {
+	return profile.increment("coins", amount);
+}
+const store: Geode.ProfileStore = playerData.store;
+const first = store.get("player_1");
+if (first !== undefined) {
+	grant(first, 5);
+}
+
 const handle = playerData.get(game.GetService("Players").GetPlayers()[0]);
 if (handle?.isLoaded() === true) {
 	handle.set("level", 2);
@@ -56,7 +66,11 @@ Geode.op(
 	(tx, itemId: string, amount: number) => {
 		tx.increment(["inventory", itemId], amount);
 	},
-	{ args: [Geode.t.string(), Geode.t.integer({ min: 1 })] },
+	{
+		args: [Geode.t.string(), Geode.t.integer({ min: 1 })],
+		names: ["itemId", "amount"],
+		description: "Give the player some of an item",
+	},
 );
 Geode.remoteOp("buyItem", { store: playerData.store, args: [Geode.t.string()] });
 
@@ -68,3 +82,40 @@ coins.subscribe((newValue) => {
 client.op("buyItem", "sword");
 
 print(Geode.Vein.snapshot().idle);
+
+const edited = Geode.Raw.externalWrite(
+	{ data: { coins: 5 }, meta: { schemaVersion: 1, revision: 7 } },
+	{ coins: 50 },
+	{ now: DateTime.now().UnixTimestampMillis / 1000, id: "edit-1" },
+);
+print(edited.meta.revision, edited.meta.format === Geode.Raw.recordFormat);
+
+const universe = Geode.Testing.universe({ dataStoreCache: { seconds: 4 } });
+const server = universe.server();
+server.inject({ service: "dataStore", method: "update", fault: "throttle", times: 1 });
+const mailStore = Geode.Profile.store({
+	name: "Mail",
+	template: { coins: 0 },
+	services: server,
+	mailbox: true,
+});
+const queued = mailStore.mail("player_1", "increment", "coins", 5);
+if (queued.ok) {
+	print(queued.value);
+}
+universe.clock.run(() => {
+	const loaded = mailStore.load("player_1");
+	if (loaded.ok) {
+		loaded.profile.release();
+	}
+});
+const fresh = server.dataStore("Mail").get("player_1", { useCache: false });
+if (fresh.ok) {
+	print(fresh.value.value, fresh.value.info?.version);
+}
+print(universe.kicks.size(), server.tooling.messages().size());
+
+const [valid, result] = Geode.schema.decode(Geode.t.number(), 1);
+if (!valid) {
+	print(result.issues[0]?.code);
+}

@@ -5,6 +5,7 @@
 
 local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
+local Future = require("../Quartz/Future")
 local Guards = require("../Obsidian/Guards")
 local Handoff = require("./Handoff")
 local Tooling = require("./Tooling")
@@ -69,6 +70,9 @@ export type Options = {
 	-- Ask holders over MessagingService to release, and hear when they have, so server hops
 	-- don't wait out retries. On by default. Correctness never depends on it
 	handoff: boolean?,
+	-- Take mail sent with `store:mail` and apply it on load. Off by default, so stores that never
+	-- get mail never read a mailbox. Turn it on wherever the store is made, senders included
+	mailbox: boolean?,
 	-- Keep a commit history in a `<name>_audit` DataStore: who changed which paths and why, one
 	-- key per save. Off by default
 	audit: boolean?,
@@ -136,6 +140,8 @@ type Fields = {
 	_scheduler: Scheduler.Scheduler,
 	_dataStore: Types.DataStore,
 	_mailboxStore: Types.DataStore,
+	-- whether loads read the mailbox, see Options.mailbox
+	_mailbox: boolean,
 	_template: { [string]: unknown },
 	_migrations: { [number]: (tx: Transaction.Transaction) -> () },
 	_userKey: (userId: number) -> string,
@@ -324,6 +330,7 @@ function ProfileStore.new(options: Options): ProfileStore
 			or Scheduler.new({ clock = services.clock, budget = services.budget }),
 		_dataStore = services.dataStore(options.name, scope),
 		_mailboxStore = services.dataStore(`{options.name}_mailbox`, scope),
+		_mailbox = options.mailbox == true,
 		_template = copy(options.template) :: { [string]: unknown },
 		_migrations = migrations,
 		_userKey = options.userKey or function(userId: number): string
@@ -470,6 +477,7 @@ function ProfileStore._tryAcquire(
 					acquiredAt = now,
 					renewedAt = now,
 				}
+				record.meta.format = Record.FORMAT
 				record.meta.updatedAt = now
 				record.meta.lastSession =
 					{ session = owner.session, revision = record.meta.revision }
@@ -483,6 +491,34 @@ function ProfileStore._tryAcquire(
 		return nil, result.error
 	end
 	return attempt, nil
+end
+
+-- Reads the record past this server's cache after a release announcement. Live hops showed
+-- UpdateAsync retries answering in under 10 ms with the lease still held, for about 4 seconds
+-- after the first try, as if a transform that writes nothing were fed this server's cached copy
+-- of the key. Roblox documents that 4 second cache for GetAsync only. A fresh GetAsync gets the
+-- real record and refreshes the copy: in live hops the UpdateAsync right after it saw the
+-- release every time, and hops went from about 5 s to about 0.6 s. That's observed, not
+-- documented. Returns a held attempt when the lease really is still held, nil when the
+-- UpdateAsync should go ahead
+function ProfileStore._peekLease(self: ProfileStore, key: string, owner: Record.Owner): Attempt?
+	local read = self._scheduler:submit({
+		priority = "load",
+		budget = "standardRead",
+		key = self:_schedulerKey(key),
+		run = function()
+			return self._dataStore:get(key, { useCache = false })
+		end,
+	})
+	if not read.ok or not Record.isRecord(read.value.value) then
+		return nil
+	end
+	local record = read.value.value :: Record.Record
+	local now = self._services.clock:now()
+	if Record.leaseState(record, now, self._config.leaseTimeout, owner) ~= "held" then
+		return nil
+	end
+	return { outcome = "held", record = nil, holder = record.meta.lease }
 end
 
 function ProfileStore._abandon(self: ProfileStore, key: string, owner: Record.Owner)
@@ -504,6 +540,7 @@ function ProfileStore._abandon(self: ProfileStore, key: string, owner: Record.Ow
 					return nil
 				end
 				record.meta.lease = nil
+				record.meta.format = Record.FORMAT
 				return record
 			end)
 		end,
@@ -549,8 +586,25 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	local tries = 0
 	local record: Record.Record
 	local erasedAt: number? = nil
+	local mailRead: Future.Future? = nil
+	-- set when a read past the cache found the lease still held, so the next turn skips the
+	-- UpdateAsync that would only find the same
+	local peeked: Attempt? = nil
 	while true do
-		local attempt, adapterError = self:_tryAcquire(key, owner, userIds, force)
+		local attempt: Attempt?, adapterError: Types.AdapterError?
+		if peeked then
+			attempt, peeked = peeked, nil
+		else
+			-- The mailbox is read next to each attempt rather than after it, so a load costs one
+			-- round trip. Reading before the lease is ours is safe: the cursor in the record we
+			-- get decides what applies, and mail the read missed waits for the next load. A read
+			-- still running from the last attempt is kept, a finished one is redone to pick up
+			-- newer mail
+			if self._mailbox and (mailRead == nil or mailRead:isDone()) then
+				mailRead = self:_readMailbox(key)
+			end
+			attempt, adapterError = self:_tryAcquire(key, owner, userIds, force)
+		end
 		if attempt == nil then
 			local err = adapterError :: Types.AdapterError
 			local retryable = err.kind == "throttled" or err.kind == "internal"
@@ -602,12 +656,15 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		tries += 1
 		-- Wakes early on the holder's release announcement. The handoff key backs that message
 		-- up until the steal window closes
-		self._handoff:wait(
+		local announced = self._handoff:wait(
 			key,
 			math.min(RETRY_BASE * 2 ^ (tries - 1), RETRY_MAX),
 			holder.session,
 			waited < config.stealAfter
 		)
+		if announced then
+			peeked = self:_peekLease(key, owner)
+		end
 	end
 
 	local data, problem, problemMessage = self:_decodeStored(key, record)
@@ -703,7 +760,9 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 			self._handoff:announce(key, profile:revision(), owner.session)
 		end)
 	end)
-	self:_deliverMail(key, profile)
+	if mailRead then
+		self:_deliverMail(key, profile, mailRead:await() :: Types.Result<Types.Read>)
+	end
 	self._open[key] = profile
 	if userId then
 		self._owners[key] = userId
@@ -803,18 +862,32 @@ end
 --//  Mailbox                                                         //--
 --// ================================================================ //--
 
+-- Reads the mailbox of `key` on its own thread. The future settles with the read's result
+function ProfileStore._readMailbox(self: ProfileStore, key: string): Future.Future
+	local clock = self._services.clock
+	local future = Future.new(clock)
+	clock:spawn(function()
+		future:resolve(self._scheduler:submit({
+			priority = "load",
+			budget = "standardRead",
+			key = self:_mailboxKey(key),
+			run = function()
+				return self._mailboxStore:get(key)
+			end,
+		}))
+	end)
+	return future
+end
+
 -- Applies everything after the saved cursor, one mailbox transaction per message, then trims
 -- what earlier sessions already saved as applied. Failed messages are archived, not dropped
-function ProfileStore._deliverMail(self: ProfileStore, key: string, profile: Profile.Profile)
+function ProfileStore._deliverMail(
+	self: ProfileStore,
+	key: string,
+	profile: Profile.Profile,
+	read: Types.Result<Types.Read>
+)
 	local savedCursor = profile:mailboxCursor()
-	local read = self._scheduler:submit({
-		priority = "load",
-		budget = "standardRead",
-		key = self:_mailboxKey(key),
-		run = function()
-			return self._mailboxStore:get(key)
-		end,
-	})
 	if not read.ok then
 		self._report(
 			`couldn't read the mailbox of {key}, it will be delivered on a later load: {read.error.message}`
@@ -866,7 +939,7 @@ end
 
 --[=[
 	Queues an op for a profile, wherever its player is. It's applied as a mailbox transaction the
-	next time the profile loads. Yields
+	next time the profile loads. Only stores made with `mailbox = true` take mail. Yields
 
 	@param key string
 	@param op string -- a built-in op other than update, or a custom op this store enables
@@ -878,6 +951,16 @@ function ProfileStore.mail(
 	op: string,
 	...: unknown
 ): Types.Result<number>
+	if not self._mailbox then
+		-- A store without it never reads its mailbox, so the mail would sit there unapplied
+		return {
+			ok = false,
+			error = {
+				kind = "invalidValue",
+				message = `{self.name} doesn't take mail, make the store with mailbox = true`,
+			},
+		}
+	end
 	local enabled = Mailbox.isBuiltIn(op) or (self._ops ~= nil and table.find(self._ops, op) ~= nil)
 	if not enabled then
 		return {
@@ -987,6 +1070,7 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 				record.meta.mailboxCursor = 0
 				record.meta.erasedAt = now
 				record.meta.updatedAt = now
+				record.meta.format = Record.FORMAT
 				return record, { userIds = {} }
 			end)
 		end,

@@ -76,6 +76,31 @@ return function(spec: Spec.Api)
 			expect(byName.bridgeEditGrant.args).toBeNil()
 		end)
 
+		it("lists a custom op's argument names and description", function()
+			fresh()
+			if not Transaction.isRegistered("bridgeEditReward") then
+				Transaction.register("bridgeEditReward", function(tx, _item: string, coins: number)
+					tx:increment("coins", coins)
+				end, {
+					args = { t.string(), t.integer({ min = 1, max = 1000 }) },
+					names = { "item", "coins" },
+					description = "Give the player an item and some coins",
+				})
+			end
+			local universe = Universe.new()
+			local server = universe:server({ studio = true })
+			Helpers.store(server, { studio = "real", ops = { "bridgeEditReward" } })
+			local answer = request(universe, server, { kind = "ops", store = Helpers.STORE })
+			local reward = answer.ops[#answer.ops]
+			expect(reward.name).toBe("bridgeEditReward")
+			expect(reward.builtin).toBe(false)
+			expect(reward.description).toBe("Give the player an item and some coins")
+			expect(reward.args[1].name).toBe("item")
+			expect(reward.args[1].schema.kind).toBe("string")
+			expect(reward.args[2].name).toBe("coins")
+			expect(reward.args[2].schema.max).toBe(1000)
+		end)
+
 		it("describes the schema at a path", function()
 			fresh()
 			local universe = Universe.new()

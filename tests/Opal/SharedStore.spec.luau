@@ -1,6 +1,7 @@
 --!strict
 
 local Guards = require("../../src/Obsidian/Guards")
+local Record = require("../../src/Sapphire/Record")
 local SharedStore = require("../../src/Opal/SharedStore")
 local Spec = require("../_lib/Spec")
 local Universe = require("../../src/Quartz/Mock/Universe")
@@ -217,6 +218,52 @@ return function(spec: Spec.Api)
 				end
 			end)
 			expect(stored(universe, "g1")).toBeNil()
+		end)
+	end)
+
+	describe("shared store record format", function()
+		it("writes the current format", function()
+			local universe = Universe.new()
+			local guilds = make(universe:server())
+			universe.clock:run(function()
+				guilds:increment("g1", "bank", 5)
+			end)
+			expect(stored(universe, "g1").meta.format).toBe(Record.FORMAT)
+		end)
+
+		it("reads and writes a record saved before meta.format existed", function()
+			local universe = Universe.new()
+			local writer = universe:server({ jobId = "seed" })
+			universe.clock:run(function()
+				writer.dataStore("Guilds"):set("g1", {
+					data = { bank = 9, members = {} },
+					meta = { schemaVersion = 1, revision = 3, updatedAt = 0 },
+				})
+			end)
+			local guilds = make(universe:server())
+			universe.clock:run(function()
+				expect(value(guilds:get("g1", "bank"))).toBe(9)
+				guilds:increment("g1", "bank", 1)
+			end)
+			local record = stored(universe, "g1")
+			expect(record.data.bank).toBe(10)
+			expect(record.meta.revision).toBe(4)
+			expect(record.meta.format).toBe(Record.FORMAT)
+		end)
+
+		it("refuses a record whose format isn't a number", function()
+			local universe = Universe.new()
+			local writer = universe:server({ jobId = "seed" })
+			universe.clock:run(function()
+				writer.dataStore("Guilds"):set("g1", {
+					data = { bank = 9, members = {} },
+					meta = { format = "1", schemaVersion = 1, revision = 3, updatedAt = 0 },
+				})
+			end)
+			local guilds = make(universe:server())
+			universe.clock:run(function()
+				expect(guilds:get("g1", "bank").ok).toBe(false)
+			end)
 		end)
 	end)
 

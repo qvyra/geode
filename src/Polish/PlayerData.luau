@@ -58,6 +58,8 @@ export type Options = {
 	-- Ask holders over MessagingService to release and hear when they have, so server hops
 	-- don't wait out retries. On by default, correctness never depends on it
 	handoff: boolean?,
+	-- apply mail sent with `store:mail` on load. Off by default
+	mailbox: boolean?,
 	reportError: ((message: string) -> ())?,
 
 	products: { [number]: Receipts.Handler }?,

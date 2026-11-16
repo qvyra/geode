@@ -1,0 +1,108 @@
+{
+	"note": "Downloaded by scripts/bench.luau into .cache/bench/libs at benchmark time, never committed. Each license is checked against the hash recorded here first, and a library whose license changed isn't run.",
+	"libraries": [
+		{
+			"name": "ProfileStore",
+			"repo": "MadStudioRoblox/ProfileStore",
+			"ref": "45c9847cbcf1fc260369c50eb335aba7c35aecdd",
+			"version": "no releases, latest commit on main (2025-07-31)",
+			"license": {
+				"path": "LICENSE",
+				"name": "Apache-2.0",
+				"sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+			},
+			"files": { "ProfileStore.luau": "ProfileStore.luau" },
+			"mount": "ProfileStore.luau",
+			"swap": {
+				"file": "ProfileStore.luau",
+				"find": "local DataStoreService = game:GetService(\"DataStoreService\")",
+				"replace": "local DataStoreService = require(script.Parent.Parent.Proxy).active()"
+			}
+		},
+		{
+			"name": "ProfileService",
+			"repo": "MadStudioRoblox/ProfileService",
+			"ref": "d736800444eda6bf75b18397f77dfb2c8f31f60f",
+			"version": "no releases, latest commit on master (2024-10-13)",
+			"license": {
+				"path": "LICENSE",
+				"name": "Apache-2.0",
+				"sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+			},
+			"files": { "ProfileService.lua": "ProfileService.lua" },
+			"mount": "ProfileService.lua",
+			"swap": {
+				"file": "ProfileService.lua",
+				"find": "local DataStoreService = game:GetService(\"DataStoreService\")",
+				"replace": "local DataStoreService = require(script.Parent.Parent.Proxy).active()"
+			}
+		},
+		{
+			"name": "Lapis",
+			"repo": "nezuo/lapis",
+			"ref": "f140acaac4eb569e5d0588bc63315ecaa4972518",
+			"version": "v0.3.3",
+			"license": {
+				"path": "LICENSE",
+				"name": "MIT",
+				"sha256": "d852c6331e685424a7d95eb0b9c6c2907521a91590ab4698abbf56a80668970e"
+			},
+			"files": {
+				"src/init.luau": "Lapis/init.luau",
+				"src/AutoSave.luau": "Lapis/AutoSave.luau",
+				"src/Collection.luau": "Lapis/Collection.luau",
+				"src/Config.luau": "Lapis/Config.luau",
+				"src/Document.luau": "Lapis/Document.luau",
+				"src/Error.luau": "Lapis/Error.luau",
+				"src/Internal.luau": "Lapis/Internal.luau",
+				"src/Migration.luau": "Lapis/Migration.luau",
+				"src/PromiseTypes.luau": "Lapis/PromiseTypes.luau",
+				"src/copyDeep.luau": "Lapis/copyDeep.luau",
+				"src/freezeDeep.luau": "Lapis/freezeDeep.luau",
+				"src/noYield.luau": "Lapis/noYield.luau",
+				"src/Data/init.luau": "Lapis/Data/init.luau",
+				"src/Data/Throttle.luau": "Lapis/Data/Throttle.luau"
+			},
+			"mount": "Lapis"
+		},
+		{
+			"name": "Promise",
+			"dependencyOf": "Lapis",
+			"repo": "evaera/roblox-lua-promise",
+			"ref": "2c6f433903275e689ba1d48402d4a9d6fdc605a5",
+			"version": "v4.0.0, the version Lapis 0.3.3 asks for",
+			"license": {
+				"path": "LICENSE",
+				"name": "MIT",
+				"sha256": "1b326bf4c7bb9ba78d58347790d2898fb41843b8be826f63a544b086a8cd185a"
+			},
+			"files": { "lib/init.lua": "Promise/init.lua" },
+			"mount": "Promise"
+		},
+		{
+			"name": "DataStore2",
+			"repo": "Kampfkarren/Roblox",
+			"ref": "ab81664caa0236aa38878d10d082e045e8ea5f79",
+			"version": "ds2-1.4.0",
+			"license": {
+				"path": "LICENSE",
+				"name": "custom: copying and changing allowed, changes to a published game's copy must be shared",
+				"sha256": "a79875c87e509a665df4110ee73eb631b0a353b94802932c896d7b97e576d49b"
+			},
+			"files": {
+				"DataStore2/init.lua": "DataStore2/init.lua",
+				"DataStore2/Constants.lua": "DataStore2/Constants.lua",
+				"DataStore2/DataStoreServiceRetriever.lua": "DataStore2/DataStoreServiceRetriever.lua",
+				"DataStore2/IsPlayer.lua": "DataStore2/IsPlayer.lua",
+				"DataStore2/Promise.lua": "DataStore2/Promise.lua",
+				"DataStore2/Settings.lua": "DataStore2/Settings.lua",
+				"DataStore2/TableUtil.lua": "DataStore2/TableUtil.lua",
+				"DataStore2/Verifier.lua": "DataStore2/Verifier.lua",
+				"DataStore2/SavingMethods/init.lua": "DataStore2/SavingMethods/init.lua",
+				"DataStore2/SavingMethods/Standard.lua": "DataStore2/SavingMethods/Standard.lua",
+				"DataStore2/SavingMethods/OrderedBackups.lua": "DataStore2/SavingMethods/OrderedBackups.lua"
+			},
+			"mount": "DataStore2"
+		}
+	]
+}

@@ -1,4 +1,6 @@
-# Geode
+<p align="center"><img src="https://raw.githubusercontent.com/qvyra/geode/main/.github/assets/geode-cover.jpg" alt="Geode cover: a cartoon cave lined with glowing blue, teal, red and gold crystals, with the Geode logo and the tagline 'Roblox data that survives a server dying'." width="100%"></p>
+
+<p align="center"><sub><a href="https://quivery.dev/projects/geode">Portfolio page</a> · <a href="https://quivery.dev/projects/geode/benchmarks">Benchmarks</a> · <a href="https://qvyra.github.io/geode">Docs</a> · <a href="https://create.roblox.com/store/asset/134787455935323/Loupe">Loupe, the Studio plugin</a></sub></p>
 
 A data framework for Roblox. Geode puts DataStoreService, MemoryStoreService and MessagingService behind one API, with session-locked player data, guards, reactive data and replication on top.
 
@@ -28,12 +30,18 @@ With [Wally](https://wally.run), add Geode to `wally.toml` and run `wally instal
 
 ```toml
 [dependencies]
-Geode = "qvyra/geode@0.4.0"
+Geode = "qvyra/geode@0.6.1"
 ```
 
-A roblox-ts package is coming. The typings for the whole API already live in `types/`.
+With roblox-ts, install it from npm:
 
-<!-- TODO: request the @rbxts/geode name from the roblox-ts organization before the first npm release -->
+```sh
+npm i @rbxts/geode
+```
+
+and import it with `import Geode from "@rbxts/geode"`. The typings cover the whole API with the same names as Luau.
+
+Without Rojo or a package manager, download `Geode.rbxm` from the [latest release](https://github.com/qvyra/geode/releases/latest) and insert it in Studio: right-click ReplicatedStorage, choose Insert from File and pick the file. Then require it with `require(ReplicatedStorage.Geode)`. The [installation page](https://qvyra.github.io/geode/docs/installation#model-file) has the details.
 
 ## Quick start
 

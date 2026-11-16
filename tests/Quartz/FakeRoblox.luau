@@ -62,8 +62,8 @@ end
 
 local function dataStore(mock: Types.DataStore): any
 	return {
-		GetAsync = function(_self: any, key: string)
-			local read = unwrap(mock:get(key))
+		GetAsync = function(_self: any, key: string, options: any)
+			local read = unwrap(mock:get(key, options and { useCache = options.UseCache }))
 			return read.value, keyInfo(read.info)
 		end,
 		SetAsync = function(
@@ -395,6 +395,9 @@ function FakeRoblox.services(server: Universe.MockServer): Types.Services
 			sortDescending = "Descending",
 			newSetOptions = function(metadata)
 				return { metadata = metadata }
+			end,
+			newGetOptions = function(useCache)
+				return { UseCache = useCache }
 			end,
 			newIncrementOptions = function(metadata)
 				return { metadata = metadata }

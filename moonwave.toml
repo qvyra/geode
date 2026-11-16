@@ -17,6 +17,12 @@ classOrder = [
 url = "https://qvyra.github.io"
 baseUrl = "/geode/"
 tagline = "A layered data framework for Roblox"
+# from .moonwave/static, which Moonwave copies into the site
+favicon = "favicon.ico"
+
+[navbar.logo]
+alt = "Geode"
+src = "logo.png"
 
 [home]
 enabled = true

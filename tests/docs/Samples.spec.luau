@@ -47,11 +47,12 @@ local function samples(): { Sample }
 	return found
 end
 
--- What `game:GetService` hands a sample. ReplicatedStorage leads to Geode, Players to the mock
--- server's players with a stand-in LocalPlayer
+-- What `game:GetService` hands a sample. ReplicatedStorage leads to Geode, through Packages as
+-- Wally installs it or straight from the model file, Players to the mock server's players with a
+-- stand-in LocalPlayer
 local function fakeGame(server: Universe.MockServer, packages: { [string]: unknown }): any
 	local services: { [string]: unknown } = {
-		ReplicatedStorage = { Packages = packages },
+		ReplicatedStorage = { Packages = packages, Geode = packages.Geode },
 		Players = {
 			LocalPlayer = { UserId = 1, Name = "Player1" },
 			GetPlayers = function()
