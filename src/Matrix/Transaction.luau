@@ -532,10 +532,18 @@ function Transaction.merge(self: Transaction, path: PathLike?, partial: { [strin
 end
 
 --[=[
-	Runs a registered custom op inside this transaction
+	Runs a custom op registered with `Geode.op` inside this transaction. Built-in ops are methods
+	(`tx:set`, `tx:increment` and the rest), so passing a built-in's name here fails with
+	`unknownOp`
 ]=]
 function Transaction.op(self: Transaction, name: string, ...: any)
 	local handler = registry[name]
+	if handler == nil and BUILT_IN[name] then
+		Transaction.fail(
+			"unknownOp",
+			`{name} is a built-in op, and built-ins are methods: call tx:{name}(...) instead of tx:op("{name}", ...)`
+		)
+	end
 	if handler == nil then
 		Transaction.fail("unknownOp", `no op named {name} is registered`)
 	end
