@@ -353,6 +353,8 @@ declare namespace Geode {
 		action?: Action;
 		ops?: string[];
 		skipSources?: SourceKind[];
+		/** What a player this guard kicks reads. Defaults to the store's `kickMessage` */
+		kickMessage?: string;
 	}
 
 	interface GuardContext {
@@ -710,6 +712,8 @@ declare namespace Geode {
 		userKey?: (userId: number) => string;
 		receiptHistory?: number;
 		guards?: Guard[];
+		/** What a player kicked by a guard reads, unless the guard has its own `kickMessage` */
+		kickMessage?: string;
 		bundles?: Bundle[];
 		reactions?: Reaction[];
 		derived?: Derived[];
@@ -871,6 +875,8 @@ declare namespace Geode {
 		schema?: Schema;
 		schemaVersion?: number;
 		guards?: Guard[];
+		/** What a player kicked by a guard reads, unless the guard has its own `kickMessage` */
+		kickMessage?: string;
 		bundles?: Bundle[];
 		reactions?: Reaction[];
 		derived?: Derived[];

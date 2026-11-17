@@ -49,6 +49,8 @@ export type Options = {
 	-- How many recent purchase ids each profile keeps to refuse repeats. Defaults to 50
 	receiptHistory: number?,
 	guards: { Guards.Guard }?,
+	-- What a player kicked by a guard reads, unless the guard has its own kickMessage
+	kickMessage: string?,
 	bundles: { Facet.Bundle }?,
 	reactions: { Facet.Reaction }?,
 	derived: { Facet.Derived }?,
@@ -148,6 +150,7 @@ type Fields = {
 	_storedTemplate: unknown,
 	_schema: Schema.Schema?,
 	_guards: { Guards.Guard },
+	_kickMessage: string?,
 	_facets: Facet.FacetSet,
 	_ops: { string }?,
 	_config: Config,
@@ -275,6 +278,7 @@ function ProfileStore.new(options: Options): ProfileStore
 	if options.schema then
 		table.insert(guards, 1, Guards.schema(options.schema))
 	end
+	Guards.checkKickMessage(options.kickMessage)
 
 	local facets = Facet.set({
 		bundles = options.bundles,
@@ -341,6 +345,7 @@ function ProfileStore.new(options: Options): ProfileStore
 			else copy(options.template),
 		_schema = options.schema,
 		_guards = guards,
+		_kickMessage = options.kickMessage,
 		_facets = facets,
 		_ops = options.ops,
 		_config = config,
@@ -686,6 +691,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		guards = self._guards,
 		clock = services.clock,
 		players = services.players,
+		kickMessage = self._kickMessage,
 		reportError = self._report,
 	})
 	guardSet:attach(document)

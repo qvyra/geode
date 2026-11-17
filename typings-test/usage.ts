@@ -6,6 +6,7 @@ import Geode from "../types";
 const playerData = Geode.players({
 	name: "PlayerData",
 	template: { coins: 0, xp: 0, level: 1, inventory: [] },
+	kickMessage: "Something went wrong with your data. Please rejoin.",
 	replicate: { coins: "owner", level: "public" },
 	products: {
 		[123456]: (tx) => {
@@ -37,7 +38,10 @@ if (handle?.isLoaded() === true) {
 const guilds = Geode.Shared.store({
 	name: "Guilds",
 	template: { bank: 0 },
-	guards: [Geode.guard.range("bank", { min: 0 })],
+	guards: [
+		Geode.guard.range("bank", { min: 0 }, { action: "kick", kickMessage: "Please rejoin." }),
+	],
+	kickMessage: "Your guild data had a problem. Please rejoin.",
 });
 const deposit = guilds.increment("guild_1", "bank", 50);
 if (!deposit.ok) {

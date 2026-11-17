@@ -153,6 +153,24 @@ return function(spec: Spec.Api)
 			end)
 		end)
 
+		it("kicks a guard's offender with the store's kickMessage", function()
+			local universe = Universe.new()
+			local server = universe:server()
+			server:join(7)
+			local guilds = make(server, {
+				guards = { Guards.range("bank", { min = 0 }, { action = "kick" }) },
+				kickMessage = "Your guild data had a problem. Please rejoin.",
+			})
+			universe.clock:run(function()
+				guilds:transact("g1", function(tx)
+					tx:decrement("bank", 5)
+				end, { source = { kind = "player", userId = 7 } })
+			end)
+			universe.clock:advance(1)
+			expect(#universe.kicks).toBe(1)
+			expect(universe.kicks[1].reason).toBe("Your guild data had a problem. Please rejoin.")
+		end)
+
 		it("leaves the stored value alone when a guard rejects", function()
 			local universe = Universe.new()
 			local guilds =

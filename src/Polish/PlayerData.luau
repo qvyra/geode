@@ -37,6 +37,8 @@ export type Options = {
 	-- recent purchase ids kept per profile to refuse repeats, default 50
 	receiptHistory: number?,
 	guards: { Guards.Guard }?,
+	-- what a player kicked by a guard reads, unless the guard has its own kickMessage
+	kickMessage: string?,
 	bundles: { Facet.Bundle }?,
 	reactions: { Facet.Reaction }?,
 	derived: { Facet.Derived }?,

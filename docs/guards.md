@@ -48,6 +48,26 @@ Each guard has an action for when it breaks. The default is `reject`.
 - `kick` undoes it and kicks the player who made it
 - A function decides for itself. It gets the violation and returns an action name, and returning nothing rejects, so a broken handler fails closed
 
+A kicked player reads a plain sentence, "You were removed because of a problem with your data. Please rejoin.", never the violation's `reason`, which is written for logs and shows paths and values. Set `kickMessage` on the store to change it for every guard, or on one guard to give it its own. `guardBroken` and the telemetry for development tools still get the `reason` as it is.
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+local guard = Geode.guard
+
+local PlayerData = Geode.players({
+	name = "PlayerData",
+	template = { coins = 0 },
+	kickMessage = "Something went wrong with your data. Please rejoin.",
+	guards = {
+		guard.delta("coins", { up = 100000 }, {
+			action = "kick",
+			kickMessage = "You were removed for an impossible coin gain.",
+		}),
+	},
+})
+```
+
 When several guards break, the strongest action wins: kick, then reject, then flag, then warn. A rejected transaction fails with the kind `rejected`, and `error.guard` names the guard that blocked it. Every violation fires the store's `guardBroken` signal. A violation names the guard, its kind, the path, the reason, the action, the source and player, the ops that ran, and the value at the path before and after the transaction.
 
 ```lua

@@ -33,6 +33,8 @@ export type Options = {
 	schema: Schema.Schema?,
 	schemaVersion: number?,
 	guards: { Guards.Guard }?,
+	-- What a player kicked by a guard reads, unless the guard has its own kickMessage
+	kickMessage: string?,
 	bundles: { Facet.Bundle }?,
 	reactions: { Facet.Reaction }?,
 	derived: { Facet.Derived }?,
@@ -165,6 +167,7 @@ function SharedStore.new(options: Options): SharedStore
 		guards = guardList,
 		clock = services.clock,
 		players = services.players,
+		kickMessage = options.kickMessage,
 		reportError = report,
 	})
 	local facets = Facet.set({
