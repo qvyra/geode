@@ -576,3 +576,15 @@ Runs on a release tag, by hand or once a month open a pull request with their da
 Tables keep a notes column written by hand, matched to rows by label. The prose around them stays hand written too, so when new runs change a number the prose quotes, the data pull request lists it for a person to rewrite.
 
 **PR:** #34
+
+## 46. A kicked player reads a kick message, not the violation's reason
+
+**Date:** 2026-11-17
+
+The `kick` guard action kicked with the first violation's `reason`. Reasons are written for logs: "coins rose by 1000000, more than 1000 at once" shows a path and values, tells a cheater exactly where the limit sits, and reads oddly to everyone else. It also took the transaction's first violation, which isn't always the kicking one: a guard that only flagged, listed before the one that kicked, gave its reason.
+
+A kick now reads, in this order: the kicking guard's `kickMessage`, the store's `kickMessage`, or "You were removed because of a problem with your data. Please rejoin." When several guards kick in one transaction, the first of them in the store's list gives the message. The violation's `reason` stays as it was, so `guardBroken` and telemetry don't change. Both options are checked when the guard or store is made, so an empty message fails at game start, not on the first kick.
+
+Rejected: `kickMessage` as a function of the violation. It would let the text depend on what happened, but brings back the risk of showing log details, and adds a callback inside the deferred stage. A game that wants that already can: an action function returns "reject" and the game kicks with its own text. Also rejected: keeping the reason as the default and making the plain text opt in, since the default is where the leak was. `Geode.setup` doesn't take a kick message either. Its defaults are services and modes, and the text belongs next to the guards it's for.
+
+**PR:** #39
