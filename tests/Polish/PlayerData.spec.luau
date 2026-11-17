@@ -1,5 +1,6 @@
 --!strict
 
+local Guards = require("../../src/Obsidian/Guards")
 local Helpers = require("../Sapphire/Helpers")
 local Polish = require("../../src/Polish")
 local Profile = require("../../src/Sapphire/Profile")
@@ -167,6 +168,38 @@ return function(spec: Spec.Api)
 			expect(#universe.kicks).toBe(1)
 			expect(universe.kicks[1].reason).toBe("Couldn't load your data, please rejoin")
 			expect(#reported > 0).toBe(true)
+		end)
+
+		it("kicks a guard's offender with the store's kickMessage", function()
+			Polish._reset()
+			local universe = Universe.new()
+			local server = universe:server()
+			local PlayerData = make(server, {
+				guards = { Guards.delta("coins", { up = 10 }, { action = "kick" }) },
+				kickMessage = "Something went wrong with your data. Please rejoin.",
+			})
+			server:join(1)
+			local profile = universe.clock:run(function()
+				return PlayerData:waitFor(playerOf(server, 1))
+			end)
+			assert(profile, "expected the profile to load")
+			universe.clock:run(function()
+				profile:transact(function(tx)
+					tx:increment("coins", 500)
+				end, { source = { kind = "player", userId = 1 } })
+			end)
+			expect(#universe.kicks).toBe(1)
+			expect(universe.kicks[1].reason).toBe(
+				"Something went wrong with your data. Please rejoin."
+			)
+		end)
+
+		it("refuses an empty kickMessage when the store is made", function()
+			Polish._reset()
+			local server = Universe.new():server()
+			expect(function()
+				make(server, { kickMessage = "" })
+			end).toThrow("kickMessage")
 		end)
 
 		it("retries loads that can pass on their own", function()

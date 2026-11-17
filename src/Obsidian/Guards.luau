@@ -57,6 +57,8 @@ export type GuardOptions = {
 	ops: { string }?,
 	-- Sources this guard ignores. Rate guards skip reaction and bundle writes by default
 	skipSources: { Transaction.SourceKind }?,
+	-- What a player kicked by this guard reads. Defaults to the store's kickMessage
+	kickMessage: string?,
 }
 
 export type Context = {
@@ -85,12 +87,17 @@ export type Guard = {
 	action: Action,
 	ops: { [string]: boolean }?,
 	skipSources: { [string]: boolean },
+	kickMessage: string?,
 	check: (ctx: Context, state: GuardState) -> { Finding },
 	-- Runs after a commit that this guard checked, to record usage for rate limits
 	committed: ((ctx: Context, state: GuardState) -> ())?,
 }
 
 local Guards = {}
+
+-- What a kicked player reads when neither the guard nor the store says otherwise. The violation's
+-- reason is written for logs and shows paths and values, so players never see it
+Guards.DEFAULT_KICK_MESSAGE = "You were removed because of a problem with your data. Please rejoin."
 
 local ACTION_RANK: { [string]: number } = {
 	warn = 1,
@@ -116,6 +123,14 @@ end
 local function label(path: Path): string
 	local formatted = Path.format(path)
 	return if formatted == "" then "the root" else formatted
+end
+
+-- Stores check theirs when they're made, so a bad one fails at game start, not on a kick
+function Guards.checkKickMessage(message: unknown)
+	assert(
+		message == nil or (type(message) == "string" and message ~= ""),
+		"kickMessage must be a non-empty string"
+	)
 end
 
 local function toSet(list: { unknown }?): { [string]: boolean }?
@@ -152,6 +167,8 @@ local function make(
 	local skips: { unknown } = if options and options.skipSources
 		then options.skipSources
 		else defaultSkips
+	local kickMessage = options and options.kickMessage
+	Guards.checkKickMessage(kickMessage)
 	local guard: Guard = {
 		kind = kind,
 		name = name,
@@ -159,6 +176,7 @@ local function make(
 		action = action,
 		ops = toSet(options and options.ops),
 		skipSources = toSet(skips) :: { [string]: boolean },
+		kickMessage = kickMessage,
 		check = check,
 		committed = committed,
 	}
@@ -573,6 +591,8 @@ export type SetOptions = {
 	guards: { Guard }?,
 	clock: Types.Clock?,
 	players: Types.Players?,
+	-- What a kicked player reads when the guard that kicked has no kickMessage of its own
+	kickMessage: string?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -582,6 +602,7 @@ type Fields = {
 	_state: { [Guard]: GuardState },
 	_clock: Types.Clock?,
 	_players: Types.Players?,
+	_kickMessage: string,
 	_report: (message: string) -> (),
 }
 
@@ -607,12 +628,15 @@ function Guards.set(options: SetOptions?): GuardSet
 	local report = options and options.reportError or function(message: string)
 		warn(message)
 	end
+	local kickMessage = options and options.kickMessage
+	Guards.checkKickMessage(kickMessage)
 	local self: Fields = {
 		broken = Signal.new(report),
 		_guards = {},
 		_state = {},
 		_clock = options and options.clock,
 		_players = options and options.players,
+		_kickMessage = kickMessage or Guards.DEFAULT_KICK_MESSAGE,
 		_report = report,
 	}
 	local set = setmetatable(self, GuardSet)
@@ -745,6 +769,8 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 		local violations: { Violation } = {}
 		local checked: { { guard: Guard, ctx: Context } } = {}
 		local strongest = 0
+		-- the first guard whose violation kicks: its message is the one the player reads
+		local kicker: Guard? = nil
 		local dryRun = tx._dryRun
 		for _, guard in self._guards do
 			if not applies(guard, ctx) then
@@ -772,6 +798,9 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 					after = after,
 				}
 				violation.action = resolve(guard.action, violation)
+				if violation.action == "kick" and kicker == nil then
+					kicker = guard
+				end
 				table.freeze(violation)
 				table.insert(violations, violation)
 				strongest = math.max(strongest, ACTION_RANK[violation.action])
@@ -793,8 +822,8 @@ function GuardSet.stage(self: GuardSet): (tx: Transaction.Transaction) -> ()
 				end
 				self.broken:fire(violation)
 			end
-			if strongest == ACTION_RANK.kick and ctx.userId and self._players then
-				self._players:kick(ctx.userId, violations[1].reason)
+			if kicker and ctx.userId and self._players then
+				self._players:kick(ctx.userId, kicker.kickMessage or self._kickMessage)
 			end
 			if outcome.committed then
 				for _, entry in checked do

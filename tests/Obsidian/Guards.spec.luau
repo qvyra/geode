@@ -15,7 +15,7 @@ type Setup = {
 	reported: { string },
 }
 
-local function setup(guards: { Guards.Guard }, data: unknown): Setup
+local function setup(guards: { Guards.Guard }, data: unknown, kickMessage: string?): Setup
 	local universe = Universe.new()
 	local server = universe:server()
 	local reported = {}
@@ -26,6 +26,7 @@ local function setup(guards: { Guards.Guard }, data: unknown): Setup
 		guards = guards,
 		clock = server.clock,
 		players = server.players,
+		kickMessage = kickMessage,
 		reportError = report,
 	})
 	local doc = Document.new({ data = data, clock = server.clock, reportError = report })
@@ -250,6 +251,71 @@ return function(spec: Spec.Api)
 			expect(rejected(result)).toBe(true)
 			expect(#s.universe.kicks).toBe(1)
 			expect(s.universe.kicks[1].userId).toBe(42)
+		end)
+	end)
+
+	describe("kick message", function()
+		local function cheat(s: Setup)
+			return s.doc:transact(function(tx)
+				tx:increment("coins", 1000)
+			end, player(42))
+		end
+
+		it("is a plain sentence by default, and the reason stays as it was", function()
+			local s = setup(
+				{ Guards.delta("coins", { up = 10 }, { action = "kick" }) },
+				{ coins = 0 }
+			)
+			expect(rejected(cheat(s))).toBe(true)
+			expect(s.universe.kicks[1].reason).toBe(Guards.DEFAULT_KICK_MESSAGE)
+			expect(s.broken[1].reason).toBe("coins rose by 1000, more than 10 at once")
+		end)
+
+		it("comes from the store, unless the guard has its own", function()
+			local store = setup({
+				Guards.delta("coins", { up = 10 }, { action = "kick" }),
+			}, { coins = 0 }, "Data problem, please rejoin.")
+			cheat(store)
+			expect(store.universe.kicks[1].reason).toBe("Data problem, please rejoin.")
+
+			local own = setup({
+				Guards.delta("coins", { up = 10 }, { action = "kick", kickMessage = "Too fast!" }),
+			}, { coins = 0 }, "Data problem, please rejoin.")
+			cheat(own)
+			expect(own.universe.kicks[1].reason).toBe("Too fast!")
+		end)
+
+		it("is the kicking guard's, even when another guard broke first", function()
+			local s = setup({
+				Guards.range("coins", { max = 100 }, { action = "flag", kickMessage = "Not me" }),
+				Guards.delta("coins", { up = 10 }, { action = "kick", kickMessage = "Me" }),
+			}, { coins = 0 })
+			cheat(s)
+			expect(#s.broken).toBe(2)
+			expect(#s.universe.kicks).toBe(1)
+			expect(s.universe.kicks[1].reason).toBe("Me")
+		end)
+
+		it("follows an action function that picks kick", function()
+			local s = setup({
+				Guards.delta("coins", { up = 10 }, {
+					action = function()
+						return "kick"
+					end,
+					kickMessage = "Picked",
+				}),
+			}, { coins = 0 })
+			cheat(s)
+			expect(s.universe.kicks[1].reason).toBe("Picked")
+		end)
+
+		it("has to be a non-empty string", function()
+			expect(function()
+				Guards.delta("coins", { up = 1 }, { kickMessage = "" })
+			end).toThrow("kickMessage")
+			expect(function()
+				Guards.set({ kickMessage = 5 :: any })
+			end).toThrow("kickMessage")
 		end)
 	end)
 
