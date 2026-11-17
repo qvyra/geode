@@ -129,5 +129,24 @@ return function(spec: Spec.Api)
 			expect(failsWith(doc:set("a..b", 1), "empty segment")).toBe(true)
 			expect(failsWith(doc:set("coins.deeper", 1), "can't write below coins")).toBe(true)
 		end)
+
+		it("say built-ins are methods when tx:op is given one", function()
+			local doc = newDoc({ coins = 1 })
+			for _, name in { "set", "increment", "merge" } do
+				local result = doc:transact(function(tx)
+					tx:op(name, "coins", 2)
+				end)
+				assert(not result.ok, "expected a failure")
+				expect(result.error.kind).toBe("unknownOp")
+				expect(string.find(result.error.message, `call tx:{name}(...)`, 1, true) ~= nil).toBe(
+					true
+				)
+			end
+			expect(doc:get("coins")).toBe(1)
+			local missing = doc:transact(function(tx)
+				tx:op("neverRegistered")
+			end)
+			expect(failsWith(missing, "no op named neverRegistered is registered")).toBe(true)
+		end)
 	end)
 end
