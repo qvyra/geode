@@ -588,3 +588,33 @@ A kick now reads, in this order: the kicking guard's `kickMessage`, the store's 
 Rejected: `kickMessage` as a function of the violation. It would let the text depend on what happened, but brings back the risk of showing log details, and adds a callback inside the deferred stage. A game that wants that already can: an action function returns "reject" and the game kicks with its own text. Also rejected: keeping the reason as the default and making the plain text opt in, since the default is where the leak was. `Geode.setup` doesn't take a kick message either. Its defaults are services and modes, and the text belongs next to the guards it's for.
 
 **PR:** #39
+
+## 47. A template is typed `object` until the typings take generics
+
+**Date:** 2026-11-18
+
+`template` was `Record<string, unknown>`. That type has a string index signature, and TypeScript only gives an implicit one to object literal types, never to an interface, so a roblox-ts game that declared its data as an `interface` couldn't pass it. The fix had to keep every existing call compiling, since the generic typings come later and will change these options again.
+
+`object` does that: it takes interfaces, type literals and `Record`s alike. It also takes arrays and functions, which the Luau side doesn't want either, but it already refused nothing at the type level that the store checks at run time, so nothing is lost. Rejected: `Record<string, any>`, which has the same index signature problem; a generic `template: T` now, which is the larger change planned for the typed paths and would land twice; and loosening only `Geode.players`, which would leave the same problem on profile and shared stores.
+
+**PR:** #39
+
+## 48. `Geode.receipts` returns the decision type it was given
+
+**Date:** 2026-11-18
+
+The callback returned `unknown`, so `MarketplaceService.ProcessReceipt = Geode.receipts(...)` didn't compile: ProcessReceipt wants an `Enum.ProductPurchaseDecision`. The callback now returns `D`, the type of the `decisions` passed in, and `D` defaults to `Enum.ProductPurchaseDecision`, which is what the Luau code returns when no decisions are given. Tests that pass strings get strings back. `Decisions<D>` is a named type now, and `PlayerDataOptions.decisions` takes `Decisions<unknown>`, since Geode sets ProcessReceipt itself there and nothing reads the type back.
+
+The callback's argument is Geode's `ReceiptInfo` or Roblox's own, so it's assignable to ProcessReceipt (which hands Roblox's) while tests keep calling it with a plain table. Rejected: returning `Enum.ProductPurchaseDecision` always, which is wrong for tests and mock decisions, and dropping Geode's `ReceiptInfo` for Roblox's, which would make every test spell out fields like `CurrencySpent`.
+
+**PR:** #39
+
+## 49. A test universe keeps the type of the clock it was given
+
+**Date:** 2026-11-18
+
+`Testing.universe({ clock })` asked for a `MockClock`, but the mock servers only call what every clock has: `now`, `wait`, `spawn`, `delay` and `resume`. A test checked it by running a profile hop on a clock that follows real time. So the option takes any `Clock`, and `Universe<C>` keeps the clock's type in `universe.clock`, defaulting to `MockClock`. Existing code still gets `advance` and `run` on it, and a universe on another clock doesn't claim methods its clock lacks.
+
+Rejected: typing `universe.clock` as a plain `Clock`, which would break every test that advances it, and overloads for the two cases, which say the same as the generic with more lines. The Luau option type stays `MockClock` for now: Luau can't make a class's field follow a constructor argument the way the TypeScript generic does, and widening it would cost every Luau test a cast on `universe.clock`. Passing another clock works in Luau at run time with a cast.
+
+**PR:** #39
