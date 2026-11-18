@@ -48,6 +48,21 @@ end
 
 Reads hand out frozen values, so nothing outside a transaction can change data by accident.
 
+## Paths
+
+A path names a place in the data, as a dotted string or as a list: `"inventory.sword"` and `{ "inventory", "sword" }` are the same place. In the string form, a segment made only of digits is a list index, counted from 1, so `"quests.2.done"` is the second quest. A map keyed by digit strings, like user ids, needs the list form, where a string stays a key: `{ "friends", "1001" }`. A number in a list is an index, the same as in the string.
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+
+local document = Geode.Raw.document({ data = { quests = { { done = false } }, friends = {} } })
+
+document:set("quests.1.done", true)
+document:set({ "friends", "1001" }, "best friend")
+print(document:get({ "friends", "1001" }))
+```
+
 ## What each Roblox service does in Geode
 
 **DataStore is the source of truth.** Profiles, shared stores and all-time leaderboards live there. Every profile write is an UpdateAsync that also checks the session lease, so two servers can never write the same profile at once.

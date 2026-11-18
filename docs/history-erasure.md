@@ -66,4 +66,6 @@ local report = Geode.erase(1001)
 print(report.erased, "stores erased")
 ```
 
+`Geode.erase` reaches profile stores only. To take a player off an all-time leaderboard, remove their key, the user id as a string, from the OrderedDataStore named after the board. Windowed boards expire on their own a grace period after their window closes.
+
 Erasure is immediate for every live read. Roblox still keeps older hourly versions readable through the versioning API for 30 days and offers no supported way to remove them early, so history and rollback refuse every version from before the erasure.
