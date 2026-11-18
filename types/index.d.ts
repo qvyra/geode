@@ -1245,8 +1245,9 @@ declare namespace Geode {
 		shutdown(): void;
 	}
 
-	interface Universe {
-		readonly clock: MockClock;
+	/** `C` is the clock it was made with: a `MockClock` unless another was passed */
+	interface Universe<C extends Clock = MockClock> {
+		readonly clock: C;
 		readonly teleports: readonly {
 			fromJobId: string;
 			placeId: number;
@@ -1258,11 +1259,14 @@ declare namespace Geode {
 	}
 
 	interface Testing {
-		/** A universe of mock servers that share DataStores, MemoryStores and topics */
-		universe(
+		/**
+		 * A universe of mock servers that share DataStores, MemoryStores and topics. It runs on a
+		 * new `MockClock` unless given a clock; any clock works, but only a mock one can be advanced
+		 */
+		universe<C extends Clock = MockClock>(
 			this: void,
 			options?: {
-				clock?: MockClock;
+				clock?: C;
 				messagingLatency?: number;
 				/** Each server keeps a copy of the DataStore keys it touches, like GetAsync's cache */
 				dataStoreCache?: { seconds: number; cancelledUpdates?: boolean };
@@ -1276,7 +1280,7 @@ declare namespace Geode {
 					keyThroughput?: boolean;
 				};
 			},
-		): Universe;
+		): Universe<C>;
 		clock(this: void, start?: number): MockClock;
 	}
 

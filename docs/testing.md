@@ -33,7 +33,7 @@ universe.clock:run(function()
 end)
 ```
 
-`universe.clock:run` runs a function to completion on the virtual clock. `universe.clock:advance(seconds)` moves time forward and runs everything that came due, like autosaves.
+`universe.clock:run` runs a function to completion on the virtual clock. `universe.clock:advance(seconds)` moves time forward and runs everything that came due, like autosaves. `Geode.Testing.universe({ clock = clock })` takes any clock instead, one that follows real time included, and the servers then wait in real time. Only a mock clock from `Geode.Testing.clock()` has `run` and `advance`.
 
 ## Faults
 

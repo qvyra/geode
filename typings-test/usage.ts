@@ -150,3 +150,25 @@ const decide = Geode.receipts(
 );
 const decision: string = decide({ PlayerId: 1, ProductId: 2, PurchaseId: "3" });
 print(decision);
+
+// a universe on any clock, here one that follows real time
+const wallClock: Geode.Clock = {
+	now: () => os.time(),
+	wait: (seconds) => {
+		task.wait(seconds);
+	},
+	spawn: (callback) => {
+		task.spawn(callback);
+	},
+	delay: (seconds, callback) => {
+		task.delay(seconds, callback);
+	},
+	resume: (thread) => {
+		task.spawn(thread);
+	},
+};
+const liveUniverse = Geode.Testing.universe({ clock: wallClock });
+const liveClock: Geode.Clock = liveUniverse.clock;
+print(liveClock.now(), liveUniverse.server().jobId);
+const mockUniverse: Geode.Universe = Geode.Testing.universe({ clock: Geode.Testing.clock(100) });
+mockUniverse.clock.advance(5);
