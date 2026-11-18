@@ -135,3 +135,18 @@ const statsData = Geode.players({ name: "Stats", template: savedStats });
 const guildTemplate: SavedStats = { coins: 0, level: 1, inventory: [] };
 Geode.Shared.store({ name: "GuildStats", template: guildTemplate });
 print(statsData.store);
+
+// the receipt callback is what ProcessReceipt takes, and its handlers see Geode's receipt info
+const marketplace = game.GetService("MarketplaceService");
+marketplace.ProcessReceipt = Geode.receipts(playerData.store, {
+	[123456]: (tx, info) => {
+		tx.increment("coins", info.ProductId === 123456 ? 1000 : 0);
+	},
+});
+const decide = Geode.receipts(
+	playerData.store,
+	{},
+	{ decisions: { granted: "granted", notProcessed: "later" } },
+);
+const decision: string = decide({ PlayerId: 1, ProductId: 2, PurchaseId: "3" });
+print(decision);
