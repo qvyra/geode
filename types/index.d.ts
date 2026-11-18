@@ -822,6 +822,15 @@ declare namespace Geode {
 
 	type ReceiptHandler = (tx: Transaction, info: ReceiptInfo) => void;
 
+	/**
+	 * What the ProcessReceipt callback returns: `granted` once a purchase is granted and saved,
+	 * `notProcessed` to have Roblox ask again later. Defaults to `Enum.ProductPurchaseDecision`
+	 */
+	interface Decisions<D = Enum.ProductPurchaseDecision> {
+		granted: D;
+		notProcessed: D;
+	}
+
 	interface EraseReport {
 		erased: number;
 		failures: { store: string; message: string }[];
@@ -835,7 +844,8 @@ declare namespace Geode {
 		products?: Record<number, ReceiptHandler>;
 		replicate?: Record<string, Visibility>;
 		loadRetries?: number;
-		decisions?: { granted: unknown; notProcessed: unknown };
+		/** Geode sets ProcessReceipt itself, so any values do here; tests pass their own */
+		decisions?: Decisions<unknown>;
 	}
 
 	interface PlayerProfile extends Writable {
@@ -1360,15 +1370,16 @@ declare namespace Geode {
 		): void;
 
 		readonly Profile: { store(this: void, options: ProfileStoreOptions): ProfileStore };
-		receipts(
+		/** Assign the result to `MarketplaceService.ProcessReceipt` */
+		receipts<D = Enum.ProductPurchaseDecision>(
 			this: void,
 			store: ProfileStore,
 			handlers: Record<number, ReceiptHandler>,
 			options?: {
-				decisions?: { granted: unknown; notProcessed: unknown };
+				decisions?: Decisions<D>;
 				reportError?: (message: string) => void;
 			},
-		): (info: ReceiptInfo) => unknown;
+		): (info: ReceiptInfo | globalThis.ReceiptInfo) => D;
 		erase(this: void, userId: number, services?: Services): EraseReport;
 
 		players(this: void, options: PlayerDataOptions): PlayerData;
