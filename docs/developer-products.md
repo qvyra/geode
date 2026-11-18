@@ -28,7 +28,7 @@ local PlayerData = Geode.players({
 })
 ```
 
-`Geode.players` sets ProcessReceipt for you, so only one `Geode.players` store in a game can take `products`.
+`Geode.players` sets ProcessReceipt for you, so only one `Geode.players` store in a game can take `products`. Geode looks a product up in your table on every receipt, so a handler added to it after the store was made still runs.
 
 ## What happens on a purchase
 
@@ -44,4 +44,6 @@ Each profile keeps its most recent purchase ids, 50 by default, set with the sto
 
 ## Without Geode.players
 
-For a store you made with `Geode.Profile.store`, build the callback with `Geode.receipts(store, handlers)` and assign it to `MarketplaceService.ProcessReceipt` yourself. It behaves the same way. See `Geode.receipts` in the API reference.
+For a store you made with `Geode.Profile.store`, build the callback with `Geode.receipts(store, handlers)` and assign it to `MarketplaceService.ProcessReceipt` yourself. It behaves the same way, and it also reads `handlers` on every receipt. See `Geode.receipts` in the API reference.
+
+The `decisions` option holds the two values the callback returns: `granted` once a purchase is granted and saved, and `notProcessed` for Roblox to ask again later. They go back to Roblox as they are, and default to `Enum.ProductPurchaseDecision.PurchaseGranted` and `Enum.ProductPurchaseDecision.NotProcessedYet`. Tests pass their own. In roblox-ts, the callback's type matches `MarketplaceService.ProcessReceipt`.

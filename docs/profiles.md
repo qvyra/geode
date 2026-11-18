@@ -38,6 +38,8 @@ What it handles:
 - Listed developer products are granted exactly once. The grant and its receipt are saved together, and the purchase only counts as granted after that save succeeds
 - In Studio, data stays in memory unless you ask for a separate scope or live data
 
+`onLoaded` also calls back for every profile that loaded before you connected, each in its own thread, so connecting late misses no one.
+
 ## Before the data loads
 
 `PlayerData:get(player)` works from the moment a player joins. Until their profile loads, reads return the template and writes are refused, so UI code can draw defaults right away and check `isLoaded` to tell them from real data.
@@ -106,6 +108,8 @@ A profile's writes go through the transaction pipeline: `set`, `increment`, `dec
 ## Custom ops
 
 `Geode.op` registers an op once for the whole game, and a store lists the ones it allows in `ops`. Give it `args`, one schema per argument, and every call is checked before the handler runs, whoever made it: game code, mail or a development tool. A call that doesn't match fails with `invalidArgs` and writes nothing. Tools also use the schemas to describe the op and to decode values like a `Vector3` that crossed in stored form.
+
+`tx:op` and `profile:op` only run ops registered with `Geode.op`. Built-ins are methods, such as `tx:set` and `tx:increment`, and `tx:op("set", ...)` fails with `unknownOp`.
 
 `names` gives the arguments names, one per schema in the same order, and `description` says in a line what the op does. They change nothing about how the op runs. Development tools show them, so an edit form reads `item` and `amount` instead of `arg1` and `arg2`. `names` needs `args` and can stop early; the rest keep their numbered names.
 
@@ -183,3 +187,5 @@ PlayerData.store:mail(PlayerData.store:keyForUser(1001), "increment", "coins", 5
 ## How sessions stay safe
 
 Each profile record holds a session lease. Every save is an UpdateAsync that writes the data and renews the lease in one step, and only if the lease is still this server's. A server that finds the lease held elsewhere asks the holder to release it and waits for the release, so a player hopping servers usually waits only for the old server's final save. If the holder doesn't let go within `stealAfter` seconds, the store's `stealPolicy` decides what happens: take the lease anyway (`"steal"`, the default, sometimes called force loading), keep waiting (`"wait"`) or give up (`"fail"`). A server that stops renewing its lease loses it, and its next save refuses to write instead of overwriting newer data. [How it works](how-it-works) walks through it.
+
+When another server asks for a profile, this one first kicks the player if they're still here, with Geode's own text, "Your data was opened on another server. Please rejoin.", and then releases the profile with its final save. A store's `kickMessage` doesn't change that text; it's for guards.

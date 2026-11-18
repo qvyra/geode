@@ -43,6 +43,8 @@ end
 
 All-time boards live in an OrderedDataStore and last forever. Windowed boards keep one MemoryStore sorted map per window, which expires a grace period after the window closes. Daily and weekly windows follow UTC, and weeks start on Monday.
 
+An all-time board's OrderedDataStore has the board's name, with one key per player: the user id as a string, like `"1001"`. A windowed board's sorted maps are named `geode_rank_<name>_<window number>` and keyed the same way.
+
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Geode = require(ReplicatedStorage.Packages.Geode)
