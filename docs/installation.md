@@ -43,7 +43,7 @@ playerData.onLoaded((player, profile) => {
 });
 ```
 
-The typings cover the whole API with the same names and shapes as Luau. Luau `nil` is `undefined`, and a result is narrowed by checking its `ok` field first. The npm package has the same version number as the Wally one.
+The typings cover the whole API with the same names and shapes as Luau. Luau `nil` is `undefined`, and a result is narrowed by checking its `ok` field first. A `template` can be any object type, so data declared as an `interface` fits. The npm package has the same version number as the Wally one.
 
 ## Model file
 

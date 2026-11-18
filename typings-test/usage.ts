@@ -123,3 +123,15 @@ const [valid, result] = Geode.schema.decode(Geode.t.number(), 1);
 if (!valid) {
 	print(result.issues[0]?.code);
 }
+
+// a template typed by an interface, as roblox-ts games usually declare their data
+interface SavedStats {
+	coins: number;
+	level: number;
+	inventory: string[];
+}
+const savedStats: SavedStats = { coins: 0, level: 1, inventory: [] };
+const statsData = Geode.players({ name: "Stats", template: savedStats });
+const guildTemplate: SavedStats = { coins: 0, level: 1, inventory: [] };
+Geode.Shared.store({ name: "GuildStats", template: guildTemplate });
+print(statsData.store);

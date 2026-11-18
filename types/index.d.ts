@@ -702,7 +702,8 @@ declare namespace Geode {
 
 	interface ProfileStoreOptions {
 		name: string;
-		template: Record<string, unknown>;
+		/** A table of default values. Any object type fits, interfaces included */
+		template: object;
 		services?: Services;
 		scope?: string;
 		scheduler?: Scheduler;
@@ -868,7 +869,8 @@ declare namespace Geode {
 
 	interface SharedStoreOptions {
 		name: string;
-		template: Record<string, unknown>;
+		/** A table of default values. Any object type fits, interfaces included */
+		template: object;
 		services?: Services;
 		scope?: string;
 		scheduler?: Scheduler;
