@@ -133,6 +133,8 @@ local STEPS: { Step } = {
 	prettier(),
 	node("eslint", "eslint/bin/eslint.js", {}),
 	node("tsc", "typescript/bin/tsc", { "--noEmit", "-p", "." }),
+	-- roblox-ts pins TypeScript 5.5.3, so games compile the typings with that one
+	node("tsc 5.5.3", "typescript-5.5/bin/tsc", { "--noEmit", "-p", "." }),
 	cspell(),
 }
 

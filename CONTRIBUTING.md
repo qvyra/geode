@@ -12,7 +12,7 @@ npm ci
 lune run check
 ```
 
-`lune run check` runs everything CI runs: StyLua, Selene, luau-lsp, the Lune tests, Prettier, ESLint, TypeScript and cspell. `lune run fix` applies the formatters. `lune run test <filter>` runs only the spec files whose path contains the filter.
+`lune run check` runs everything CI runs: StyLua, Selene, luau-lsp, the Lune tests, Prettier, ESLint, TypeScript (the current one, and 5.5.3, which roblox-ts pins) and cspell. `lune run fix` applies the formatters. `lune run test <filter>` runs only the spec files whose path contains the filter.
 
 Tests run in Lune against in-memory mocks of every Roblox service, with virtual time and fault injection. Behavior only live services can settle is checked by the Studio place in `tests/studio`, see its README.
 

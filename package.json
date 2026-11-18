@@ -43,6 +43,7 @@
 		"moonwave": "1.4.2",
 		"prettier": "3.9.10",
 		"typescript": "6.0.3",
+		"typescript-5.5": "npm:typescript@5.5.3",
 		"typescript-eslint": "8.71.2"
 	},
 	"overrides": {
