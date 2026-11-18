@@ -1,5 +1,7 @@
 --!strict
 
+local task = require("@lune/task")
+
 local Fixture = require("./Contracts/Fixture")
 local Geode = require("../../src")
 local Spec = require("../_lib/Spec")
@@ -21,6 +23,51 @@ return function(spec: Spec.Api)
 				unwrap(a.hashMap("Presence"):set("p1", "a", 30))
 				expect(unwrap(b.hashMap("Presence"):get("p1"))).toBe("a")
 			end)
+		end)
+
+		it("runs on any clock, one that follows real time included", function()
+			local started = os.clock()
+			local clock = {
+				now = function(_self: unknown): number
+					return 1000 + os.clock() - started
+				end,
+				wait = function(_self: unknown, seconds: number)
+					task.wait(seconds)
+				end,
+				spawn = function(_self: unknown, fn: () -> ())
+					task.spawn(fn)
+				end,
+				delay = function(_self: unknown, seconds: number, fn: () -> ())
+					task.delay(seconds, fn)
+				end,
+				resume = function(_self: unknown, thread: thread)
+					task.defer(thread)
+				end,
+			}
+			-- the Luau option is typed as a mock clock, any clock works at run time
+			local universe = Universe.new({ clock = clock :: any, messagingLatency = 0.02 })
+			local a = universe:server({ jobId = "A" })
+			local b = universe:server({ jobId = "B" })
+			local storeA = Geode.Profile.store({
+				name = "RealTime",
+				template = { coins = 0 },
+				services = a,
+				reportError = function() end,
+			})
+			local storeB = Geode.Profile.store({
+				name = "RealTime",
+				template = { coins = 0 },
+				services = b,
+				reportError = function() end,
+			})
+			local first = storeA:load("k")
+			assert(first.ok, "expected the first load to work")
+			first.profile:increment("coins", 5)
+			-- B asks A over messaging to let go, and A hands the profile over
+			local second = storeB:load("k")
+			assert(second.ok, "expected the hop to work")
+			expect(second.profile:get("coins")).toBe(5)
+			second.profile:release()
 		end)
 
 		it("gives each server its own job id", function()
