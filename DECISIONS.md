@@ -595,7 +595,7 @@ Rejected: `kickMessage` as a function of the violation. It would let the text de
 
 `template` was `Record<string, unknown>`. That type has a string index signature, and TypeScript only gives an implicit one to object literal types, never to an interface, so a roblox-ts game that declared its data as an `interface` couldn't pass it. The fix had to keep every existing call compiling, since the generic typings come later and will change these options again.
 
-`object` does that: it takes interfaces, type literals and `Record`s alike. It also takes arrays and functions, which the Luau side doesn't want either, but it already refused nothing at the type level that the store checks at run time, so nothing is lost. Rejected: `Record<string, any>`, which has the same index signature problem; a generic `template: T` now, which is the larger change planned for the typed paths and would land twice; and loosening only `Geode.players`, which would leave the same problem on profile and shared stores.
+`object` does that: it takes interfaces, type literals and `Record`s alike. It also takes arrays and functions. Both stores already assert at run time that the template is a table, so a function still fails as soon as the store is made, and nothing the old type refused gets further than before. Rejected: `Record<string, any>`, which has the same index signature problem; a generic `template: T` now, which is the larger change planned for the typed paths and would land twice; and loosening only `Geode.players`, which would leave the same problem on profile and shared stores.
 
 **PR:** #39
 
@@ -616,5 +616,23 @@ The callback's argument is Geode's `ReceiptInfo` or Roblox's own, so it's assign
 `Testing.universe({ clock })` asked for a `MockClock`, but the mock servers only call what every clock has: `now`, `wait`, `spawn`, `delay` and `resume`. A test checked it by running a profile hop on a clock that follows real time. So the option takes any `Clock`, and `Universe<C>` keeps the clock's type in `universe.clock`, defaulting to `MockClock`. Existing code still gets `advance` and `run` on it, and a universe on another clock doesn't claim methods its clock lacks.
 
 Rejected: typing `universe.clock` as a plain `Clock`, which would break every test that advances it, and overloads for the two cases, which say the same as the generic with more lines. The Luau option type stays `MockClock` for now: Luau can't make a class's field follow a constructor argument the way the TypeScript generic does, and widening it would cost every Luau test a cast on `universe.clock`. Passing another clock works in Luau at run time with a cast.
+
+**PR:** #39
+
+## 50. The typings compile with TypeScript 5.5.3 in the check suite
+
+**Date:** 2026-11-18
+
+roblox-ts pins TypeScript 5.5.3, so that's the compiler every roblox-ts game runs the typings through, while the repo's own `tsc` is the current release. A typing only the newer compiler accepts would pass CI and break games. The check suite now runs `tsc` twice over the typings and `typings-test`: once with the current version, once with 5.5.3 from an npm alias, `typescript-5.5`.
+
+Rejected: pinning the repo's only TypeScript to 5.5.3, which would hold ESLint's TypeScript tooling back and miss errors the newer compiler finds; and `npx typescript@5.5.3` in the check, which downloads on every run and isn't locked by `package-lock.json`. When roblox-ts moves its pin, the alias moves with it.
+
+**PR:** #39
+
+## 51. `tx:op` names the method when it gets a built-in
+
+**Date:** 2026-11-18
+
+`tx:op("set", ...)` failed with "no op named set is registered", which reads as if `set` were missing rather than called the wrong way. Built-ins are methods on the transaction (`tx:set`, `tx:increment` and the rest) and never go through `tx:op`, so the error now says so and shows the call to make. The kind stays `unknownOp`, so code that matches on the kind behaves as before; only the message changed. Rejected: running the built-in from `tx:op`, which would give built-ins two spellings, and records and guards would see a custom op call where a built-in ran.
 
 **PR:** #39
