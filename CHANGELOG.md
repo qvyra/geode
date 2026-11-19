@@ -4,6 +4,18 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-19
+
+Kicked players read a sentence meant for them, the typings fit roblox-ts games better, and the docs say what they left out. Nothing breaks.
+
+### Changed
+
+- The `kick` guard action kicks with "You were removed because of a problem with your data. Please rejoin." instead of the violation's `reason`, which is written for logs and shows paths and values. `kickMessage` on a profile store, a shared store or `Geode.players` sets the text for every guard, and `kickMessage` in a guard's options sets it for that guard alone. The message is the kicking guard's: before, it was the transaction's first violation, even when that guard had only flagged. `guardBroken` and telemetry still get the `reason` as it was
+- `tx:op` called with a built-in op's name, such as `tx:op("set", ...)`, now says that built-ins are methods (`tx:set`, `tx:increment` and the rest) instead of "no op named set is registered". The error kind is still `unknownOp`
+- Typings: a `template` can be any object type, so data declared as an `interface` fits. `Geode.receipts` returns the decision type it's given, `Enum.ProductPurchaseDecision` by default, so it can be assigned to `MarketplaceService.ProcessReceipt`, and its `decisions` have a type of their own, `Geode.Decisions`. `Testing.universe({ clock })` takes any clock, and `universe.clock` keeps the type of the one given
+- The typings are checked with TypeScript 5.5.3, the version roblox-ts uses, as well as the current one
+- Docs: how `guard.subset` reads a map or a list, what an action function gets and when `guardBroken` fires, that guard state lives in memory per load, the order of a release another server asks for, that `onLoaded` also calls back for profiles loaded earlier, that a digit segment in a string path is a list index, how receipts read their handlers and decisions, and where leaderboards keep their scores
+
 ## [0.6.1] - 2026-10-31
 
 Custom ops can say what their arguments are called and what they do, so development tools can show a readable form for them. Nothing else changes.
@@ -119,7 +131,8 @@ The first public release.
 - Hand-written typings for the whole API in `types/`, ahead of a roblox-ts package
 - An API reference generated from the doc comments, and guides for every part of Geode
 
-[Unreleased]: https://github.com/qvyra/geode/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/qvyra/geode/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/qvyra/geode/releases/tag/v0.6.2
 [0.6.1]: https://github.com/qvyra/geode/releases/tag/v0.6.1
 [0.6.0]: https://github.com/qvyra/geode/releases/tag/v0.6.0
 [0.5.0]: https://github.com/qvyra/geode/releases/tag/v0.5.0
