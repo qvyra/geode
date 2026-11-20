@@ -113,6 +113,31 @@ universe.clock.run(() => {
 		loaded.profile.release();
 	}
 });
+
+const closing: Geode.BeforeRelease = (tx, profile, reason) => {
+	tx.set("lastSeen", os.time());
+	tx.set("closedBy", reason);
+	print(profile.key);
+};
+const sessionStore = Geode.Profile.store({
+	name: "Sessions",
+	template: { lastSeen: 0, closedBy: "" },
+	services: server,
+	beforeRelease: closing,
+});
+universe.clock.run(() => {
+	const loaded = sessionStore.load("player_1");
+	if (loaded.ok) {
+		const reason: Geode.ReleaseReason = "release";
+		loaded.profile.release(reason);
+	}
+	sessionStore.releaseAll("shutdown");
+	const finished: number = sessionStore.destroy();
+	const refused = sessionStore.load("player_2");
+	if (!refused.ok && refused.error.kind === "destroyed") {
+		print(finished);
+	}
+});
 const fresh = server.dataStore("Mail").get("player_1", { useCache: false });
 if (fresh.ok) {
 	print(fresh.value.value, fresh.value.info?.version);

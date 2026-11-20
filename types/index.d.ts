@@ -675,6 +675,13 @@ declare namespace Geode {
 	type StealPolicy = "steal" | "wait" | "fail";
 	type SessionLostPolicy = "kick" | "none" | ((profile: Profile, reason: string) => void);
 	type ProfileState = "active" | "releasing" | "released" | "lost";
+	/** Why a profile is being released, as `beforeRelease` hears it */
+	type ReleaseReason = "leave" | "shutdown" | "handoff" | "release" | "destroy";
+	/**
+	 * The last transaction before a profile's final save. It must not yield: one that does fails,
+	 * and so does one that errors or that a guard rejects. Each is reported and the release goes on
+	 */
+	type BeforeRelease = (tx: Transaction, profile: Profile, reason: ReleaseReason) => void;
 
 	type SaveResult =
 		| { ok: true }
@@ -693,7 +700,8 @@ declare namespace Geode {
 		isActive(): boolean;
 		isSaved(): boolean;
 		save(): SaveResult;
-		release(): SaveResult;
+		/** `reason` is what the store's `beforeRelease` hears, "release" by default */
+		release(reason?: ReleaseReason): SaveResult;
 		wipe(): TxResult;
 		hasReceipt(purchaseId: string): boolean;
 		recordReceipt(purchaseId: string): void;
@@ -725,6 +733,8 @@ declare namespace Geode {
 		stealAfter?: number;
 		stealPolicy?: StealPolicy;
 		onSessionLost?: SessionLostPolicy;
+		/** Runs once per profile before its final save, unless the session was lost first */
+		beforeRelease?: BeforeRelease;
 		studio?: StudioMode;
 		sizeBudget?: SizeBudget;
 		closeTimeout?: number;
@@ -743,7 +753,8 @@ declare namespace Geode {
 		| "invalidData"
 		| "alreadyLoaded"
 		| "newerData"
-		| "migrationFailed";
+		| "migrationFailed"
+		| "destroyed";
 
 	type LoadResult =
 		| { ok: true; profile: Profile; erasedAt?: number }
@@ -797,7 +808,10 @@ declare namespace Geode {
 		openCount(): number;
 		openKeys(): string[];
 		inspect(key: string): ProfileInspection | undefined;
-		releaseAll(): number;
+		/** `reason` is what `beforeRelease` hears, "shutdown" by default */
+		releaseAll(reason?: ReleaseReason): number;
+		/** Releases every profile with the reason "destroy", then refuses loads. Yields */
+		destroy(): number;
 		keyForUser(userId: number): string;
 		/**
 		 * Queues an op for the profile's next load. Fails with `invalidValue` unless the store was
