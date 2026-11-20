@@ -49,6 +49,8 @@ export type Options = {
 	stealAfter: number?,
 	stealPolicy: ProfileStore.StealPolicy?,
 	onSessionLost: Profile.SessionLostPolicy?,
+	-- one system transaction before the final save, see ProfileStore
+	beforeRelease: Profile.BeforeRelease?,
 	studio: ProfileStore.StudioMode?,
 	sizeBudget: Size.Budget?,
 	-- Seconds BindToClose waits for releases. Roblox gives about 30
@@ -282,7 +284,7 @@ function PlayerData._release(self: PlayerData, entry: Entry, profile: Profile.Pr
 	-- the profile open here and the player can't load it on this server again
 	while true do
 		attempt += 1
-		local result = profile:release()
+		local result = profile:release("leave")
 		if result.ok or result.error.kind == "lost" or profile:state() ~= "active" then
 			return
 		end
