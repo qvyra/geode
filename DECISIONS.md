@@ -636,3 +636,21 @@ Rejected: pinning the repo's only TypeScript to 5.5.3, which would hold ESLint's
 `tx:op("set", ...)` failed with "no op named set is registered", which reads as if `set` were missing rather than called the wrong way. Built-ins are methods on the transaction (`tx:set`, `tx:increment` and the rest) and never go through `tx:op`, so the error now says so and shows the call to make. The kind stays `unknownOp`, so code that matches on the kind behaves as before; only the message changed. Rejected: running the built-in from `tx:op`, which would give built-ins two spellings, and records and guards would see a custom op call where a built-in ran.
 
 **PR:** #39
+
+## 52. `beforeRelease` writes one transaction before every release
+
+**Date:** 2026-11-20
+
+Games write values as a session ends: the logout time, the last spawn, playtime not counted yet. Before this they had to wrap the leave, kick and BindToClose services so their write landed before Geode's release. A profile store, and so `Geode.players`, now takes `beforeRelease(tx, profile, reason)`. It runs as one system transaction just before the final save, while the profile can still be written, and the reason is one of `leave`, `shutdown`, `handoff` (another server asked for the profile), `release` (game code called `profile:release()`) and `destroy`. The arguments put `tx` first like migrations and receipt handlers, then the profile and the reason in the order the request named them.
+
+- It runs from `Profile.release`, so every path goes through it, and the paths pass their reason in: `Geode.players` on leave, `releaseAll` on shutdown, the release another server asks for, `destroy`. The handoff path runs it before the kick, so the player is still in the game while it runs.
+- It runs once per profile. A release whose save failed and is tried again doesn't write the same values twice. It never runs once the session is lost, since the profile can't be written then.
+- It must not yield: a shutdown gives every release `closeTimeout` seconds, and a hook waiting on something would use them up. Profile transactions had no yield check; only shared store writes did. The hook runs in its own coroutine inside the transaction, and a yield closes that coroutine and fails the transaction, so the rest never runs later. Reactions and guards inside a profile transaction are still unchecked, as before.
+- It goes through the pipeline like any write, so reactions, bundles and guards judge it. A yield, an error or a rejection is reported through `reportError`, and the release goes on with the data as it was. Nothing it does can keep a release from happening.
+- The short loads a development tool makes to edit or roll back a profile nobody holds skip it: those aren't play sessions, and the game's closing values would land in a support edit.
+
+Profile stores had no `destroy`, so `destroy()` is new: it releases every profile with the reason `destroy`, stops listening on the handoff topic and makes later loads fail with the new load error kind `destroyed`. `PlayerData:destroy()` keeps doing only what it did, stopping joins and leaves.
+
+Rejected: a hook that only gets the profile and writes through it, which would be a transaction per write and could leave half the values written; letting it yield with a time limit, which would hold BindToClose for slow code; running it again on every retry; and one hook per reason, when a single function with the reason covers each case with an `if`.
+
+**PR:** #40
