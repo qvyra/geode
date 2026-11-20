@@ -105,6 +105,35 @@ end
 
 A profile's writes go through the transaction pipeline: `set`, `increment`, `decrement`, `append`, `insert`, `remove`, `clear`, `merge`, `update`, custom ops and `transact` for several at once. Reads return frozen values. `observe` calls back after each commit that changes a path.
 
+## Values written as a session ends
+
+`beforeRelease` runs one system transaction just before a profile's final save, so values like the logout time or the playtime not counted yet land in the same write. It runs once per profile, on every way a profile is released while its session is still this server's, and the reason says which one:
+
+| Reason     | When                                                                      |
+| ---------- | ------------------------------------------------------------------------- |
+| `leave`    | the player left a `Geode.players` server                                  |
+| `shutdown` | the server is closing, through `releaseAll` and BindToClose               |
+| `handoff`  | another server asked for the profile. It runs before the player is kicked |
+| `release`  | game code called `profile:release()`                                      |
+| `destroy`  | the store's `destroy()` released it                                       |
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+
+local PlayerData = Geode.players({
+	name = "PlayerData",
+	template = { lastSeen = 0, playtime = 0 },
+	beforeRelease = function(tx, profile, reason)
+		tx:set("lastSeen", os.time())
+	end,
+})
+```
+
+It goes through the same pipeline as any write, so reactions, bundles and guards see it. It has to finish without yielding: one that yields fails, since a shutdown gives every release only `closeTimeout` seconds. When it yields, errors or a guard rejects it, Geode reports it through `reportError` and releases with the data as it was. It never runs once the session is lost, because the profile can't be written then, and it stays out of the short loads a development tool makes to edit a profile nobody holds. A server that crashes runs nothing, so values that matter should also be written as the game goes.
+
+`profile:release(reason)` and `store:releaseAll(reason)` take the reason to pass on. `store:destroy()` releases every profile with the reason `destroy`, stops listening for other servers' requests and refuses loads from then on. `PlayerData:destroy()` only stops handling joins and leaves; its profiles stay open until `PlayerData.store:destroy()`.
+
 ## Custom ops
 
 `Geode.op` registers an op once for the whole game, and a store lists the ones it allows in `ops`. Give it `args`, one schema per argument, and every call is checked before the handler runs, whoever made it: game code, mail or a development tool. A call that doesn't match fails with `invalidArgs` and writes nothing. Tools also use the schemas to describe the op and to decode values like a `Vector3` that crossed in stored form.
@@ -188,4 +217,4 @@ PlayerData.store:mail(PlayerData.store:keyForUser(1001), "increment", "coins", 5
 
 Each profile record holds a session lease. Every save is an UpdateAsync that writes the data and renews the lease in one step, and only if the lease is still this server's. A server that finds the lease held elsewhere asks the holder to release it and waits for the release, so a player hopping servers usually waits only for the old server's final save. If the holder doesn't let go within `stealAfter` seconds, the store's `stealPolicy` decides what happens: take the lease anyway (`"steal"`, the default, sometimes called force loading), keep waiting (`"wait"`) or give up (`"fail"`). A server that stops renewing its lease loses it, and its next save refuses to write instead of overwriting newer data. [How it works](how-it-works) walks through it.
 
-When another server asks for a profile, this one first kicks the player if they're still here, with Geode's own text, "Your data was opened on another server. Please rejoin.", and then releases the profile with its final save. A store's `kickMessage` doesn't change that text; it's for guards.
+When another server asks for a profile, this one runs `beforeRelease` with the reason `handoff`, kicks the player if they're still here, with Geode's own text, "Your data was opened on another server. Please rejoin.", and then releases the profile with its final save. A store's `kickMessage` doesn't change that text; it's for guards.
