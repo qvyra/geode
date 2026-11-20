@@ -61,6 +61,10 @@ export type Options = {
 	stealAfter: number?,
 	stealPolicy: StealPolicy?,
 	onSessionLost: Profile.SessionLostPolicy?,
+	-- One system transaction just before the final save, on every release while the session is
+	-- still this server's. It must not yield. An error or a rejection is reported and the
+	-- release goes on
+	beforeRelease: Profile.BeforeRelease?,
 	studio: StudioMode?,
 	sizeBudget: Size.Budget?,
 	-- Seconds BindToClose waits for releases. Roblox allows about 30
@@ -94,6 +98,7 @@ export type LoadErrorKind =
 	| "alreadyLoaded"
 	| "newerData"
 	| "migrationFailed"
+	| "destroyed"
 
 export type Inspection = {
 	data: unknown,
@@ -151,6 +156,8 @@ type Fields = {
 	_schema: Schema.Schema?,
 	_guards: { Guards.Guard },
 	_kickMessage: string?,
+	_beforeRelease: Profile.BeforeRelease?,
+	_destroyed: boolean,
 	_facets: Facet.FacetSet,
 	_ops: { string }?,
 	_config: Config,
@@ -279,6 +286,10 @@ function ProfileStore.new(options: Options): ProfileStore
 		table.insert(guards, 1, Guards.schema(options.schema))
 	end
 	Guards.checkKickMessage(options.kickMessage)
+	assert(
+		options.beforeRelease == nil or type(options.beforeRelease) == "function",
+		"beforeRelease must be a function"
+	)
 
 	local facets = Facet.set({
 		bundles = options.bundles,
@@ -346,6 +357,8 @@ function ProfileStore.new(options: Options): ProfileStore
 		_schema = options.schema,
 		_guards = guards,
 		_kickMessage = options.kickMessage,
+		_beforeRelease = options.beforeRelease,
+		_destroyed = false,
 		_facets = facets,
 		_ops = options.ops,
 		_config = config,
@@ -565,6 +578,9 @@ end
 	@return LoadResult
 ]=]
 function ProfileStore.load(self: ProfileStore, key: string, options: LoadOptions?): LoadResult
+	if self._destroyed then
+		return loadFailure("destroyed", `the profile store {self.name} was destroyed`)
+	end
 	if self._open[key] or self._loading[key] then
 		return loadFailure("alreadyLoaded", `profile {key} is already loaded on this server`)
 	end
@@ -719,6 +735,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		sizeBudget = config.sizeBudget,
 		autosaveInterval = config.autosaveInterval,
 		onSessionLost = config.onSessionLost,
+		beforeRelease = self._beforeRelease,
 		report = self._report,
 		onClosed = function(closed: unknown)
 			if (self._open[key] :: unknown) == closed then
@@ -798,10 +815,12 @@ function ProfileStore._releaseRequested(self: ProfileStore, key: string, session
 	local services = self._services
 	local userId = self._owners[key]
 	services.clock:spawn(function()
+		-- the closing values first, while the player is still here, then the kick and the save
+		profile:_beforeRelease("handoff")
 		if userId and services.players:isPresent(userId) then
 			services.players:kick(userId, "Your data was opened on another server. Please rejoin.")
 		end
-		profile:release()
+		profile:release("handoff")
 	end)
 end
 
@@ -1364,6 +1383,8 @@ function ProfileStore.rollback(
 		return rollbackFailure(loaded.error.message)
 	end
 	local ok, message = applyRollback(loaded.profile, version.value, versionId, note)
+	-- a tool's load isn't a play session, so the game's closing values stay out of it
+	loaded.profile:_skipBeforeRelease()
 	local released = loaded.profile:release()
 	if ok and not released.ok then
 		return rollbackFailure(released.error.message)
@@ -1610,6 +1631,7 @@ function ProfileStore._toolEdit(
 	-- Load, edit and release run back to back, and the release runs whatever the edit did, so a
 	-- refused edit never leaves this server holding the lease
 	local result = self:_editHere(key, op, list, note)
+	loaded.profile:_skipBeforeRelease()
 	local released = loaded.profile:release()
 	if not released.ok then
 		if result.ok then
@@ -2043,9 +2065,10 @@ end
 	Releases every open profile at once, at release priority, and waits until they finish or the
 	close timeout passes. Yields. Bound to BindToClose unless the store was told otherwise
 
+	@param reason ReleaseReason? -- what beforeRelease hears, "shutdown" by default
 	@return number -- how many releases finished in time
 ]=]
-function ProfileStore.releaseAll(self: ProfileStore): number
+function ProfileStore.releaseAll(self: ProfileStore, reason: Profile.ReleaseReason?): number
 	local clock = self._services.clock
 	local pending = 0
 	local finished = 0
@@ -2060,7 +2083,7 @@ function ProfileStore.releaseAll(self: ProfileStore): number
 		local profile = self._open[key]
 		pending += 1
 		clock:spawn(function()
-			local result = profile:release()
+			local result = profile:release(reason or "shutdown")
 			if result.ok then
 				finished += 1
 			end
@@ -2087,6 +2110,21 @@ function ProfileStore.releaseAll(self: ProfileStore): number
 			self._report(`{pending} profile release(s) didn't finish within the close timeout`)
 		end
 	end
+	return finished
+end
+
+--[=[
+	Releases every open profile, with "destroy" as beforeRelease's reason, then stops listening
+	for other servers' requests and refuses loads from then on. Yields until the releases finish
+	or the close timeout passes
+
+	@within ProfileStore
+	@return number -- how many releases finished in time
+]=]
+function ProfileStore.destroy(self: ProfileStore): number
+	self._destroyed = true
+	local finished = self:releaseAll("destroy")
+	self._handoff:stop()
 	return finished
 end
 
