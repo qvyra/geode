@@ -890,6 +890,8 @@ declare namespace Geode {
 		services?: Services;
 		/** Every store's Studio mode. Profile stores default to `mock`, the rest to `real` */
 		studio?: StudioMode;
+		/** The scope profile stores, shared stores and boards use unless given their own */
+		scope?: string;
 		reportError?: (message: string) => void;
 		/** Let Studio development tools read the running game. On by default, Studio only */
 		studioBridge?: boolean;
@@ -1150,6 +1152,8 @@ declare namespace Geode {
 		scheduler?: Scheduler;
 		/** Geode.setup's mode, or `real` */
 		studio?: StudioMode;
+		/** Geode.setup's scope, or `global` */
+		scope?: string;
 	}
 
 	interface WindowedOptions extends LeaderboardOptions {
@@ -1159,6 +1163,7 @@ declare namespace Geode {
 
 	interface Leaderboard {
 		readonly name: string;
+		readonly scope: string;
 		submit(userId: number, score: number, mode?: RankMode): Result<number>;
 		get(userId: number): Result<number | undefined>;
 		top(count: number, windowIndex?: number): Result<readonly { userId: number; score: number }[]>;
