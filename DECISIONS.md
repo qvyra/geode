@@ -654,3 +654,20 @@ Profile stores had no `destroy`, so `destroy()` is new: it releases every profil
 Rejected: a hook that only gets the profile and writes through it, which would be a transaction per write and could leave half the values written; letting it yield with a time limit, which would hold BindToClose for slow code; running it again on every retry; and one hook per reason, when a single function with the reason covers each case with an `if`.
 
 **PR:** #40
+
+## 53. One Studio setting for every store, with `auto`
+
+**Date:** 2026-11-21
+
+Only profile stores had a Studio mode, and `Geode.setup({ studio })` reached `Geode.players` stores only. A game that wanted Studio kept apart had to build its own services table for shared stores, boards, the MemoryStore helpers and matchmakers. Now the mode lives in one module, `Quartz/Studio`, and every store asks it: `Geode.setup`'s mode, unless the store passes its own `studio`. Lower layers can't read Polish, so `Geode.setup` hands the mode to Quartz instead of each store reading Polish defaults. `Geode.setup`'s services, scheduler and error reporting still reach `Geode.players` stores only.
+
+- **Defaults.** Profile stores stay at `mock`. Every other store stays at `real`, which is what it did before, so nothing changes in Studio until a game sets a mode. Changing them all to `mock` would quietly move existing games' shared stores and boards into memory.
+- **`mock`.** DataStore, MemoryStore and messaging come from one in-memory server per services table, on the real clock, shared by every store. Before, each profile store made its own. Players, purchases, shutdown, teleports, remotes and the bridge stay live; the mock budget stays too, since those requests never reach Roblox. Before, the clock-only copy kept the mock's remotes, teleports, JSON and ids.
+- **`scope`.** DataStore data goes under `studio_` plus the scope, as before, and now MemoryStore names and messaging topics get a `studio_` prefix too. Profile stores in this mode used to send release requests on the live topic and read the live handoff map. Studio data never matches live data, so a Studio session has nothing to say to live servers, and now it can't.
+- **`auto`.** In Studio, the first store reads one key (`probe` in `geode_studio_access`) once per services table, and stores made meanwhile wait for the answer. Success means `scope`. `noAccess`, the 403 Studio gets without API access, means `mock`. A place that was never published (place id 0) means `mock` without a request. Any other error also means `mock` and is reported, so a check that went wrong keeps data in memory instead of reaching live data. With access, it picks `scope`, not `real`, so turning access on never points a playtest at live data by itself. On live servers it does nothing. The read yields, in Studio only. TODO(verify): Roblox's error table words 403 as a write error, and doesn't say whether a GetAsync gets it too. Any other error still lands on `mock`, so a wrong guess can't reach live data.
+- **What the bridge reports.** The `profiles` answer's `studio` field names the mode in use, `mock`, `scope` or `real`, never `auto`. No answer changed shape.
+- Services a Studio mode built pass through untouched, so a matchmaker's own mutex shares the matchmaker's memory server instead of getting a second one.
+
+Rejected: services that pick their adapters on first use, which would keep store constructors from yielding but would also stall the first request of every store behind the check; checking with a write, which costs more and would leave a key behind; and a mode per kind of store in `Geode.setup`, when a store's own `studio` option already covers the exceptions.
+
+**PR:** #40
