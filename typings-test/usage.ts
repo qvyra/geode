@@ -53,6 +53,14 @@ const [decoded, value] = Geode.schema.decode(schema, {});
 print(decoded, value);
 
 const daily = Geode.Ranked.windowed("Daily", { window: "daily", mode: "max" });
+
+Geode.setup({ studio: "auto" });
+const studioMode: Geode.StudioMode = "auto";
+Geode.Shared.store({ name: "Clans", template: { bank: 0 }, studio: studioMode });
+Geode.Ranked.allTime("Wins", { studio: "mock" });
+Geode.Ephemeral.hashMap("Cache", { studio: "scope" });
+Geode.Counter.new("Visits", { studio: "real" });
+Geode.Matchmaker.new({ name: "duel", placeId: 1, matchSize: 2, studio: "mock" });
 const top = daily.top(10);
 if (top.ok) {
 	for (const entry of top.value) {

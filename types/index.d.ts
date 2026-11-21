@@ -671,7 +671,12 @@ declare namespace Geode {
 
 	// Profiles
 
-	type StudioMode = "mock" | "scope" | "real";
+	/**
+	 * Where a store's data lives in Studio. `mock` keeps it in memory, `scope` uses real services
+	 * apart from live servers, `real` uses live data, and `auto` picks `scope` when Studio has
+	 * API access and `mock` when it doesn't
+	 */
+	type StudioMode = "mock" | "scope" | "real" | "auto";
 	type StealPolicy = "steal" | "wait" | "fail";
 	type SessionLostPolicy = "kick" | "none" | ((profile: Profile, reason: string) => void);
 	type ProfileState = "active" | "releasing" | "released" | "lost";
@@ -883,6 +888,7 @@ declare namespace Geode {
 
 	interface SetupOptions {
 		services?: Services;
+		/** Every store's Studio mode. Profile stores default to `mock`, the rest to `real` */
 		studio?: StudioMode;
 		reportError?: (message: string) => void;
 		/** Let Studio development tools read the running game. On by default, Studio only */
@@ -897,6 +903,8 @@ declare namespace Geode {
 		template: object;
 		services?: Services;
 		scope?: string;
+		/** Geode.setup's mode, or `real` */
+		studio?: StudioMode;
 		scheduler?: Scheduler;
 		schema?: Schema;
 		schemaVersion?: number;
@@ -974,6 +982,8 @@ declare namespace Geode {
 	interface EphemeralOptions {
 		services?: Services;
 		scheduler?: Scheduler;
+		/** Geode.setup's mode, or `real` */
+		studio?: StudioMode;
 		schema?: Schema;
 	}
 
@@ -1020,6 +1030,8 @@ declare namespace Geode {
 	interface PremadeOptions {
 		services?: Services;
 		scheduler?: Scheduler;
+		/** Geode.setup's mode, or `real` */
+		studio?: StudioMode;
 	}
 
 	interface Presence {
@@ -1091,6 +1103,8 @@ declare namespace Geode {
 		onMatch?: (match: Match) => void;
 		services?: Services;
 		scheduler?: Scheduler;
+		/** Geode.setup's mode, or `real` */
+		studio?: StudioMode;
 		reportError?: (message: string) => void;
 	}
 
@@ -1134,6 +1148,8 @@ declare namespace Geode {
 		cacheTtl?: number;
 		services?: Services;
 		scheduler?: Scheduler;
+		/** Geode.setup's mode, or `real` */
+		studio?: StudioMode;
 	}
 
 	interface WindowedOptions extends LeaderboardOptions {
