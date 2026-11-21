@@ -3,6 +3,7 @@
 local Fixture = require("../Quartz/Contracts/Fixture")
 local Leaderboard = require("../../src/Topaz/Leaderboard")
 local MockClock = require("../../src/Quartz/Mock/Clock")
+local Polish = require("../../src/Polish")
 local Spec = require("../_lib/Spec")
 local Types = require("../../src/Quartz/Types")
 local Universe = require("../../src/Quartz/Mock/Universe")
@@ -134,6 +135,81 @@ return function(spec: Spec.Api)
 			universe.clock:run(function()
 				expect(#unwrap(board:top(5, index))).toBe(0)
 			end)
+		end)
+	end)
+
+	describe("scopes", function()
+		local function opened(universe: Universe.Universe, kind: string): { [string]: boolean }
+			local found = {}
+			for id in (universe :: any)._shared[kind] do
+				found[id] = true
+			end
+			return found
+		end
+
+		it("keep boards with the same name apart", function()
+			Polish._reset()
+			local universe = Universe.new()
+			local server = services(universe:server())
+			local live = Leaderboard.allTime("Wins", { services = server })
+			local season = Leaderboard.allTime("Wins", { services = server, scope = "season2" })
+			expect(live.scope).toBe("global")
+			expect(season.scope).toBe("season2")
+			universe.clock:run(function()
+				unwrap(live:submit(1, 5))
+				unwrap(season:submit(1, 9))
+				expect(unwrap(live:get(1))).toBe(5)
+				expect(unwrap(season:get(1))).toBe(9)
+			end)
+			local stores = opened(universe, "orderedDataStores")
+			expect(stores["Wins\0global"]).toBe(true)
+			expect(stores["Wins\0season2"]).toBe(true)
+		end)
+
+		it("put the scope and its length in windowed map names", function()
+			Polish._reset()
+			local universe = Universe.new()
+			local server = services(universe:server())
+			local live = Leaderboard.windowed("Daily", { services = server, window = "daily" })
+			local season = Leaderboard.windowed(
+				"Daily",
+				{ services = server, window = "daily", scope = "s_2" }
+			)
+			-- the same letters split the other way round, which a plain join would collide with
+			local other = Leaderboard.windowed(
+				"2_Daily",
+				{ services = server, window = "daily", scope = "s" }
+			)
+			universe.clock:run(function()
+				unwrap(live:submit(1, 5))
+				unwrap(season:submit(1, 9))
+				unwrap(other:submit(1, 3))
+				expect(unwrap(live:get(1))).toBe(5)
+				expect(unwrap(season:get(1))).toBe(9)
+				expect(unwrap(other:get(1))).toBe(3)
+			end)
+			local index = live:windowIndex()
+			local maps = opened(universe, "sortedMaps")
+			expect(maps[`geode_rank_Daily_{index}`]).toBe(true)
+			expect(maps[`geode_rank3_s_2_Daily_{index}`]).toBe(true)
+			expect(maps[`geode_rank1_s_2_Daily_{index}`]).toBe(true)
+		end)
+
+		it("follow Geode.setup's scope unless given their own", function()
+			Polish._reset()
+			Polish.setup({ scope = "test" })
+			local universe = Universe.new()
+			local server = services(universe:server())
+			expect(Leaderboard.allTime("Wins", { services = server }).scope).toBe("test")
+			expect(Leaderboard.allTime("Wins", { services = server, scope = "x" }).scope).toBe("x")
+			Polish._reset()
+		end)
+
+		it("refuse an empty scope", function()
+			local server = services(Universe.new():server())
+			expect(function()
+				Leaderboard.allTime("Wins", { services = server, scope = "" })
+			end).toThrow("scope must be")
 		end)
 	end)
 end
