@@ -10,13 +10,15 @@ local ProfileStore = require("./Sapphire/ProfileStore")
 local Receipts = require("./Sapphire/Receipts")
 local RealServices = require("./Quartz/Real/Services")
 local Scheduler = require("./Quartz/Scheduler")
+local Studio = require("./Quartz/Studio")
 local Types = require("./Quartz/Types")
 local Vein = require("./Vein")
 
 export type SetupOptions = {
 	-- services every store uses, live Roblox services by default
 	services: Types.Services?,
-	-- where data lives in Studio (see ProfileStore), "mock" by default
+	-- where data lives in Studio, for every store: profile and shared stores, boards, the
+	-- MemoryStore helpers and matchmakers. Profile stores default to "mock", the rest to "real"
 	studio: ProfileStore.StudioMode?,
 	reportError: ((message: string) -> ())?,
 	-- Let Studio development tools read the running game. On by default, Studio only
@@ -26,7 +28,6 @@ export type SetupOptions = {
 type Defaults = {
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
-	studio: ProfileStore.StudioMode?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -47,24 +48,25 @@ local function report(message: string)
 end
 
 --[=[
-	Sets the defaults that every `Geode.players` store made after this call starts from: the
-	services, one shared scheduler, error reporting and the Studio mode. Options passed to a
-	store still win. Call it once, before any store is made
+	Sets defaults for the stores made after this call. The Studio mode reaches every store; the
+	services, one shared scheduler and error reporting reach `Geode.players` stores.
+	Options passed to a store still win. Call it once, before any store is made
 
 	@within Geode
 	@param options SetupOptions
 
 	```lua
-	Geode.setup({ studio = "scope" })
+	Geode.setup({ studio = "auto" })
 	```
 ]=]
 function Polish.setup(options: SetupOptions)
-	if storesMade > 0 and not warnedLateSetup then
+	if (storesMade > 0 or Studio.wasUsed()) and not warnedLateSetup then
 		warnedLateSetup = true
 		report(
 			"Geode.setup was called after a store was made. Stores that already exist keep their old defaults"
 		)
 	end
+	Studio.setDefaults(options.studio, nil)
 	Vein.setBridgeEnabled(options.studioBridge ~= false)
 	local services = options.services
 	defaults = {
@@ -72,7 +74,6 @@ function Polish.setup(options: SetupOptions)
 		scheduler = if services
 			then Scheduler.new({ clock = services.clock, budget = services.budget })
 			else nil,
-		studio = options.studio,
 		reportError = options.reportError,
 	}
 end
@@ -120,7 +121,6 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 	storeOptions.reportError = reportError
 	storeOptions.scheduler = options.scheduler
 		or (if services == defaults.services then defaults.scheduler else nil)
-	storeOptions.studio = options.studio or defaults.studio
 	local store = ProfileStore.new(storeOptions :: any)
 	storesMade += 1
 
@@ -163,6 +163,7 @@ end
 -- reset module state, tests only
 function Polish._reset()
 	defaults = {}
+	Studio._reset()
 	storesMade = 0
 	warnedLateSetup = false
 	receiptsSet = false

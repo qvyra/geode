@@ -24,15 +24,16 @@ local Schema = require("../Obsidian/Schema")
 local Signal = require("../Quartz/Signal")
 local Size = require("../Obsidian/Size")
 local Storable = require("../Obsidian/Storable")
+local Studio = require("../Quartz/Studio")
 local Transaction = require("../Matrix/Transaction")
 local Types = require("../Quartz/Types")
-local Universe = require("../Quartz/Mock/Universe")
 local Validate = require("../Obsidian/Validate")
 
 export type StealPolicy = "steal" | "wait" | "fail"
 
 -- "mock" keeps Studio data in memory, "scope" uses a separate studio scope, "real" uses live data
-export type StudioMode = "mock" | "scope" | "real"
+-- and "auto" picks "scope" or "mock" by whether Studio has API access. See Quartz/Studio
+export type StudioMode = Studio.Mode
 
 export type Options = {
 	name: string,
@@ -196,6 +197,7 @@ local DEFAULTS = {
 	stealAfter = 15,
 	stealPolicy = "steal" :: StealPolicy,
 	onSessionLost = "kick" :: Profile.SessionLostPolicy,
+	-- unless Geode.setup set one for every store
 	studio = "mock" :: StudioMode,
 	closeTimeout = 25,
 	loadTimeout = 30,
@@ -222,31 +224,6 @@ local function copy(value: unknown): unknown
 	return result
 end
 
-local function studioServices(
-	services: Types.Services,
-	mode: StudioMode,
-	scope: string?
-): (Types.Services, string)
-	local resolvedScope = scope or "global"
-	if not services.lifecycle:isStudio() or mode == "real" then
-		return services, resolvedScope
-	end
-	if mode == "scope" then
-		return services, `studio_{resolvedScope}`
-	end
-	-- in-memory universe running on the real clock
-	local universe = Universe.new({ clock = services.clock :: any })
-	local mock =
-		universe:server({ jobId = services.jobId, placeId = services.placeId, studio = true })
-	-- only the data lives in memory. Players, purchases and shutdown stay real
-	local mixed = table.clone(mock) :: Types.Services
-	mixed.players = services.players
-	mixed.marketplace = services.marketplace
-	mixed.lifecycle = services.lifecycle
-	mixed.bridge = services.bridge
-	return mixed, resolvedScope
-end
-
 --[=[
 	Creates a profile store. Checks the template against the schema and the facets for cycles
 	right away, so mistakes show up when the game starts, not when a player joins
@@ -270,8 +247,12 @@ function ProfileStore.new(options: Options): ProfileStore
 	end
 
 	local givenServices = options.services or RealServices.live()
-	local services, scope =
-		studioServices(givenServices, options.studio or DEFAULTS.studio, options.scope)
+	Studio.check(options.studio)
+	Studio.checkScope(options.scope)
+	local mode: Studio.Mode = options.studio or Studio.defaultMode() or DEFAULTS.studio
+	local services: Types.Services, studio: Studio.Resolved =
+		Studio.resolve(givenServices, mode, report)
+	local scope = Studio.scope(options.scope, studio)
 
 	if options.schema then
 		local check = Validate.validate(options.schema, options.template, { root = "template" })
@@ -311,8 +292,7 @@ function ProfileStore.new(options: Options): ProfileStore
 		loadTimeout = options.loadTimeout or DEFAULTS.loadTimeout,
 		schemaVersion = options.schemaVersion or 1,
 		receiptHistory = options.receiptHistory or DEFAULTS.receiptHistory,
-		liveFromStudio = (options.studio or DEFAULTS.studio) == "real"
-			and givenServices.lifecycle:isStudio(),
+		liveFromStudio = studio == "real" and givenServices.lifecycle:isStudio(),
 	}
 	assert(config.autosaveInterval > 0, "autosaveInterval must be positive")
 	assert(
@@ -400,7 +380,8 @@ function ProfileStore.new(options: Options): ProfileStore
 			return store:inspect(key)
 		end,
 		services = givenServices,
-		studio = (options.studio or DEFAULTS.studio) :: string,
+		-- the mode in use, so "auto" shows what it picked
+		studio = studio :: string,
 		ops = function(): unknown
 			return Tooling.ops(store._ops)
 		end,
