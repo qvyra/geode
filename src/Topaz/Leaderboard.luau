@@ -8,6 +8,7 @@ local RealServices = require("../Quartz/Real/Services")
 local VeinBridge = require("../Vein/Bridge")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
+local Studio = require("../Quartz/Studio")
 local Types = require("../Quartz/Types")
 
 export type Mode = "max" | "min" | "sum" | "latest"
@@ -20,6 +21,8 @@ export type Options = {
 	cacheTtl: number?,
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
+	-- Where scores live in Studio. Geode.setup's mode, or "real". See Quartz/Studio
+	studio: Studio.Mode?,
 }
 
 -- Spelled out rather than built on Options, so a literal `window = "daily"` type checks
@@ -28,6 +31,7 @@ export type WindowedOptions = {
 	cacheTtl: number?,
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
+	studio: Studio.Mode?,
 	-- "daily" and "weekly" follow UTC, with weeks starting on Monday. A number is a length in
 	-- seconds counted from the Unix epoch
 	window: Window,
@@ -47,6 +51,8 @@ type Fields = {
 	_mode: Mode,
 	_cacheTtl: number,
 	_ordered: Types.OrderedDataStore?,
+	-- the all-time board's DataStore scope
+	_dataScope: string,
 	_window: number?,
 	_offset: number,
 	_grace: number,
@@ -98,8 +104,18 @@ end
 
 local function new(name: string, options: Options?): Leaderboard
 	assert(type(name) == "string" and name ~= "", "a leaderboard needs a name")
-	local services = options and options.services or RealServices.live()
-	VeinBridge.ensure(services)
+	local given = options and options.services or RealServices.live()
+	VeinBridge.ensure(given)
+	local studioOption: Studio.Mode? = if options then options.studio else nil
+	Studio.check(studioOption)
+	local mode: Studio.Mode = studioOption or Studio.defaultMode() or "real"
+	local services: Types.Services, studio: Studio.Resolved = Studio.resolve(
+		given,
+		mode,
+		function(message: string)
+			warn(message)
+		end
+	)
 	return setmetatable(
 		{
 			name = name,
@@ -109,6 +125,7 @@ local function new(name: string, options: Options?): Leaderboard
 			_mode = options and options.mode or "max",
 			_cacheTtl = options and options.cacheTtl or 30,
 			_ordered = nil,
+			_dataScope = Studio.scope(nil, studio),
 			_window = nil,
 			_offset = 0,
 			_grace = 3600,
@@ -126,7 +143,7 @@ end
 ]=]
 function Ranked.allTime(name: string, options: Options?): Leaderboard
 	local board = new(name, options)
-	board._ordered = board._services.orderedDataStore(name)
+	board._ordered = board._services.orderedDataStore(name, board._dataScope)
 	board._handle = Registry.register("leaderboard", name, function()
 		return { kind = "allTime", mode = board._mode }
 	end)

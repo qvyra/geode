@@ -10,6 +10,7 @@ local RealServices = require("../Quartz/Real/Services")
 local VeinBridge = require("../Vein/Bridge")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
+local Studio = require("../Quartz/Studio")
 local Types = require("../Quartz/Types")
 
 export type Band = {
@@ -41,6 +42,8 @@ export type Options = {
 	onMatch: ((match: Match) -> ())?,
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
+	-- Where the queue lives in Studio. Geode.setup's mode, or "real". See Quartz/Studio
+	studio: Studio.Mode?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -119,8 +122,14 @@ function Matchmaker.new(options: Options): Matchmaker
 		options.matchSize >= 2 and options.matchSize % 1 == 0,
 		"matchSize must be a whole number of at least 2"
 	)
-	local services = options.services or RealServices.live()
-	VeinBridge.ensure(services)
+	local given = options.services or RealServices.live()
+	VeinBridge.ensure(given)
+	Studio.check(options.studio)
+	local report = options.reportError or function(message: string)
+		warn(message)
+	end
+	local studio: Studio.Mode = options.studio or Studio.defaultMode() or "real"
+	local services = Studio.resolve(given, studio, report)
 	local scheduler = options.scheduler
 		or Scheduler.new({ clock = services.clock, budget = services.budget })
 	local mode = options.mode or "default"
@@ -153,9 +162,7 @@ function Matchmaker.new(options: Options): Matchmaker
 			_running = false,
 			_loop = 0,
 			_onMatch = options.onMatch,
-			_report = options.reportError or function(message: string)
-				warn(message)
-			end,
+			_report = report,
 			_handle = nil :: any,
 		} :: Fields,
 		Matchmaker

@@ -18,6 +18,7 @@ local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
 local Schema = require("../Obsidian/Schema")
 local Size = require("../Obsidian/Size")
+local Studio = require("../Quartz/Studio")
 local Transaction = require("../Matrix/Transaction")
 local Types = require("../Quartz/Types")
 local Validate = require("../Obsidian/Validate")
@@ -28,7 +29,10 @@ export type Options = {
 	name: string,
 	template: { [string]: unknown },
 	services: Types.Services?,
+	-- Geode.setup's scope, or "global"
 	scope: string?,
+	-- Where the data lives in Studio. Geode.setup's mode, or "real". See Quartz/Studio
+	studio: Studio.Mode?,
 	scheduler: Scheduler.Scheduler?,
 	schema: Schema.Schema?,
 	schemaVersion: number?,
@@ -147,9 +151,14 @@ function SharedStore.new(options: Options): SharedStore
 	local report = options.reportError or function(message: string)
 		warn(message)
 	end
-	local services = options.services or RealServices.live()
-	VeinBridge.ensure(services)
-	local scope = options.scope or "global"
+	local givenServices = options.services or RealServices.live()
+	VeinBridge.ensure(givenServices)
+	Studio.check(options.studio)
+	Studio.checkScope(options.scope)
+	local mode: Studio.Mode = options.studio or Studio.defaultMode() or "real"
+	local services: Types.Services, studio: Studio.Resolved =
+		Studio.resolve(givenServices, mode, report)
+	local scope = Studio.scope(options.scope, studio)
 
 	if options.schema then
 		local check = Validate.validate(options.schema, options.template, { root = "template" })
