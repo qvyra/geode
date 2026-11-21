@@ -45,6 +45,18 @@ All-time boards live in an OrderedDataStore and last forever. Windowed boards ke
 
 An all-time board's OrderedDataStore has the board's name, with one key per player: the user id as a string, like `"1001"`. A windowed board's sorted maps are named `geode_rank_<name>_<window number>` and keyed the same way.
 
+A board's `scope` keeps its scores apart from a board with the same name in another scope, like a test universe's or a season's. It defaults to the one given to `Geode.setup`, then to `global`. An all-time board uses it as its OrderedDataStore's scope. A windowed board puts it in its map names as `geode_rank<length>_<scope>_<name>_<window number>`, with the scope's length in front so two different pairs of name and scope never share a map. The `global` scope keeps the names boards always had, so existing scores stay where they are.
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+
+-- reads and writes the OrderedDataStore "Wins" in the scope "season2"
+local Wins = Geode.Ranked.allTime("Wins", { mode = "sum", scope = "season2" })
+-- maps named like geode_rank7_season2_DailyScore_20412
+local Daily = Geode.Ranked.windowed("DailyScore", { window = "daily", scope = "season2" })
+```
+
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Geode = require(ReplicatedStorage.Packages.Geode)
