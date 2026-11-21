@@ -68,7 +68,7 @@ end
 
 ## Shared defaults with Geode.setup
 
-`Geode.setup` sets defaults for the stores made after it. Its Studio mode reaches every store: profile stores, shared stores, boards, the MemoryStore helpers and matchmakers. The services, one shared scheduler and error reporting reach `Geode.players` stores. Call it once, before making any store. A store's own options still win.
+`Geode.setup` sets defaults for the stores made after it. Its Studio mode reaches every store: profile stores, shared stores, boards, the MemoryStore helpers and matchmakers. Its `scope` is the DataStore scope profile stores, shared stores and boards use when they aren't given one, so a test universe can keep its data apart with one line. The services, one shared scheduler and error reporting reach `Geode.players` stores. Call it once, before making any store. A store's own options still win.
 
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
