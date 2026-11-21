@@ -20,6 +20,8 @@ export type SetupOptions = {
 	-- where data lives in Studio, for every store: profile and shared stores, boards, the
 	-- MemoryStore helpers and matchmakers. Profile stores default to "mock", the rest to "real"
 	studio: ProfileStore.StudioMode?,
+	-- the DataStore scope profile stores, shared stores and boards use unless given their own
+	scope: string?,
 	reportError: ((message: string) -> ())?,
 	-- Let Studio development tools read the running game. On by default, Studio only
 	studioBridge: boolean?,
@@ -48,9 +50,10 @@ local function report(message: string)
 end
 
 --[=[
-	Sets defaults for the stores made after this call. The Studio mode reaches every store; the
-	services, one shared scheduler and error reporting reach `Geode.players` stores.
-	Options passed to a store still win. Call it once, before any store is made
+	Sets defaults for the stores made after this call. The Studio mode reaches every store and the
+	scope reaches profile stores, shared stores and boards. The services, one shared scheduler and
+	error reporting reach `Geode.players` stores. Options passed to a store still win. Call it
+	once, before any store is made
 
 	@within Geode
 	@param options SetupOptions
@@ -66,7 +69,7 @@ function Polish.setup(options: SetupOptions)
 			"Geode.setup was called after a store was made. Stores that already exist keep their old defaults"
 		)
 	end
-	Studio.setDefaults(options.studio, nil)
+	Studio.setDefaults(options.studio, options.scope)
 	Vein.setBridgeEnabled(options.studioBridge ~= false)
 	local services = options.services
 	defaults = {

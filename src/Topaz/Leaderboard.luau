@@ -23,6 +23,9 @@ export type Options = {
 	scheduler: Scheduler.Scheduler?,
 	-- Where scores live in Studio. Geode.setup's mode, or "real". See Quartz/Studio
 	studio: Studio.Mode?,
+	-- Keeps this board's scores apart from a board with the same name in another scope.
+	-- Geode.setup's scope, or "global"
+	scope: string?,
 }
 
 -- Spelled out rather than built on Options, so a literal `window = "daily"` type checks
@@ -32,6 +35,7 @@ export type WindowedOptions = {
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
 	studio: Studio.Mode?,
+	scope: string?,
 	-- "daily" and "weekly" follow UTC, with weeks starting on Monday. A number is a length in
 	-- seconds counted from the Unix epoch
 	window: Window,
@@ -46,6 +50,7 @@ export type Entry = {
 
 type Fields = {
 	name: string,
+	scope: string,
 	_services: Types.Services,
 	_scheduler: Scheduler.Scheduler,
 	_mode: Mode,
@@ -107,7 +112,9 @@ local function new(name: string, options: Options?): Leaderboard
 	local given = options and options.services or RealServices.live()
 	VeinBridge.ensure(given)
 	local studioOption: Studio.Mode? = if options then options.studio else nil
+	local scopeOption: string? = if options then options.scope else nil
 	Studio.check(studioOption)
+	Studio.checkScope(scopeOption)
 	local mode: Studio.Mode = studioOption or Studio.defaultMode() or "real"
 	local services: Types.Services, studio: Studio.Resolved = Studio.resolve(
 		given,
@@ -119,13 +126,14 @@ local function new(name: string, options: Options?): Leaderboard
 	return setmetatable(
 		{
 			name = name,
+			scope = scopeOption or Studio.defaultScope() or "global",
 			_services = services,
 			_scheduler = options and options.scheduler
 				or Scheduler.new({ clock = services.clock, budget = services.budget }),
 			_mode = options and options.mode or "max",
 			_cacheTtl = options and options.cacheTtl or 30,
 			_ordered = nil,
-			_dataScope = Studio.scope(nil, studio),
+			_dataScope = Studio.scope(scopeOption, studio),
 			_window = nil,
 			_offset = 0,
 			_grace = 3600,
@@ -188,8 +196,18 @@ function Leaderboard.windowIndex(self: Leaderboard, at: number?): number
 	return math.floor((now - self._offset) / window)
 end
 
+-- The global scope keeps the names boards always had. Another scope goes in with its length in
+-- front, so no pair of board name and scope can spell the same map name as another pair
+function Leaderboard._windowMapName(self: Leaderboard, index: number): string
+	local scope = self.scope
+	if scope == "global" then
+		return `geode_rank_{self.name}_{index}`
+	end
+	return `geode_rank{#scope}_{scope}_{self.name}_{index}`
+end
+
 function Leaderboard._windowMap(self: Leaderboard, index: number): Types.SortedMap
-	return self._services.sortedMap(`geode_rank_{self.name}_{index}`)
+	return self._services.sortedMap(self:_windowMapName(index))
 end
 
 function Leaderboard._windowTtl(self: Leaderboard, index: number): number
