@@ -671,3 +671,18 @@ Only profile stores had a Studio mode, and `Geode.setup({ studio })` reached `Ge
 Rejected: services that pick their adapters on first use, which would keep store constructors from yielding but would also stall the first request of every store behind the check; checking with a write, which costs more and would leave a key behind; and a mode per kind of store in `Geode.setup`, when a store's own `studio` option already covers the exceptions.
 
 **PR:** #40
+
+## 54. Boards take a scope, and `Geode.setup` sets one for every store
+
+**Date:** 2026-11-21
+
+Profile and shared stores took a `scope`, but `Geode.Ranked` boards didn't, so a test universe or a new season could keep its saved data apart everywhere except on its boards. Boards now take `scope`, and `Geode.setup({ scope })` is the default for profile stores, shared stores and boards that aren't given one. Without either, every store stays in `global`, as before.
+
+- An all-time board passes the scope to its OrderedDataStore, which has scopes of its own.
+- A windowed board's MemoryStore sorted maps have no scope, so it goes into the map name: `geode_rank<length>_<scope>_<name>_<window number>`. The length in front keeps every pair of board name and scope apart: joined with plain underscores, the board `2_Daily` in scope `s` and the board `Daily` in scope `s_2` would share a map. `global` keeps the old names, `geode_rank_<name>_<window number>`, so existing windows keep their scores through the update.
+- In Studio's `scope` mode the board's DataStore scope gets the `studio_` prefix like every other store, and its map names get it from the services.
+- The MemoryStore helpers and matchmakers take no scope. Nothing they hold outlives a session, so no saved data mixes.
+
+Rejected: a separate name option, which would ask every game to spell the scope into each board by hand; escaping underscores in names, which changes the names of existing windowed boards; and `liveUniverses` with a list of live universes in `Geode.setup`, which wasn't asked for here. A game that wants it passes its own scope from the universe id.
+
+**PR:** #40
