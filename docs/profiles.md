@@ -68,16 +68,31 @@ end
 
 ## Shared defaults with Geode.setup
 
-`Geode.setup` sets the services, one shared scheduler, error reporting and the Studio mode for every `Geode.players` store made after it. Call it once, before making any store.
+`Geode.setup` sets defaults for the stores made after it. Its Studio mode reaches every store: profile stores, shared stores, boards, the MemoryStore helpers and matchmakers. The services, one shared scheduler and error reporting reach `Geode.players` stores. Call it once, before making any store. A store's own options still win.
 
 ```lua
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Geode = require(ReplicatedStorage.Packages.Geode)
 
-Geode.setup({ studio = "scope" })
+Geode.setup({ studio = "auto" })
 
 local PlayerData = Geode.players({ name = "PlayerData", template = { coins = 0 } })
 ```
+
+## Where Studio keeps data
+
+The Studio mode only matters in Studio. Live servers always use the real services.
+
+| Mode    | In Studio                                                                                                                                                            |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mock`  | DataStores, MemoryStores and messaging come from one in-memory server shared by every store, on the real clock. Data is gone when the playtest ends                  |
+| `scope` | The real services, kept apart from live servers: DataStore data goes under `studio_` plus the scope, and MemoryStore names and messaging topics start with `studio_` |
+| `real`  | Live data, the same as a live server                                                                                                                                 |
+| `auto`  | `scope` when Studio has API access, `mock` when it doesn't                                                                                                           |
+
+Profile stores default to `mock`, so a playtest never touches saved player data unless asked. Every other store defaults to `real`, as it always has, until `Geode.setup` or its own `studio` option says otherwise. Players, purchases, shutdown, teleports, remotes and the Studio bridge stay real in every mode.
+
+`auto` finds out by reading one key the first time a store needs to know, so that first store waits for one DataStore request, in Studio only. Stores made while it runs wait for the same answer. An error saying Studio has no API access means `mock`, and so does a place that was never published. Any other error also lands on `mock`, and Geode reports it, so a check that went wrong keeps data in memory instead of reaching live data. Development tools see the mode a store ended up with, never `auto`.
 
 ## Profile stores
 
