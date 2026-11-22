@@ -59,6 +59,18 @@ const studioMode: Geode.StudioMode = "auto";
 Geode.Shared.store({ name: "Clans", template: { bank: 0 }, studio: studioMode });
 const wins = Geode.Ranked.allTime("Wins", { studio: "mock", scope: "season2" });
 print(wins.scope);
+const off: Geode.Result<undefined> = wins.remove(1001);
+const homes = Geode.Shared.store({
+	name: "Homes",
+	template: { rooms: 1 },
+	keyForUser: (userId) => `home_${tostring(userId)}`,
+});
+const deleted = homes.delete("home_1001");
+const report = Geode.erase(1001);
+for (const entry of report.stores) {
+	const kind: Geode.ErasableKind = entry.kind;
+	print(entry.store, kind, entry.ok, entry.message, off.ok, deleted.ok);
+}
 Geode.setup({ studio: "auto", scope: "test" });
 Geode.Ephemeral.hashMap("Cache", { studio: "scope" });
 Geode.Counter.new("Visits", { studio: "real" });

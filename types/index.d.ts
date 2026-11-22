@@ -850,9 +850,14 @@ declare namespace Geode {
 		notProcessed: D;
 	}
 
+	type ErasableKind = "profile" | "shared" | "board";
+
 	interface EraseReport {
+		/** How many stores erased something */
 		erased: number;
-		failures: { store: string; message: string }[];
+		failures: { store: string; kind: ErasableKind; message: string }[];
+		/** One entry per store that held something for the player, in the order they were made */
+		stores: { store: string; kind: ErasableKind; ok: boolean; message?: string }[];
 	}
 
 	// Player data
@@ -921,6 +926,8 @@ declare namespace Geode {
 		cacheTtl?: number;
 		invalidate?: boolean;
 		sizeBudget?: SizeBudget;
+		/** The key that holds a player's data, or undefined when there's none. Opts in to `Geode.erase` */
+		keyForUser?: (userId: number) => string | undefined;
 		reportError?: (message: string) => void;
 	}
 
@@ -941,6 +948,8 @@ declare namespace Geode {
 		get(key: string, path?: Path): Result<unknown>;
 		observe(key: string, path: Path, callback: Observer): Connection;
 		invalidate(key: string): void;
+		/** RemoveAsync on the key. This server's copy goes back to the template and others read it again */
+		delete(key: string): Result<undefined>;
 		/** Shared stores don't do dry runs */
 		transact(
 			key: string,
@@ -1165,6 +1174,8 @@ declare namespace Geode {
 		readonly name: string;
 		readonly scope: string;
 		submit(userId: number, score: number, mode?: RankMode): Result<number>;
+		/** Takes the player off an all-time board, or off every window a windowed board still keeps */
+		remove(userId: number): Result<undefined>;
 		get(userId: number): Result<number | undefined>;
 		top(count: number, windowIndex?: number): Result<readonly { userId: number; score: number }[]>;
 		windowIndex(at?: number): number;
