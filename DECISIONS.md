@@ -686,3 +686,22 @@ Profile and shared stores took a `scope`, but `Geode.Ranked` boards didn't, so a
 Rejected: a separate name option, which would ask every game to spell the scope into each board by hand; escaping underscores in names, which changes the names of existing windowed boards; and `liveUniverses` with a list of live universes in `Geode.setup`, which wasn't asked for here. A game that wants it passes its own scope from the universe id.
 
 **PR:** #40
+
+## 55. Erasure reaches boards and opted-in shared stores
+
+**Date:** 2026-11-22
+
+`Geode.erase` reached profile stores only. Boards had no way to remove a player and shared stores had no delete, so a game answering an erasure request removed board keys and shared keys by hand through raw adapters.
+
+- `board:remove(userId)` runs RemoveAsync on the all-time board's key, the user id as a string. A windowed board removes the player from the current window and from every earlier window that can still hold items: the ones whose close plus the grace is still ahead, which is when `submit` sets their items to expire. Cached top lists are dropped either way.
+- `sharedStore:delete(key)` runs RemoveAsync, puts this server's cached copy back to the template so observers hear it, and broadcasts on the invalidation topic without a revision. A key written after a delete starts over at revision 1, which is below what other servers hold, and a message without a revision already makes them drop any copy.
+- That made a gap visible. A server that missed the message would read nothing where it held revision 7, take it for a stale read and keep serving the deleted value. When a read finds nothing where this server held a value, it now reads once more past Roblox's cache and believes that answer, and a server's own write is believed as well, so a lower revision after a delete gets in. Those are the only cases where a lower revision replaces a higher one.
+- Shared stores opt in with `keyForUser(userId) -> key?`. Geode can't know which keys belong to a player, and a guild key holding many players must not be deleted for one of them, so a store without it is left alone. Returning nil means the store holds nothing for that player. An error from it is a failure for that store.
+- The report keeps `erased` and `failures` as they were, each failure now with its `kind`, and adds `stores` with one entry per store that held something: name, kind (`profile`, `shared` or `board`), whether it worked and the message. A failing store doesn't stop the others.
+- Boards register for erasure when made and stay registered after `destroy`, like profile stores, since their saved scores outlive the object.
+
+The `TODO(verify)` in `Sapphire/Registry.luau` asked whether versions older than 30 days stop being readable and whether they can be dropped sooner. Roblox's versioning page says "Versioned backups expire 30 days after a new write overwrites them. The latest version never expires", and the DataStore reference marks RemoveVersionAsync deprecated without naming a replacement. That answers both from the docs: they expire, and there's no supported way to drop them sooner. The comment and the docs now quote that instead of guessing.
+
+Rejected: a `remove(key)` name for shared stores, which already have `remove(key, path)` for a path inside a value; deleting by writing the template, which keeps the key and its revision but isn't the RemoveAsync an erasure asks for; and erasing every shared store by default with the user id as the key, which would delete whatever happens to sit under a number.
+
+**PR:** #40
