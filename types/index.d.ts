@@ -41,6 +41,131 @@ declare namespace Geode {
 
 	type Path = string | (string | number)[];
 
+	// Typed paths. Stores, profiles, transactions and the client take the data's type as `T`.
+	// Without one, `T` is `object` and every path and value is as loose as `Path` and `unknown`.
+	// With one, paths are lists checked against `T` and reads and writes take its types
+
+	/** Values a path stops at: everything that isn't a plain table */
+	type PathLeaf =
+		| string
+		| number
+		| boolean
+		| Vector3
+		| Vector2
+		| CFrame
+		| Color3
+		| UDim
+		| UDim2
+		| BrickColor
+		| DateTime
+		| EnumItem
+		| NumberRange
+		| NumberSequence
+		| ColorSequence
+		| Rect;
+
+	/** One step down from the 8 segments a typed path spells out */
+	type PathDepth = [never, 0, 1, 2, 3, 4, 5, 6, 7];
+
+	/** One key's paths: the key itself, and the paths under it when its value is a table */
+	type PathSegments<V, K extends string | number, D extends number> =
+		| readonly [K]
+		| (NonNullable<V> extends PathLeaf
+				? never
+				: readonly [K, ...PathOf<NonNullable<V>, PathDepth[D]>]);
+
+	/**
+	 * Every list path into `T`. A key of a record keyed by string is a `string` segment and an
+	 * item of a list is a `number` segment, its 1-based index. Past 8 segments any tail is let
+	 * through, and `ValueAt` still checks it
+	 */
+	type PathOf<T, D extends number = 8> = [D] extends [never]
+		? readonly (string | number)[]
+		: T extends PathLeaf
+			? never
+			: T extends readonly (infer E)[]
+				? PathSegments<E, number, D>
+				: T extends object
+					? string extends keyof T
+						? PathSegments<T[string & keyof T], string, D>
+						: { [K in keyof T & string]-?: PathSegments<T[K], K, D> }[keyof T & string]
+					: never;
+
+	/** The value one segment down. A record's entry and a list's item may be missing */
+	type PathChild<T, K> = T extends PathLeaf
+		? never
+		: T extends readonly (infer E)[]
+			? K extends number
+				? E | undefined
+				: never
+			: K extends keyof T
+				? string extends keyof T
+					? T[K] | undefined
+					: T[K]
+				: never;
+
+	/** The type at a list path of `T`. `never` when the path leads nowhere */
+	type ValueAt<T, P extends readonly unknown[]> = P extends readonly []
+		? T
+		: P extends readonly [infer Head, ...infer Rest]
+			? PathChild<NonNullable<T>, Head> extends infer C
+				? undefined extends C
+					? Rest extends readonly []
+						? C
+						: ValueAt<NonNullable<C>, Rest> | undefined
+					: ValueAt<C, Rest>
+				: never
+			: unknown;
+
+	/**
+	 * `unknown` when the value at `P` is a `V`, `never` otherwise or when `P` leads nowhere. A
+	 * parameter typed `P & PathTo<T, P, V>` takes only paths to a `V`
+	 */
+	type PathTo<T, P extends readonly unknown[], V> = [ValueAt<T, P>] extends [never]
+		? never
+		: NonNullable<ValueAt<T, P>> extends V
+			? unknown
+			: never;
+
+	/** A value as reads hand it out: frozen all the way down */
+	type Frozen<T> = T extends PathLeaf
+		? T
+		: T extends object
+			? { readonly [K in keyof T]: Frozen<T[K]> }
+			: T;
+
+	/** Whether `T` is the default, untyped data */
+	type IsUntyped<T> = [object] extends [T] ? true : false;
+	/** The paths a method takes for data of type `T` */
+	type PathFor<T> = IsUntyped<T> extends true ? Path : PathOf<T>;
+	/** What a read at `P` returns */
+	type ReadAt<T, P> =
+		IsUntyped<T> extends true
+			? unknown
+			: P extends readonly unknown[]
+				? Frozen<ValueAt<T, P>>
+				: Frozen<T>;
+	/** What a write at `P` takes */
+	type WriteAt<T, P> =
+		IsUntyped<T> extends true ? unknown : P extends readonly unknown[] ? ValueAt<T, P> : T;
+	/** A path that has to lead to a `V`, or any path for untyped data */
+	type PathToFor<T, P, V> =
+		IsUntyped<T> extends true ? unknown : P extends readonly unknown[] ? PathTo<T, P, V> : never;
+	/** What one item of the list at `P` is */
+	type ItemAt<T, P> =
+		IsUntyped<T> extends true
+			? unknown
+			: P extends readonly unknown[]
+				? NonNullable<ValueAt<T, P>> extends readonly (infer E)[]
+					? E
+					: never
+				: never;
+	/** The fields `merge` takes at `P`, the root when `P` is undefined */
+	type MergeAt<T, P> =
+		IsUntyped<T> extends true
+			? Record<string, unknown>
+			: Partial<NonNullable<P extends readonly unknown[] ? ValueAt<T, P> : T>>;
+
 	type SourceKind =
 		"system" | "reaction" | "bundle" | "player" | "plugin" | "mailbox" | "migration";
 
@@ -102,19 +227,29 @@ declare namespace Geode {
 		error?: TxError;
 	}
 
-	interface Transaction {
+	interface Transaction<T extends object = object> {
 		readonly source: Source;
-		get(path?: Path): unknown;
-		getBefore(path?: Path): unknown;
-		set(path: Path, value: unknown): void;
-		update(path: Path, transform: (current: unknown) => unknown): void;
-		increment(path: Path, amount?: number): void;
-		decrement(path: Path, amount?: number): void;
-		append(path: Path, value: unknown): void;
-		insert(path: Path, index: number, value: unknown): void;
-		remove(path: Path): void;
-		clear(path?: Path): void;
-		merge(path: Path | undefined, partial: Record<string, unknown>): void;
+		get<const P extends PathFor<T> | undefined = undefined>(path?: P): ReadAt<T, P>;
+		getBefore<const P extends PathFor<T> | undefined = undefined>(path?: P): ReadAt<T, P>;
+		set<const P extends PathFor<T>>(path: P, value: WriteAt<T, P>): void;
+		update<const P extends PathFor<T>>(
+			path: P,
+			transform: (current: ReadAt<T, P>) => WriteAt<T, P>,
+		): void;
+		increment<const P extends PathFor<T>>(path: P & PathToFor<T, P, number>, amount?: number): void;
+		decrement<const P extends PathFor<T>>(path: P & PathToFor<T, P, number>, amount?: number): void;
+		append<const P extends PathFor<T>>(
+			path: P & PathToFor<T, P, readonly unknown[]>,
+			value: ItemAt<T, P>,
+		): void;
+		insert<const P extends PathFor<T>>(
+			path: P & PathToFor<T, P, readonly unknown[]>,
+			index: number,
+			value: ItemAt<T, P>,
+		): void;
+		remove(path: PathFor<T>): void;
+		clear(path?: PathFor<T>): void;
+		merge<const P extends PathFor<T> | undefined>(path: P, partial: MergeAt<T, P>): void;
 		op(name: string, ...args: unknown[]): void;
 		defer(callback: (outcome: Outcome) => void): void;
 		/** Leaf changes the draft holds so far */
@@ -125,24 +260,40 @@ declare namespace Geode {
 		writerOf(pathKey: string): SourceKind;
 	}
 
-	type Observer = (newValue: unknown, oldValue: unknown, record: CommitRecord) => void;
+	type Observer<V = unknown> = (newValue: V, oldValue: V, record: CommitRecord) => void;
 
 	/** Reads and the single op shorthands every data holder shares */
-	interface Writable {
-		get(path?: Path): unknown;
-		snapshot(): unknown;
-		transact(body: (tx: Transaction) => void, options?: TransactOptions): TxResult;
-		set(path: Path, value: unknown): TxResult;
-		update(path: Path, transform: (current: unknown) => unknown): TxResult;
-		increment(path: Path, amount?: number): TxResult;
-		decrement(path: Path, amount?: number): TxResult;
-		append(path: Path, value: unknown): TxResult;
-		insert(path: Path, index: number, value: unknown): TxResult;
-		remove(path: Path): TxResult;
-		clear(path?: Path): TxResult;
-		merge(path: Path | undefined, partial: Record<string, unknown>): TxResult;
+	interface Writable<T extends object = object> {
+		get<const P extends PathFor<T> | undefined = undefined>(path?: P): ReadAt<T, P>;
+		snapshot(): ReadAt<T, undefined>;
+		transact(body: (tx: Transaction<T>) => void, options?: TransactOptions): TxResult;
+		set<const P extends PathFor<T>>(path: P, value: WriteAt<T, P>): TxResult;
+		update<const P extends PathFor<T>>(
+			path: P,
+			transform: (current: ReadAt<T, P>) => WriteAt<T, P>,
+		): TxResult;
+		increment<const P extends PathFor<T>>(
+			path: P & PathToFor<T, P, number>,
+			amount?: number,
+		): TxResult;
+		decrement<const P extends PathFor<T>>(
+			path: P & PathToFor<T, P, number>,
+			amount?: number,
+		): TxResult;
+		append<const P extends PathFor<T>>(
+			path: P & PathToFor<T, P, readonly unknown[]>,
+			value: ItemAt<T, P>,
+		): TxResult;
+		insert<const P extends PathFor<T>>(
+			path: P & PathToFor<T, P, readonly unknown[]>,
+			index: number,
+			value: ItemAt<T, P>,
+		): TxResult;
+		remove(path: PathFor<T>): TxResult;
+		clear(path?: PathFor<T>): TxResult;
+		merge<const P extends PathFor<T> | undefined>(path: P, partial: MergeAt<T, P>): TxResult;
 		op(name: string, ...args: unknown[]): TxResult;
-		observe(path: Path, callback: Observer): Connection;
+		observe<const P extends PathFor<T>>(path: P, callback: Observer<ReadAt<T, P>>): Connection;
 	}
 
 	interface Document extends Writable {
@@ -678,7 +829,8 @@ declare namespace Geode {
 	 */
 	type StudioMode = "mock" | "scope" | "real" | "auto";
 	type StealPolicy = "steal" | "wait" | "fail";
-	type SessionLostPolicy = "kick" | "none" | ((profile: Profile, reason: string) => void);
+	type SessionLostPolicy<T extends object = object> =
+		"kick" | "none" | ((profile: Profile<T>, reason: string) => void);
 	type ProfileState = "active" | "releasing" | "released" | "lost";
 	/** Why a profile is being released, as `beforeRelease` hears it */
 	type ReleaseReason = "leave" | "shutdown" | "handoff" | "release" | "destroy";
@@ -686,13 +838,17 @@ declare namespace Geode {
 	 * The last transaction before a profile's final save. It must not yield: one that does fails,
 	 * and so does one that errors or that a guard rejects. Each is reported and the release goes on
 	 */
-	type BeforeRelease = (tx: Transaction, profile: Profile, reason: ReleaseReason) => void;
+	type BeforeRelease<T extends object = object> = (
+		tx: Transaction<T>,
+		profile: Profile<T>,
+		reason: ReleaseReason,
+	) => void;
 
 	type SaveResult =
 		| { ok: true }
 		| { ok: false; error: { kind: "adapter" | "lost" | "tooLarge" | "closed"; message: string } };
 
-	interface Profile extends Writable {
+	interface Profile<T extends object = object> extends Writable<T> {
 		readonly key: string;
 		readonly userId?: number;
 		readonly released: Signal<[]>;
@@ -713,10 +869,13 @@ declare namespace Geode {
 		onCommit(callback: (record: CommitRecord) => void): Connection;
 	}
 
-	interface ProfileStoreOptions {
+	interface ProfileStoreOptions<T extends object = object> {
 		name: string;
-		/** A table of default values. Any object type fits, interfaces included */
-		template: object;
+		/**
+		 * A table of default values. Any object type fits, interfaces included. Give the store a
+		 * type, like `Geode.Profile.store<Data>`, to check paths and values against it
+		 */
+		template: NoInfer<T>;
 		services?: Services;
 		scope?: string;
 		scheduler?: Scheduler;
@@ -737,9 +896,9 @@ declare namespace Geode {
 		leaseTimeout?: number;
 		stealAfter?: number;
 		stealPolicy?: StealPolicy;
-		onSessionLost?: SessionLostPolicy;
+		onSessionLost?: SessionLostPolicy<T>;
 		/** Runs once per profile before its final save, unless the session was lost first */
-		beforeRelease?: BeforeRelease;
+		beforeRelease?: BeforeRelease<T>;
 		studio?: StudioMode;
 		sizeBudget?: SizeBudget;
 		closeTimeout?: number;
@@ -761,8 +920,8 @@ declare namespace Geode {
 		| "migrationFailed"
 		| "destroyed";
 
-	type LoadResult =
-		| { ok: true; profile: Profile; erasedAt?: number }
+	type LoadResult<T extends object = object> =
+		| { ok: true; profile: Profile<T>; erasedAt?: number }
 		| { ok: false; error: { kind: LoadErrorKind; message: string } };
 
 	interface VersionInfo {
@@ -803,13 +962,13 @@ declare namespace Geode {
 		session: string;
 	}
 
-	interface ProfileStore {
+	interface ProfileStore<T extends object = object> {
 		readonly name: string;
 		readonly scope: string;
-		readonly guardBroken: Signal<[violation: Violation, profile: Profile]>;
+		readonly guardBroken: Signal<[violation: Violation, profile: Profile<T>]>;
 		readonly erasedProfileLoaded: Signal<[key: string, erasedAt: number]>;
-		load(key: string, options?: { userId?: number; userIds?: number[] }): LoadResult;
-		get(key: string): Profile | undefined;
+		load(key: string, options?: { userId?: number; userIds?: number[] }): LoadResult<T>;
+		get(key: string): Profile<T> | undefined;
 		openCount(): number;
 		openKeys(): string[];
 		inspect(key: string): ProfileInspection | undefined;
@@ -864,30 +1023,30 @@ declare namespace Geode {
 
 	type Visibility = "private" | "owner" | "public";
 
-	interface PlayerDataOptions extends ProfileStoreOptions {
-		products?: Record<number, ReceiptHandler>;
+	interface PlayerDataOptions<T extends object = object> extends ProfileStoreOptions<T> {
+		products?: Record<number, (tx: Transaction<T>, info: ReceiptInfo) => void>;
 		replicate?: Record<string, Visibility>;
 		loadRetries?: number;
 		/** Geode sets ProcessReceipt itself, so any values do here; tests pass their own */
 		decisions?: Decisions<unknown>;
 	}
 
-	interface PlayerProfile extends Writable {
+	interface PlayerProfile<T extends object = object> extends Writable<T> {
 		readonly userId: number;
 		readonly player: Player;
 		isLoaded(): boolean;
-		profile(): Profile | undefined;
+		profile(): Profile<T> | undefined;
 	}
 
-	interface PlayerData {
-		readonly store: ProfileStore;
-		readonly loaded: Signal<[player: Player, profile: Profile]>;
-		readonly released: Signal<[player: Player, profile: Profile]>;
-		onLoaded(callback: (player: Player, profile: Profile) => void): Connection;
-		onReleased(callback: (player: Player, profile: Profile) => void): Connection;
-		get(player: Player): PlayerProfile | undefined;
+	interface PlayerData<T extends object = object> {
+		readonly store: ProfileStore<T>;
+		readonly loaded: Signal<[player: Player, profile: Profile<T>]>;
+		readonly released: Signal<[player: Player, profile: Profile<T>]>;
+		onLoaded(callback: (player: Player, profile: Profile<T>) => void): Connection;
+		onReleased(callback: (player: Player, profile: Profile<T>) => void): Connection;
+		get(player: Player): PlayerProfile<T> | undefined;
 		isLoaded(player: Player): boolean;
-		waitFor(player: Player, timeout?: number): Profile | undefined;
+		waitFor(player: Player, timeout?: number): Profile<T> | undefined;
 		destroy(): void;
 	}
 
@@ -1203,21 +1362,24 @@ declare namespace Geode {
 		subscribe(callback: (newValue: T, oldValue: T) => void): Connection;
 	}
 
-	interface GeodeClient {
+	/** What a client atom at `P` holds: undefined until the data arrives or when it isn't sent */
+	type ClientAt<T, P> = IsUntyped<T> extends true ? unknown : ReadAt<T, P> | undefined;
+
+	interface GeodeClient<T extends object = object> {
 		readonly userId: number;
 		isReady(): boolean;
 		waitUntilReady(): void;
 		resync(): void;
-		atom(path: Path, userId?: number): Atom<unknown>;
-		computed<T>(compute: () => T): Atom<T>;
-		observe(
-			path: Path,
-			callback: (newValue: unknown, oldValue: unknown) => void,
+		atom<const P extends PathFor<T>>(path: P, userId?: number): Atom<ClientAt<T, P>>;
+		computed<V>(compute: () => V): Atom<V>;
+		observe<const P extends PathFor<T>>(
+			path: P,
+			callback: (newValue: ClientAt<T, P>, oldValue: ClientAt<T, P>) => void,
 			userId?: number,
 		): Connection;
 		op(name: string, ...args: unknown[]): void;
 		charm(charm: { atom: (initial: unknown) => unknown }): {
-			atom: (this: void, path: Path, userId?: number) => unknown;
+			atom: (this: void, path: PathFor<T>, userId?: number) => unknown;
 		};
 	}
 
@@ -1419,7 +1581,12 @@ declare namespace Geode {
 			options?: OpOptions,
 		): void;
 
-		readonly Profile: { store(this: void, options: ProfileStoreOptions): ProfileStore };
+		readonly Profile: {
+			store<T extends object = object>(
+				this: void,
+				options: ProfileStoreOptions<T>,
+			): ProfileStore<T>;
+		};
 		/** Assign the result to `MarketplaceService.ProcessReceipt` */
 		receipts<D = Enum.ProductPurchaseDecision>(
 			this: void,
@@ -1432,7 +1599,7 @@ declare namespace Geode {
 		): (info: ReceiptInfo | globalThis.ReceiptInfo) => D;
 		erase(this: void, userId: number, services?: Services): EraseReport;
 
-		players(this: void, options: PlayerDataOptions): PlayerData;
+		players<T extends object = object>(this: void, options: PlayerDataOptions<T>): PlayerData<T>;
 		setup(this: void, options: SetupOptions): void;
 
 		readonly Shared: { store(this: void, options: SharedStoreOptions): SharedStore };
@@ -1483,7 +1650,9 @@ declare namespace Geode {
 			reportError?: (message: string) => void,
 		): Replicator;
 		remoteOp(this: void, name: string, options: RemoteOpOptions): void;
-		readonly Client: { start(this: void, services?: ClientServices): GeodeClient };
+		readonly Client: {
+			start<T extends object = object>(this: void, services?: ClientServices): GeodeClient<T>;
+		};
 		readonly Vein: {
 			readonly VERSION: number;
 			snapshot(this: void): VeinSnapshot;
