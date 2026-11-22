@@ -58,3 +58,9 @@ end)
 ```
 
 When a refresh fails, a read serves the value it already has and reports the failure, since a slightly stale value is better than none.
+
+## Deleting
+
+`store:delete(key)` removes a key with RemoveAsync. This server's copy goes back to the template right away, so observers hear the change, and other servers are told to read the key again. A server that missed that message finds out when its cache runs out: it reads nothing where it held a value, checks once past Roblox's own cache, and then serves the template too. A key written after a delete starts over from the template.
+
+Given `keyForUser`, a store also takes part in `Geode.erase`. See [History and erasure](history-erasure#erasure).
