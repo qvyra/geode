@@ -6,6 +6,7 @@
 -- short lived cache; invalidation messages only make it fresher sooner
 
 local Document = require("../Matrix/Document")
+local Erasure = require("../Sapphire/Registry")
 local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
 local Path = require("../Matrix/Path")
@@ -49,6 +50,9 @@ export type Options = {
 	-- Tell other servers over MessagingService when a key changes. On by default
 	invalidate: boolean?,
 	sizeBudget: Size.Budget?,
+	-- The key that holds a player's data, or nil when this store keeps none for them. Setting it
+	-- lets Geode.erase delete that key
+	keyForUser: ((userId: number) -> string?)?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -90,6 +94,7 @@ type Fields = {
 	_topic: string,
 	_sizeBudget: Size.Budget,
 	_report: (message: string) -> (),
+	_keyForUser: ((userId: number) -> string?)?,
 	-- The key whose held callbacks are running, for guard telemetry
 	_guardKey: string?,
 	_cache: { [string]: Cached },
@@ -189,6 +194,10 @@ function SharedStore.new(options: Options): SharedStore
 
 	local cacheTtl = options.cacheTtl or DEFAULT_CACHE_TTL
 	assert(cacheTtl >= 0, "cacheTtl can't be negative")
+	assert(
+		options.keyForUser == nil or type(options.keyForUser) == "function",
+		"keyForUser must be a function"
+	)
 
 	local self: Fields = {
 		name = options.name,
@@ -209,6 +218,7 @@ function SharedStore.new(options: Options): SharedStore
 		_topic = `geode_invalidate_{options.name}`,
 		_sizeBudget = options.sizeBudget or DEFAULT_SIZE_BUDGET,
 		_report = report,
+		_keyForUser = options.keyForUser,
 		_cache = {},
 	}
 	local store = setmetatable(self, SharedStore)
@@ -230,6 +240,10 @@ function SharedStore.new(options: Options): SharedStore
 		end
 		return { scope = scope, cachedKeys = cached }
 	end)
+	if options.keyForUser then
+		-- the registry holds stores loosely typed, see Registry.Erasable
+		Erasure.add(store :: any, givenServices, "shared")
+	end
 	return store
 end
 
@@ -306,14 +320,17 @@ function SharedStore._listen(self: SharedStore)
 	end
 end
 
--- Puts fresh data in the cache. Observers of the key hear about whatever changed
+-- Puts fresh data in the cache. Observers of the key hear about whatever changed. A lower
+-- revision than the cached one is a stale read and is dropped, unless `settled`: a write or a
+-- read past Roblox's cache, which can only be lower because the key was deleted
 function SharedStore._remember(
 	self: SharedStore,
 	key: string,
 	data: unknown,
 	revision: number,
 	source: Transaction.SourceLike?,
-	note: string?
+	note: string?,
+	settled: boolean?
 )
 	local now = self._services.clock:now()
 	local cached = self._cache[key]
@@ -330,7 +347,7 @@ function SharedStore._remember(
 		return
 	end
 	cached.fetchedAt = now
-	if revision < cached.revision then
+	if revision < cached.revision and not settled then
 		return
 	end
 	cached.revision = revision
@@ -381,14 +398,38 @@ function SharedStore.get(self: SharedStore, key: string, path: PathLike?): ReadR
 				`couldn't refresh {self.name}/{key}, serving the cached value: {fetched.error.message}`
 			)
 		else
-			local data, revision, problem = self:_decode(fetched.value.value)
+			local stored = fetched.value.value
+			local settled = false
+			if stored == nil and cached and cached.revision > 0 then
+				-- Nothing stored where this server had a value: deleted, or Roblox's cache
+				-- answered. A read past the cache tells which
+				local fresh = self._scheduler:submit({
+					priority = "read",
+					budget = "standardRead",
+					key = self:_schedulerKey(key),
+					run = function()
+						return self._dataStore:get(key, { useCache = false })
+					end,
+				})
+				if fresh.ok then
+					stored = fresh.value.value
+					settled = true
+				else
+					self._report(
+						`couldn't check whether {self.name}/{key} was deleted, serving the cached value: {fresh.error.message}`
+					)
+					cached.fetchedAt = now
+					return { ok = true, value = cached.document:get(path) }
+				end
+			end
+			local data, revision, problem = self:_decode(stored)
 			if problem then
 				return {
 					ok = false,
 					error = { kind = "invalidValue", message = `{self.name}/{key}: {problem}` },
 				}
 			end
-			self:_remember(key, data, revision :: number)
+			self:_remember(key, data, revision :: number, nil, nil, settled)
 		end
 		cached = self._cache[key]
 	end
@@ -558,7 +599,8 @@ function SharedStore.transact(
 			written,
 			writtenRevision,
 			record and record.source,
-			record and record.note
+			record and record.note,
+			true
 		)
 		if self._invalidate then
 			services.clock:spawn(function()
@@ -738,6 +780,77 @@ function SharedStore.op(self: SharedStore, key: string, name: string, ...: any):
 	return self:transact(key, function(tx)
 		tx:op(name, table.unpack(args, 1, args.n))
 	end)
+end
+
+-- Deleting
+
+--[=[
+	Removes `key` with RemoveAsync. This server's cached copy goes back to the template, so
+	observers hear the change, and other servers are told to read the key again. A key written
+	after it starts over from the template. Yields
+
+	@within SharedStore
+	@param key string
+	@return Result<nil>
+
+	```lua
+	local result = Guilds:delete("guild_42")
+	if not result.ok then
+		warn(result.error.message)
+	end
+	```
+]=]
+function SharedStore.delete(self: SharedStore, key: string): Types.Result<nil>
+	assert(type(key) == "string" and key ~= "", "delete needs a key")
+	local services = self._services
+	local removed = self._scheduler:submit({
+		priority = "save",
+		budget = "standardRemove",
+		key = self:_schedulerKey(key),
+		write = true,
+		run = function()
+			return self._dataStore:remove(key)
+		end,
+	})
+	if not removed.ok then
+		return { ok = false, error = removed.error }
+	end
+	local cached = self._cache[key]
+	if cached then
+		local template = self:_decode(nil)
+		self:_remember(key, template, 0, "system", "deleted", true)
+	end
+	if self._invalidate then
+		services.clock:spawn(function()
+			-- No revision, so every server drops its copy: one written after this starts over at
+			-- revision 1, below what they hold
+			services.messaging:publish(self._topic, { key = key, from = services.jobId })
+		end)
+	end
+	return { ok = true, value = nil }
+end
+
+-- For Geode.erase, which reaches this store only when it was given keyForUser
+function SharedStore._eraseUser(
+	self: SharedStore,
+	userId: number
+): { ok: boolean, message: string?, skipped: boolean? }
+	local keyForUser = self._keyForUser :: (userId: number) -> string?
+	local ok, found = pcall(keyForUser, userId)
+	if not ok then
+		return { ok = false, message = `keyForUser failed: {tostring(found)}` }
+	end
+	if found == nil then
+		return { ok = true, skipped = true }
+	end
+	if type(found) ~= "string" or found == "" then
+		return { ok = false, message = "keyForUser must return a key or nil" }
+	end
+	local result = self:delete(found)
+	if result.ok then
+		return { ok = true }
+	end
+	return { ok = false, message = result.error.message }
 end
 
 return SharedStore
