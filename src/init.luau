@@ -321,11 +321,12 @@ Geode.receipts = Sapphire.receipts
 	@param services Services?
 	@return EraseReport
 
-	Erases a player's data from every profile store. Yields
+	Erases a player's data from every store made on this server that keeps data by user id:
+	profile stores, boards, and shared stores given `keyForUser`. Reports each store. Yields
 
-	Live reads see the erasure right away. Older versions of each key stay readable for 30 days
-	on Roblox's side and RemoveVersionAsync is deprecated, so those can't be purged early. A
-	player who joins again starts over from the template
+	Live reads see the erasure right away. Roblox's docs say versioned backups expire 30 days after
+	a newer write replaces them and mark RemoveVersionAsync deprecated, so older versions can't be
+	removed sooner. A player who joins again starts over from the template
 ]=]
 Geode.erase = Sapphire.erase
 

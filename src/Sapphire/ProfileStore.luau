@@ -400,7 +400,7 @@ function ProfileStore.new(options: Options): ProfileStore
 	})
 	VeinBridge.ensure(givenServices)
 	-- The registry holds stores loosely typed, see Registry.Erasable
-	Registry.add(store :: any, givenServices)
+	Registry.add(store :: any, givenServices, "profile")
 	if options.bindToClose ~= false then
 		services.lifecycle:bindToClose(function()
 			store:releaseAll()
@@ -1158,6 +1158,15 @@ export type AuditBatch = {
 }
 
 -- When the stored record was erased, in seconds, or 0
+-- For Geode.erase
+function ProfileStore._eraseUser(
+	self: ProfileStore,
+	userId: number
+): { ok: boolean, message: string?, skipped: boolean? }
+	local result = self:erase(self:keyForUser(userId))
+	return { ok = result.ok, message = result.message }
+end
+
 function ProfileStore._erasedAt(self: ProfileStore, key: string): Types.Result<number>
 	local read = self._scheduler:submit({
 		priority = "read",

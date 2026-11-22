@@ -4,6 +4,7 @@
 -- (daily, weekly or any length) get a MS sorted map per window that expires a grace period
 -- after the window closes. Top N reads are cached so a busy lobby doesn't burn quota
 
+local Erasure = require("../Sapphire/Registry")
 local RealServices = require("../Quartz/Real/Services")
 local VeinBridge = require("../Vein/Bridge")
 local Registry = require("../Vein/Registry")
@@ -51,6 +52,8 @@ export type Entry = {
 type Fields = {
 	name: string,
 	scope: string,
+	-- the services the board was made with, before any Studio substitution, for Geode.erase
+	_given: Types.Services,
 	_services: Types.Services,
 	_scheduler: Scheduler.Scheduler,
 	_mode: Mode,
@@ -127,6 +130,7 @@ local function new(name: string, options: Options?): Leaderboard
 		{
 			name = name,
 			scope = scopeOption or Studio.defaultScope() or "global",
+			_given = given,
 			_services = services,
 			_scheduler = options and options.scheduler
 				or Scheduler.new({ clock = services.clock, budget = services.budget }),
@@ -155,6 +159,8 @@ function Ranked.allTime(name: string, options: Options?): Leaderboard
 	board._handle = Registry.register("leaderboard", name, function()
 		return { kind = "allTime", mode = board._mode }
 	end)
+	-- the registry holds stores loosely typed, see Registry.Erasable
+	Erasure.add(board :: any, board._given, "board")
 	return board
 end
 
@@ -182,6 +188,7 @@ function Ranked.windowed(name: string, options: WindowedOptions): Leaderboard
 	board._handle = Registry.register("leaderboard", name, function()
 		return { kind = "windowed", window = board._window, mode = board._mode }
 	end)
+	Erasure.add(board :: any, board._given, "board")
 	return board
 end
 
@@ -365,6 +372,67 @@ function Leaderboard.top(
 	table.freeze(entries)
 	self._cache[cacheKey] = { at = now, entries = entries }
 	return { ok = true, value = entries }
+end
+
+--[=[
+	Takes a player off the board. An all-time board removes their key with RemoveAsync. A windowed
+	board removes them from the current window and from every earlier window that hasn't
+	expired yet. Cached top lists are dropped. Yields
+
+	@within Leaderboard
+	@param userId number
+	@return Result<nil>
+]=]
+function Leaderboard.remove(self: Leaderboard, userId: number): Types.Result<nil>
+	local key = tostring(userId)
+	local ordered = self._ordered
+	if ordered then
+		local result = self._scheduler:submit({
+			priority = "save",
+			budget = "orderedRemove",
+			run = function()
+				return ordered:remove(key)
+			end,
+		})
+		table.clear(self._cache)
+		if not result.ok then
+			return { ok = false, error = result.error }
+		end
+		return { ok = true, value = nil }
+	end
+
+	local window = self._window :: number
+	local now = self._services.clock:now()
+	local index = self:windowIndex(now)
+	-- a window's items expire by its close plus the grace at the latest, see _windowTtl
+	while (index + 1) * window + self._offset + self._grace > now do
+		local map = self:_windowMap(index)
+		local result = self._scheduler:submit({
+			priority = "save",
+			run = function()
+				return map:remove(key)
+			end,
+		})
+		if not result.ok then
+			table.clear(self._cache)
+			return { ok = false, error = result.error }
+		end
+		index -= 1
+	end
+	table.clear(self._cache)
+	return { ok = true, value = nil }
+end
+
+-- For Geode.erase
+function Leaderboard._eraseUser(
+	self: Leaderboard,
+	userId: number
+): { ok: boolean, message: string?, skipped: boolean? }
+	local result = self:remove(userId)
+	if result.ok then
+		return { ok = true }
+	end
+	return { ok = false, message = result.error.message }
 end
 
 --[=[
