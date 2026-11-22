@@ -705,3 +705,21 @@ The `TODO(verify)` in `Sapphire/Registry.luau` asked whether versions older than
 Rejected: a `remove(key)` name for shared stores, which already have `remove(key, path)` for a path inside a value; deleting by writing the template, which keeps the key and its revision but isn't the RemoveAsync an erasure asks for; and erasing every shared store by default with the user id as the key, which would delete whatever happens to sit under a number.
 
 **PR:** #40
+
+## 56. Typed paths for stores, profiles, transactions and the client
+
+**Date:** 2026-11-22
+
+Paths were `string | (string | number)[]` and every read was `unknown`, so a roblox-ts game built its own typed wrappers over each read, op and transaction. The typings now take the data's type: `Geode.players<T>`, `Geode.Profile.store<T>`, `ProfileStore<T>`, `Profile<T>`, `PlayerData<T>`, `PlayerProfile<T>`, `Transaction<T>` and `Geode.Client.start<T>`. With a type, `get`, `observe`, the ops and `transact` check the path against `T` and take or return the type at that path. Typings only, no Luau change.
+
+- **Opt-in, so existing code compiles unchanged.** `T` defaults to `object`, which keeps the loose `Path` and `unknown` everywhere. `template` is `NoInfer<T>`, so a template alone never turns typing on: inferring `T` from it would have made every existing string path a type error.
+- **List form only.** A typed store takes paths as lists, ported from the kit's `PathOf`, `ValueAt` and `PathTo` but on tuples instead of dotted strings. A record keyed by string takes a `string` segment, and a list item takes a 1-based `number` index, since Geode addresses list items by index where the kit ended paths at lists. Lists sidestep the digit rule that makes `"friends.1001"` an index.
+- **Missing values.** A record's entry or a list's item may not be there, so reading one, or anything under it, includes `undefined`. Optional fields keep theirs. A client atom also reads `undefined` until the data arrives and for paths the server doesn't send.
+- **Reads are frozen.** `get` and `observe` hand out `Frozen<V>`, readonly all the way down, matching the frozen tables Geode returns. Writes take the plain type.
+- **Ops only take paths that fit.** `increment` and `decrement` take paths to numbers, `append` and `insert` paths to lists with items of the list's type, `merge` a partial of the table at the path.
+- **Depth.** Spelling out every path is a union that grows with the template, so it stops at eight segments, the kit's six plus room for list indices. Past that any tail is accepted, and `ValueAt` still works out the exact type, so a deep path still checks its value. `typings-test/paths.ts` covers a ten-level template and a 64-key one with nested records, and TypeScript 5.5.3 checks it in about half a second.
+- `products` handlers on `Geode.players<T>` get `Transaction<T>`. Migrations stay untyped, since they run on older shapes of the data, and so do guards and facets.
+
+Rejected: typed dotted strings with template literal types, which the request ruled out and which can't tell a digit key from an index; keeping loose overloads next to the typed ones, which would let a typo through as `unknown`; and a separate family of typed interfaces, which would double every name in the typings.
+
+**PR:** #40
