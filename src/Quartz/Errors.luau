@@ -76,6 +76,15 @@ function Errors.classify(raw: unknown, service: Types.ErrorSource?): AdapterErro
 		if code == 502 and string.find(string.lower(message), "version is not valid", 1, true) then
 			return { kind = "notFound", code = code, message = message }
 		end
+		-- A read from Studio without API access gets a 502, "API Services rejected request with
+		-- error. Error code: 7 Reason: Studio access to APIs is not allowed." Found in Studio,
+		-- the error table only lists the 403 writes get. Retrying could never succeed
+		if
+			code == 502
+			and string.find(string.lower(message), "studio access to apis is not allowed", 1, true)
+		then
+			return { kind = "noAccess", code = code, message = message }
+		end
 		return { kind = CODE_KINDS[code] or "unknown", code = code, message = message }
 	end
 	if string.find(message, THROTTLE_NAME) then
