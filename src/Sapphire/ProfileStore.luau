@@ -172,7 +172,6 @@ type Fields = {
 	_pruneMark: Prune.Mark?,
 	_prunedStore: Types.DataStore,
 	-- a template that changed under the same prune.version is reported once per store
-	_pruneMismatchReported: boolean,
 	_destroyed: boolean,
 	_facets: Facet.FacetSet,
 	_ops: { string }?,
@@ -358,7 +357,6 @@ function ProfileStore.new(options: Options): ProfileStore
 			else nil,
 		-- made for every store, so an erase also clears the archive of a store that once pruned
 		_prunedStore = services.dataStore(`{options.name}_pruned`, scope),
-		_pruneMismatchReported = false,
 		_destroyed = false,
 		_facets = facets,
 		_ops = options.ops,
@@ -894,13 +892,16 @@ function ProfileStore._pruneOnLoad(
 		return
 	end
 	if verdict == "mismatch" then
-		if not self._pruneMismatchReported then
-			self._pruneMismatchReported = true
-			self._report(
-				`profile {key} was saved with another template under the same prune.version {prune.version}. `
-					.. "Nothing is pruned from it until a server with a higher prune.version saves it. Raise prune.version with every template change"
-			)
+		-- every load it holds back, so a clash that lasts keeps showing up
+		local held = {}
+		for _, path in Prune.find(document:snapshot(), self._template, prune.keep) do
+			table.insert(held, Path.format(path))
 		end
+		local named = if #held > 0 then ` It kept {table.concat(held, ", ")}.` else ""
+		self._report(
+			`profile {key} was saved with another template under the same prune.version {prune.version}, so nothing was pruned from it.{named} `
+				.. "Nothing is pruned from it until a server with a higher prune.version saves it. Raise prune.version with every template change"
+		)
 		return
 	end
 	if document:isReadOnly() then

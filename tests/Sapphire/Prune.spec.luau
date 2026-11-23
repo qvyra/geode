@@ -253,7 +253,7 @@ return function(spec: Spec.Api)
 		end)
 
 		it(
-			"holds back and reports once when the template changed under the same version",
+			"holds back and reports every load when the template changed under the same version",
 			function()
 				local universe = Universe.new()
 				local other = { coins = 0, log = {}, settings = { music = true }, gems = 0 }
@@ -266,8 +266,15 @@ return function(spec: Spec.Api)
 				local second = load(universe, store, "p2")
 				expect(first:get("gems")).toBe(40)
 				expect(second:get("gems")).toBe(40)
-				expect(#reported).toBe(1)
-				expect((string.find(reported[1], "same prune.version 1", 1, true))).never.toBeNil()
+				expect(#reported).toBe(2)
+				release(universe, first)
+				local again = load(universe, store, "p1")
+				expect(again:get("gems")).toBe(40)
+				expect(#reported).toBe(3)
+				for _, message in reported do
+					expect((string.find(message, "same prune.version 1", 1, true))).never.toBeNil()
+					expect((string.find(message, "It kept gems.", 1, true))).never.toBeNil()
+				end
 			end
 		)
 
@@ -354,7 +361,8 @@ return function(spec: Spec.Api)
 					release(universe, held)
 				end
 				expect((stored(universe, "p1").data :: Any).gems).toBe(40)
-				expect(#reported).toBe(1)
+				-- one report for each of the old server's three loads
+				expect(#reported).toBe(3)
 				-- raising the version settles it
 				local fixed = pruning(
 					universe:server({ jobId = "fixed" }),
@@ -369,6 +377,51 @@ return function(spec: Spec.Api)
 				expect(record.meta.templateShape).toBe(Prune.shape(added, {}))
 			end
 		)
+
+		it("prunes again once a higher version saves a record that clashed", function()
+			local universe = Universe.new()
+			local added = { coins = 0, log = {}, settings = { music = true }, gems = 0 }
+			local newer = pruning(
+				universe:server({ jobId = "new" }),
+				{ version = 1 },
+				{ template = added }
+			)
+			local older = pruning(universe:server({ jobId = "old" }), { version = 1 })
+			local first = load(universe, newer, "p1")
+			first:increment("gems", 40)
+			release(universe, first)
+			release(universe, load(universe, older, "p1"))
+			expect(stored(universe, "p1").meta.templateShape).toBe("clash")
+
+			-- version 2 drops `log`, and the clash no longer holds anything back
+			local v2 = { coins = 0, settings = { music = true }, gems = 0 }
+			local raised, reported = pruning(
+				universe:server({ jobId = "v2" }),
+				{ version = 2 },
+				{ template = v2 }
+			)
+			local profile: Profile.Profile
+			local messages = heard(function()
+				profile = load(universe, raised, "p1")
+			end)
+			expect(#messages).toBe(1)
+			expect(messages[1].paths).toEqual({ "log" })
+			expect(profile:get("gems")).toBe(40)
+			expect(#reported).toBe(0)
+			profile:set("log", {})
+			release(universe, profile)
+			local record = stored(universe, "p1")
+			expect(record.meta.templateVersion).toBe(2)
+			expect(record.meta.templateShape).toBe(Prune.shape(v2, {}))
+
+			-- and it keeps pruning on the next load
+			local again = heard(function()
+				release(universe, load(universe, raised, "p1"))
+			end)
+			expect(#again).toBe(1)
+			expect(again[1].paths).toEqual({ "log" })
+			expect(#reported).toBe(0)
+		end)
 
 		it("never lowers a mark, and leaves one written by hand", function()
 			local mark = { version = 3, shape = "aaaaaaaa" }
