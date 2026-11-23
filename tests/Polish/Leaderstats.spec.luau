@@ -220,7 +220,14 @@ return function(spec: Spec.Api)
 			end
 			local clashes = 0
 			for _, message in reported do
-				if string.find(message, "already holds a StringValue named Coins", 1, true) then
+				if
+					string.find(
+						message,
+						"already holds a StringValue named Coins, and this stat needs an IntValue",
+						1,
+						true
+					)
+				then
 					clashes += 1
 				end
 			end
