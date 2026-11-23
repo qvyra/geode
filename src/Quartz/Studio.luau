@@ -182,10 +182,9 @@ local function probe(services: Types.Services, report: (message: string) -> ()):
 		-- a place that was never published has no data stores to reach
 		mode = "mock"
 	else
-		-- TODO(verify): the error table words 403 as a write error ("Can't write to DataStore
-		-- from Studio because API access is not enabled"). Whether a GetAsync without API access
-		-- gets the same 403 isn't stated. Any failure lands on "mock", so a wrong guess can only
-		-- keep data in memory, never reach live data
+		-- Without API access this read fails with a 502 that says "Studio access to APIs is not
+		-- allowed", which classify reads as noAccess (writes get a 403). Any other failure lands
+		-- on "mock" too, so a check that went wrong can only keep data in memory
 		local result = services.dataStore(PROBE_STORE):get(PROBE_KEY)
 		if result.ok then
 			mode = "scope"

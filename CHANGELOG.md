@@ -36,6 +36,7 @@ A last write as each session ends, one Studio setting for every store, scopes on
 ### Fixed
 
 - `replicate` on `Geode.players` reaches players who were already on the server when it was called and whose data loaded without waiting, as in-memory Studio data does
+- In Studio without API access, a DataStore read fails with a 502 that says so. It now counts as no access instead of an internal error, so it isn't retried and `studio = "auto"` picks `mock` without a report
 
 ## [0.6.2] - 2026-11-19
 
