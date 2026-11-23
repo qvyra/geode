@@ -7,6 +7,7 @@
 local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
+local Leaderstats = require("./Leaderstats")
 local Profile = require("../Sapphire/Profile")
 local ProfileStore = require("../Sapphire/ProfileStore")
 local Receipts = require("../Sapphire/Receipts")
@@ -69,6 +70,9 @@ export type Options = {
 	reportError: ((message: string) -> ())?,
 
 	products: { [number]: Receipts.Handler }?,
+	-- A value per stat in each player's leaderstats folder, kept in step with the data. An
+	-- IntValue, NumberValue or StringValue by the template's value, a StringValue with format
+	leaderstats: { Leaderstats.Stat }?,
 	-- Which paths reach which clients: "private", "owner" or "public", checked when the
 	-- store is made. Plain strings because Luau won't match a literal map against a union
 	-- valued map

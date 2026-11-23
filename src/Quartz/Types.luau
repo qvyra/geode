@@ -317,6 +317,28 @@ export type Marketplace = {
 	setProcessReceipt: (self: Marketplace, callback: (info: unknown) -> unknown) -> (),
 }
 
+--// leaderstats
+
+export type LeaderstatKind = "IntValue" | "NumberValue" | "StringValue"
+
+export type LeaderstatSpec = {
+	name: string,
+	kind: LeaderstatKind,
+}
+
+-- The values one attach put in a player's leaderstats folder
+export type LeaderstatValues = {
+	set: (self: LeaderstatValues, name: string, value: number | string) -> (),
+	-- removes these values, and the folder too when attach made it
+	destroy: (self: LeaderstatValues) -> (),
+}
+
+export type Leaderstats = {
+	-- One value per stat in the player's leaderstats folder, added in the order given. The
+	-- folder is made when the player has none
+	attach: (self: Leaderstats, player: unknown, stats: { LeaderstatSpec }) -> LeaderstatValues,
+}
+
 --// lifecycle
 
 export type Lifecycle = {
@@ -397,6 +419,8 @@ export type Services = {
 	-- created on first use, a game that never replicates has no remotes
 	remote: (name: string) -> ServerRemote,
 	bridge: ToolingBridge,
+	-- missing from services built by hand. Only the leaderstats option of Geode.players needs it
+	leaderstats: Leaderstats?,
 }
 
 return nil

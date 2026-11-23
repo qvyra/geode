@@ -85,6 +85,8 @@
 		"loleris",
 		"profilestore",
 		"bxor",
-		"lshift"
+		"lshift",
+		"leaderstats",
+		"leaderstat"
 	]
 }
