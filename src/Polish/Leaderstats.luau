@@ -137,6 +137,13 @@ local function shown(stat: Parsed, value: unknown, report: (message: string) -> 
 	return value
 end
 
+local VOWELS: { [string]: boolean } = { A = true, E = true, I = true, O = true, U = true }
+
+-- "an IntValue", "a StringValue"
+local function article(className: string): string
+	return if VOWELS[string.sub(className, 1, 1)] then `an {className}` else `a {className}`
+end
+
 -- Gives every player whose profile loads a leaderstats value per stat, and takes them away when
 -- the profile is released, its session is lost or the player left. `loaded` and `released` are
 -- PlayerData's signals, which fire with the player and the profile
@@ -170,7 +177,9 @@ function Leaderstats.attach(
 			if not clashReported[skip.name] then
 				clashReported[skip.name] = true
 				report(
-					`leaderstat {skip.name} isn't shown: the leaderstats folder already holds a {skip.found} named {skip.name}, and this stat needs a {skip.kind}. The game's value is left alone`
+					`leaderstat {skip.name} isn't shown: the leaderstats folder already holds {article(
+						skip.found
+					)} named {skip.name}, and this stat needs {article(skip.kind)}. The game's value is left alone`
 				)
 			end
 		end
