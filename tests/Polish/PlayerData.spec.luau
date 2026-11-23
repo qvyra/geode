@@ -1,5 +1,6 @@
 --!strict
 
+local GeodeClient = require("../../src/Client")
 local Guards = require("../../src/Obsidian/Guards")
 local Helpers = require("../Sapphire/Helpers")
 local Polish = require("../../src/Polish")
@@ -132,6 +133,27 @@ return function(spec: Spec.Api)
 			end)
 			universe.clock:advance(0)
 			expect(calls).toBe(1)
+		end)
+
+		it("gives players already on the server their leaderstats and replicated data", function()
+			Polish._reset()
+			local universe = Universe.new()
+			local server = universe:server()
+			server:join(5)
+			local client = GeodeClient.start(server:client(5))
+			-- no latency, so the load finishes before Geode.players returns
+			local PlayerData = make(server, {
+				replicate = { coins = "owner" },
+				leaderstats = { { path = "coins", name = "Coins" } },
+			})
+			local player = playerOf(server, 5)
+			expect(PlayerData:isLoaded(player)).toBe(true)
+			PlayerData:get(player):increment("coins", 7)
+			universe.clock:advance(0.1)
+			local values: { Any } = server.playerList:read(player) or {}
+			expect(#values).toBe(1)
+			expect(values[1].value).toBe(7)
+			expect(client:atom("coins"):get()).toBe(7)
 		end)
 
 		it("waitFor yields until the data loads, or gives up at the timeout", function()

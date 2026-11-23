@@ -178,6 +178,7 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 			return process(info :: Receipts.ReceiptInfo)
 		end)
 	end
+	playerData:_start()
 	return playerData
 end
 
