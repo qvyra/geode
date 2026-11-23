@@ -67,7 +67,8 @@ local PlayerData = Geode.players({
 
 - The template's value at the path picks the kind: a whole number makes an IntValue, any other number a NumberValue and a string a StringValue. A stat with `format` is a StringValue showing what `format` returns, which is how a table or a boolean gets shown. Anything else fails when the game starts.
 - The values are made once the player's data has loaded, and change with every commit through `observe`. They're removed when the profile is released, whether the player left, the server shut down or the session was lost. A player who leaves while their data loads never gets any.
-- Stats with an `order` come first, lowest first, then the rest in the order listed. A folder the game already made is used as it is, and only Geode's values are taken out of it.
+- Stats with an `order` come first, lowest first, then the rest in the order listed.
+- Geode never destroys or replaces what the game made. A folder the game already made is used as it is, and only Geode's values are taken out of it. A value the game already put there under a stat's name is written to when it's the class the stat needs and left in place on release. When it's another class, that stat isn't shown, the game's value is left alone and the store reports it once. A folder Geode made stays when the game has put values of its own in it.
 - A value a stat can't show, like a string at a number stat, shows as 0 or empty text and is reported once per stat. An IntValue stat shows a value with a fraction rounded down; give it a `format` to show fractions.
 - Only the server makes them. Roblox copies the folder to clients like any other Instance under the player.
 
@@ -121,7 +122,7 @@ The Studio mode only matters in Studio. Live servers always use the real service
 | `real`  | Live data, the same as a live server                                                                                                                                 |
 | `auto`  | `scope` when Studio has API access, `mock` when it doesn't                                                                                                           |
 
-Profile stores default to `mock`, so a playtest never touches saved player data unless asked. Every other store defaults to `real`, as it always has, until `Geode.setup` or its own `studio` option says otherwise. Players, purchases, shutdown, teleports, remotes and the Studio bridge stay real in every mode.
+Every store defaults to `mock`: profile stores, shared stores, boards, the MemoryStore helpers and matchmakers. A playtest only touches live data when `Geode.setup` or the store's own `studio` option asks for it. Players, purchases, shutdown, teleports, remotes and the Studio bridge stay real in every mode.
 
 `auto` finds out by reading one key the first time a store needs to know, so that first store waits for one DataStore request, in Studio only. Stores made while it runs wait for the same answer. An error saying Studio has no API access means `mock`, and so does a place that was never published. Any other error also lands on `mock`, and Geode reports it, so a check that went wrong keeps data in memory instead of reaching live data. Development tools see the mode a store ended up with, never `auto`.
 
@@ -265,7 +266,7 @@ local PlayerData = Geode.players({
 - Only tables the template spells out with keys are pruned. A list, an empty table like `inventory = {}` and keys that aren't strings are left alone, whatever they hold.
 - `keep` lists paths that stay, with everything under them.
 - Before anything goes, the removed keys and their stored values are added to the profile's key in the `<name>_pruned` DataStore, one entry per prune. If that write fails, nothing is removed and the next load tries again. `store:erase` and `Geode.erase` clear the archive with the profile.
-- `version` is a whole number that goes up with every template change, `keep` included. Every write leaves it in the record's meta with a hash of the template's shape. A server never prunes a record that a server with a higher version wrote, so during a rolling deploy the older servers leave alone the keys a newer template added. A record written under the same version by a different template isn't pruned either, and the store reports it once: the version wasn't raised.
+- `version` is a whole number that goes up with every template change, `keep` included. Every write leaves it in the record's meta with a hash of the template's shape. A server never prunes a record that a server with a higher version wrote, so during a rolling deploy the older servers leave alone the keys a newer template added. An older server never lowers the version either, so its saves leave the newer mark, and the newer servers go on pruning as before. A record written under the same version by a different template isn't pruned either, and the store reports it once: the version wasn't raised. From then on no server prunes it at that version, whichever loads it, until a server with a higher version saves it.
 - `dryRun = true` removes and archives nothing, and only reports what would go.
 - A load whose data fails the schema or a migration fails before pruning, and a profile that is already read only is never pruned. Studio with `studio = "real"` only ever does a dry run and leaves no version in the record, so a template still being worked on can't drop live data or hold live servers back.
 

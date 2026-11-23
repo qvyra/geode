@@ -100,7 +100,7 @@ A Creator Store copy of the model may come later, as one more way to get the sam
 
 ## Studio
 
-Out of the box, Studio keeps player data in memory, so playtests never touch real data and don't need DataStore access. To test against real DataStores, either in a separate scope or against live data, turn on Studio access to API Services in the experience's settings and set the Studio mode, as shown in [Profiles](profiles).
+Out of the box, Studio keeps the data of every store in memory, so playtests never touch real data and don't need DataStore access. To test against real DataStores, either in a separate scope or against live data, turn on Studio access to API Services in the experience's settings and set the Studio mode, as shown in [Profiles](profiles).
 
 ## Where Geode lives
 
