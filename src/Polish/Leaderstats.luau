@@ -153,6 +153,8 @@ function Leaderstats.attach(
 	end
 	local open: { [unknown]: { values: Types.LeaderstatValues, connections: { Types.Connection } } } =
 		{}
+	-- a name the game's own folder already uses is reported once, not once per player
+	local clashReported: { [string]: boolean } = {}
 
 	loaded:connect(function(player: any, profile: any)
 		-- a profile that's already on its way out gets none
@@ -160,8 +162,22 @@ function Leaderstats.attach(
 			return
 		end
 		local values = adapter:attach(player, specs)
+		local left: { [string]: boolean } = {}
+		local skipped: { Types.LeaderstatSkip } = values.skipped or {}
+		for _, skip in skipped do
+			left[skip.name] = true
+			if not clashReported[skip.name] then
+				clashReported[skip.name] = true
+				report(
+					`leaderstat {skip.name} isn't shown: the leaderstats folder already holds a {skip.found} named {skip.name}, and this stat needs a {skip.kind}. The game's value is left alone`
+				)
+			end
+		end
 		local connections: { Types.Connection } = {}
 		for _, stat in stats do
+			if left[stat.name] then
+				continue
+			end
 			values:set(stat.name, shown(stat, profile:get(stat.path), report))
 			table.insert(
 				connections,
