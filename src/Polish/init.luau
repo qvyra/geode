@@ -3,6 +3,7 @@
 -- The beginner layer. `Geode.players` gives player data with the lifecycle handled and
 -- `Geode.setup` sets the defaults it starts from. Both stick to the public API below
 
+local Leaderstats = require("@self/Leaderstats")
 local PlayerData = require("@self/PlayerData")
 local Prism = require("./Prism")
 local Replicator = require("./Prism/Replicator")
@@ -112,6 +113,12 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 		Replicator.parseVisibility(options.replicate)
 	end
 	local services = options.services or defaults.services or RealServices.live()
+	local stats = if options.leaderstats
+		then Leaderstats.parse(options.leaderstats, options.template)
+		else nil
+	if stats then
+		assert(services.leaderstats, "these services can't make leaderstats")
+	end
 
 	-- everything the profile store understands passes through untouched. Options is an
 	-- intersection type, which Luau won't cast to a plain table directly
@@ -120,6 +127,7 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 	storeOptions.replicate = nil
 	storeOptions.loadRetries = nil
 	storeOptions.decisions = nil
+	storeOptions.leaderstats = nil
 	storeOptions.services = services
 	storeOptions.reportError = reportError
 	storeOptions.scheduler = options.scheduler
@@ -131,6 +139,16 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 		loadRetries = options.loadRetries,
 		report = reportError or report,
 	})
+
+	if stats then
+		Leaderstats.attach(
+			playerData.loaded,
+			playerData.released,
+			services.leaderstats :: Types.Leaderstats,
+			stats,
+			reportError or report
+		)
+	end
 
 	local replicate = options.replicate
 	if replicate then
