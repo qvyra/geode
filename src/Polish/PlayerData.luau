@@ -64,6 +64,8 @@ export type Options = {
 	handoff: boolean?,
 	-- apply mail sent with `store:mail` on load. Off by default
 	mailbox: boolean?,
+	-- remove keys the template dropped, archiving them first. Off by default, see ProfileStore
+	prune: ProfileStore.PruneOptions?,
 	reportError: ((message: string) -> ())?,
 
 	products: { [number]: Receipts.Handler }?,

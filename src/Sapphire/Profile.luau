@@ -6,6 +6,7 @@
 -- data of the server that took it
 
 local Document = require("../Matrix/Document")
+local Prune = require("./Prune")
 local Record = require("./Record")
 local Scheduler = require("../Quartz/Scheduler")
 local Signal = require("../Quartz/Signal")
@@ -61,6 +62,8 @@ export type Backend = {
 	autosaveInterval: number,
 	onSessionLost: SessionLostPolicy,
 	beforeRelease: BeforeRelease?,
+	-- left in meta on every save when the store prunes
+	templateMark: Prune.Mark?,
 	report: (message: string) -> (),
 	onClosed: (profile: any) -> (),
 }
@@ -410,6 +413,9 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				record.meta.updatedAt = now
 				record.meta.lastSession =
 					{ session = backend.owner.session, revision = record.meta.revision }
+				if backend.templateMark then
+					Prune.mark(record.meta, backend.templateMark)
+				end
 				local lease = record.meta.lease :: Record.Lease
 				lease.renewedAt = now
 				if releasing and oversize == nil then
