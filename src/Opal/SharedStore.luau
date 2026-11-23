@@ -32,7 +32,7 @@ export type Options = {
 	services: Types.Services?,
 	-- Geode.setup's scope, or "global"
 	scope: string?,
-	-- Where the data lives in Studio. Geode.setup's mode, or "real". See Quartz/Studio
+	-- Where the data lives in Studio. Geode.setup's mode, or "mock". See Quartz/Studio
 	studio: Studio.Mode?,
 	scheduler: Scheduler.Scheduler?,
 	schema: Schema.Schema?,
@@ -160,7 +160,7 @@ function SharedStore.new(options: Options): SharedStore
 	VeinBridge.ensure(givenServices)
 	Studio.check(options.studio)
 	Studio.checkScope(options.scope)
-	local mode: Studio.Mode = options.studio or Studio.defaultMode() or "real"
+	local mode: Studio.Mode = Studio.mode(options.studio)
 	local services: Types.Services, studio: Studio.Resolved =
 		Studio.resolve(givenServices, mode, report)
 	local scope = Studio.scope(options.scope, studio)

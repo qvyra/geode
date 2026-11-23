@@ -14,7 +14,7 @@ local Types = require("../Quartz/Types")
 export type Options = {
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
-	-- Where the data lives in Studio. Geode.setup's mode, or "real". See Quartz/Studio
+	-- Where the data lives in Studio. Geode.setup's mode, or "mock". See Quartz/Studio
 	studio: Studio.Mode?,
 }
 
@@ -54,7 +54,7 @@ local function resolve(options: Options?): (Types.Services, Scheduler.Scheduler)
 	VeinBridge.ensure(given)
 	local studio: Studio.Mode? = if options then options.studio else nil
 	Studio.check(studio)
-	local mode: Studio.Mode = studio or Studio.defaultMode() or "real"
+	local mode: Studio.Mode = Studio.mode(studio)
 	local services = Studio.resolve(given, mode, function(message: string)
 		warn(message)
 	end)
