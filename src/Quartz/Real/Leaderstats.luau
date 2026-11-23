@@ -22,16 +22,32 @@ function RealLeaderstats.new(): Types.Leaderstats
 			local folder: Instance = if found then found else Instance.new("Folder")
 			folder.Name = "leaderstats"
 			local values: { [string]: Instance } = {}
+			local mine: { Instance } = {}
+			local skipped: { Types.LeaderstatSkip } = {}
 			for _, stat in stats do
-				-- the kind is one of three class names, which Instance.new's overloads can't see
-				local value: Instance = (Instance.new :: any)(stat.kind)
-				value.Name = stat.name
-				value.Parent = folder
-				values[stat.name] = value
+				local existing = if made then nil else folder:FindFirstChild(stat.name)
+				if existing and existing.ClassName == stat.kind then
+					-- the game's own value, written to but never destroyed
+					values[stat.name] = existing
+				elseif existing then
+					table.insert(
+						skipped,
+						{ name = stat.name, kind = stat.kind, found = existing.ClassName }
+					)
+				else
+					-- the kind is one of three class names, which Instance.new's overloads can't
+					-- see
+					local value: Instance = (Instance.new :: any)(stat.kind)
+					value.Name = stat.name
+					value.Parent = folder
+					values[stat.name] = value
+					table.insert(mine, value)
+				end
 			end
 			-- a folder made here goes in once its values are there
 			folder.Parent = owner
 			return {
+				skipped = skipped,
 				set = function(
 					_values: Types.LeaderstatValues,
 					name: string,
@@ -43,14 +59,15 @@ function RealLeaderstats.new(): Types.Leaderstats
 					end
 				end,
 				destroy = function(_values: Types.LeaderstatValues)
-					if made then
+					for _, instance in mine do
+						instance:Destroy()
+					end
+					-- the game may have put values of its own in the folder since
+					if made and #folder:GetChildren() == 0 then
 						folder:Destroy()
-					else
-						for _, instance in values do
-							instance:Destroy()
-						end
 					end
 					table.clear(values)
+					table.clear(mine)
 				end,
 			}
 		end,

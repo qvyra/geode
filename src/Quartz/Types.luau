@@ -326,16 +326,28 @@ export type LeaderstatSpec = {
 	kind: LeaderstatKind,
 }
 
+-- A stat attach left out because the folder already holds something else by its name
+export type LeaderstatSkip = {
+	name: string,
+	kind: LeaderstatKind,
+	-- the class of what the folder holds
+	found: string,
+}
+
 -- The values one attach put in a player's leaderstats folder
 export type LeaderstatValues = {
 	set: (self: LeaderstatValues, name: string, value: number | string) -> (),
-	-- removes these values, and the folder too when attach made it
+	-- removes the values attach made, and the folder when attach made it and nothing else is in
+	-- it. Values the game made stay
 	destroy: (self: LeaderstatValues) -> (),
+	skipped: { LeaderstatSkip }?,
 }
 
 export type Leaderstats = {
 	-- One value per stat in the player's leaderstats folder, added in the order given. The
-	-- folder is made when the player has none
+	-- folder is made when the player has none. A value the game already made under a stat's name
+	-- is used when its class matches and skipped when it doesn't. Either way it's never
+	-- destroyed or replaced
 	attach: (self: Leaderstats, player: unknown, stats: { LeaderstatSpec }) -> LeaderstatValues,
 }
 

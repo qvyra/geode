@@ -193,6 +193,86 @@ return function(spec: Spec.Api)
 			own:destroy()
 		end)
 
+		it("skips a stat whose name the game's folder uses for another class", function()
+			Polish._reset()
+			local universe = Universe.new()
+			local server = universe:server()
+			local _, reported = make(server, {
+				{ path = "coins", name = "Coins" },
+				{ path = "rank", name = "Rank" },
+			})
+			server:inject({ method = "update", fault = { latency = 0.5 }, times = 2 })
+			local players = { server:join(1), server:join(2) }
+			local games = {}
+			for _, player in players do
+				local own =
+					server.playerList:attach(player, { { name = "Coins", kind = "StringValue" } })
+				own:set("Coins", "none yet")
+				table.insert(games, own)
+			end
+			universe.clock:advance(2)
+			for _, player in players do
+				local values, order = shown(server, player)
+				expect(order).toEqual({ "Coins", "Rank" })
+				expect((values :: { [string]: Any }).Coins).toBe("none yet")
+				expect((values :: { [string]: Any }).Rank).toBe("Rookie")
+				expect(kinds(server, player).Coins).toBe("StringValue")
+			end
+			local clashes = 0
+			for _, message in reported do
+				if string.find(message, "already holds a StringValue named Coins", 1, true) then
+					clashes += 1
+				end
+			end
+			expect(clashes).toBe(1)
+			server:leave(1)
+			universe.clock:advance(5)
+			local values, order = shown(server, players[1])
+			expect(order).toEqual({ "Coins" })
+			expect((values :: { [string]: Any }).Coins).toBe("none yet")
+			for _, own in games do
+				own:destroy()
+			end
+		end)
+
+		it("writes to a value of the same class the game made, and leaves it", function()
+			Polish._reset()
+			local universe = Universe.new()
+			local server = universe:server()
+			local PlayerData = make(server, { { path = "coins", name = "Coins" } })
+			server:inject({ method = "update", fault = { latency = 0.5 }, times = 1 })
+			local player = server:join(1)
+			local own = server.playerList:attach(player, { { name = "Coins", kind = "IntValue" } })
+			universe.clock:advance(1)
+			PlayerData:get(player):increment("coins", 7)
+			local values, order = shown(server, player)
+			expect(order).toEqual({ "Coins" })
+			expect((values :: { [string]: Any }).Coins).toBe(7)
+			server:leave(1)
+			universe.clock:advance(5)
+			local after, left = shown(server, player)
+			expect(left).toEqual({ "Coins" })
+			expect((after :: { [string]: Any }).Coins).toBe(7)
+			own:destroy()
+		end)
+
+		it("keeps a folder it made once the game put its own values in it", function()
+			Polish._reset()
+			local universe = Universe.new()
+			local server = universe:server()
+			make(server, { { path = "coins", name = "Coins" } })
+			local player = server:join(1)
+			universe.clock:advance(1)
+			local own = server.playerList:attach(player, { { name = "Wins", kind = "IntValue" } })
+			local _, order = shown(server, player)
+			expect(order).toEqual({ "Coins", "Wins" })
+			server:leave(1)
+			universe.clock:advance(5)
+			local _, after = shown(server, player)
+			expect(after).toEqual({ "Wins" })
+			own:destroy()
+		end)
+
 		it("reports a value it can't show once, and shows 0 or empty text", function()
 			Polish._reset()
 			local universe = Universe.new()

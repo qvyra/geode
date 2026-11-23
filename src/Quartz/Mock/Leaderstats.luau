@@ -53,15 +53,35 @@ function MockLeaderstats.attach(
 		self._folders[player] = folder
 	end
 	local held = folder :: Folder
+	-- every value this attach writes to, and the ones it made, which are all it removes
+	local writes: { MockValue } = {}
 	local mine: { MockValue } = {}
+	local skipped: { Types.LeaderstatSkip } = {}
 	for _, stat in stats do
-		local value: MockValue = { name = stat.name, kind = stat.kind, value = DEFAULTS[stat.kind] }
-		table.insert(held.values, value)
-		table.insert(mine, value)
+		local existing: MockValue? = nil
+		for _, entry in held.values do
+			if entry.name == stat.name then
+				existing = entry
+				break
+			end
+		end
+		if existing and existing.kind == stat.kind then
+			table.insert(writes, existing)
+		elseif existing then
+			local found: string = existing.kind
+			table.insert(skipped, { name = stat.name, kind = stat.kind, found = found })
+		else
+			local value: MockValue =
+				{ name = stat.name, kind = stat.kind, value = DEFAULTS[stat.kind] }
+			table.insert(held.values, value)
+			table.insert(writes, value)
+			table.insert(mine, value)
+		end
 	end
 	return {
+		skipped = skipped,
 		set = function(_values: Types.LeaderstatValues, name: string, value: number | string)
-			for _, entry in mine do
+			for _, entry in writes do
 				if entry.name == name then
 					assert(
 						fits(entry.kind, value),
@@ -72,19 +92,17 @@ function MockLeaderstats.attach(
 			end
 		end,
 		destroy = function(_values: Types.LeaderstatValues)
-			if made then
-				if self._folders[player] == held then
-					self._folders[player] = nil
-				end
-			else
-				for _, entry in mine do
-					local index = table.find(held.values, entry)
-					if index then
-						table.remove(held.values, index)
-					end
+			for _, entry in mine do
+				local index = table.find(held.values, entry)
+				if index then
+					table.remove(held.values, index)
 				end
 			end
+			if made and #held.values == 0 and self._folders[player] == held then
+				self._folders[player] = nil
+			end
 			table.clear(mine)
+			table.clear(writes)
 		end,
 	}
 end
