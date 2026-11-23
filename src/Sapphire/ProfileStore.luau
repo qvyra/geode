@@ -14,7 +14,9 @@ local GuardEvent = require("../Vein/GuardEvent")
 local VeinBridge = require("../Vein/Bridge")
 local VeinRegistry = require("../Vein/Registry")
 local Mailbox = require("./Mailbox")
+local Path = require("../Matrix/Path")
 local Profile = require("./Profile")
+local Prune = require("./Prune")
 local Reconcile = require("./Reconcile")
 local Record = require("./Record")
 local Registry = require("./Registry")
@@ -26,6 +28,7 @@ local Size = require("../Obsidian/Size")
 local Storable = require("../Obsidian/Storable")
 local Studio = require("../Quartz/Studio")
 local Transaction = require("../Matrix/Transaction")
+local Tree = require("../Matrix/Tree")
 local Types = require("../Quartz/Types")
 local Validate = require("../Obsidian/Validate")
 
@@ -34,6 +37,9 @@ export type StealPolicy = "steal" | "wait" | "fail"
 -- "mock" keeps Studio data in memory, "scope" uses a separate studio scope, "real" uses live data
 -- and "auto" picks "scope" or "mock" by whether Studio has API access. See Quartz/Studio
 export type StudioMode = Studio.Mode
+
+-- See Options.prune and Sapphire/Prune
+export type PruneOptions = Prune.Options
 
 export type Options = {
 	name: string,
@@ -83,6 +89,10 @@ export type Options = {
 	-- Keep a commit history in a `<name>_audit` DataStore: who changed which paths and why, one
 	-- key per save. Off by default
 	audit: boolean?,
+	-- Remove keys the template no longer has, on load, after reconciling. What goes is archived
+	-- in a `<name>_pruned` DataStore first. `version` goes up with every template change, so a
+	-- server never prunes a record a newer template wrote. Off by default
+	prune: PruneOptions?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -158,6 +168,11 @@ type Fields = {
 	_guards: { Guards.Guard },
 	_kickMessage: string?,
 	_beforeRelease: Profile.BeforeRelease?,
+	_prune: Prune.Config?,
+	_pruneMark: Prune.Mark?,
+	_prunedStore: Types.DataStore,
+	-- a template that changed under the same prune.version is reported once per store
+	_pruneMismatchReported: boolean,
 	_destroyed: boolean,
 	_facets: Facet.FacetSet,
 	_ops: { string }?,
@@ -271,6 +286,7 @@ function ProfileStore.new(options: Options): ProfileStore
 		options.beforeRelease == nil or type(options.beforeRelease) == "function",
 		"beforeRelease must be a function"
 	)
+	local prune = if options.prune then Prune.config(options.prune) else nil
 
 	local facets = Facet.set({
 		bundles = options.bundles,
@@ -338,6 +354,13 @@ function ProfileStore.new(options: Options): ProfileStore
 		_guards = guards,
 		_kickMessage = options.kickMessage,
 		_beforeRelease = options.beforeRelease,
+		_prune = prune,
+		_pruneMark = if prune
+			then { version = prune.version, shape = Prune.shape(options.template, prune.keep) }
+			else nil,
+		-- made for every store, so an erase also clears the archive of a store that once pruned
+		_prunedStore = services.dataStore(`{options.name}_pruned`, scope),
+		_pruneMismatchReported = false,
 		_destroyed = false,
 		_facets = facets,
 		_ops = options.ops,
@@ -422,6 +445,8 @@ type Attempt = {
 	record: Record.Record?,
 	holder: Record.Lease?,
 	erasedAt: number?,
+	-- whether the record may be pruned, judged from its meta before this load marked it
+	prune: Prune.Verdict?,
 }
 
 -- One try at taking the lease. Free, stale and already held leases are taken. A live holder is
@@ -468,6 +493,15 @@ function ProfileStore._tryAcquire(
 				if state == "held" and not force then
 					attempt.holder = record.meta.lease
 					return nil
+				end
+				local mark = self._pruneMark
+				if mark then
+					attempt.prune = Prune.verdict(record.meta, mark)
+					-- Studio on live data never marks, or its template could stop live servers
+					-- from pruning
+					if not config.liveFromStudio then
+						Prune.mark(record.meta, mark)
+					end
 				end
 				record.meta.lease = {
 					jobId = owner.jobId,
@@ -588,6 +622,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	local tries = 0
 	local record: Record.Record
 	local erasedAt: number? = nil
+	local pruneVerdict: Prune.Verdict? = nil
 	local mailRead: Future.Future? = nil
 	-- set when a read past the cache found the lease still held, so the next turn skips the
 	-- UpdateAsync that would only find the same
@@ -628,6 +663,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		if attempt.outcome == "acquired" then
 			record = attempt.record :: Record.Record
 			erasedAt = attempt.erasedAt
+			pruneVerdict = attempt.prune
 			break
 		end
 
@@ -717,6 +753,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		autosaveInterval = config.autosaveInterval,
 		onSessionLost = config.onSessionLost,
 		beforeRelease = self._beforeRelease,
+		templateMark = if config.liveFromStudio then nil else self._pruneMark,
 		report = self._report,
 		onClosed = function(closed: unknown)
 			if (self._open[key] :: unknown) == closed then
@@ -764,6 +801,9 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 			self._handoff:announce(key, profile:revision(), owner.session)
 		end)
 	end)
+	if pruneVerdict then
+		self:_pruneOnLoad(key, document, pruneVerdict, userIds)
+	end
 	if mailRead then
 		self:_deliverMail(key, profile, mailRead:await() :: Types.Result<Types.Read>)
 	end
@@ -840,6 +880,109 @@ function ProfileStore._decodeStored(
 		data = decoded
 	end
 	return Reconcile.fill(data, self._template), nil, nil
+end
+
+-- Removes the keys the template dropped, see Options.prune. The archive write comes first, and
+-- when it fails nothing is removed
+function ProfileStore._pruneOnLoad(
+	self: ProfileStore,
+	key: string,
+	document: Document.Document,
+	verdict: Prune.Verdict,
+	userIds: { number }
+)
+	local prune = self._prune :: Prune.Config
+	if verdict == "newer" then
+		return
+	end
+	if verdict == "mismatch" then
+		if not self._pruneMismatchReported then
+			self._pruneMismatchReported = true
+			self._report(
+				`profile {key} was last saved with another template under the same prune.version {prune.version}. `
+					.. "Nothing is pruned from it until the templates agree. Raise prune.version with every template change"
+			)
+		end
+		return
+	end
+	if document:isReadOnly() then
+		return
+	end
+	local found = Prune.find(document:snapshot(), self._template, prune.keep)
+	if #found == 0 then
+		return
+	end
+	-- Studio on live data only ever reports what would go
+	local dryRun = prune.dryRun or self._config.liveFromStudio
+	if not dryRun then
+		local snapshot = document:snapshot()
+		local stored = if self._schema then Validate.encode(self._schema, snapshot) else snapshot
+		local values = {}
+		for _, path in found do
+			table.insert(values, { path = path, value = Tree.get(stored, path) })
+		end
+		local archived = self:_archivePruned(key, values, userIds)
+		if not archived.ok then
+			self._report(
+				`couldn't archive the keys prune would remove from profile {key}, so nothing was removed: {archived.error.message}`
+			)
+			return
+		end
+		local removed = document:transact(function(tx)
+			for _, path in found do
+				tx:remove(path)
+			end
+		end, { source = "system", note = "prune" })
+		if not removed.ok then
+			self._report(
+				`prune didn't remove the keys the template dropped from profile {key}: {removed.error.message}`
+			)
+			return
+		end
+	end
+	local paths = {}
+	for _, path in found do
+		table.insert(paths, Path.format(path))
+	end
+	Bus.publish("pruned", {
+		store = self.name,
+		key = key,
+		paths = paths,
+		version = prune.version,
+		dryRun = dryRun,
+	}, self._services.clock:now())
+end
+
+-- Adds one entry to the profile's prune archive: when, under which version, and each removed
+-- path with its stored value
+function ProfileStore._archivePruned(
+	self: ProfileStore,
+	key: string,
+	values: { { path: Path.Path, value: unknown } },
+	userIds: { number }
+): Types.Result<unknown>
+	local now = self._services.clock:now()
+	local version = (self._prune :: Prune.Config).version
+	return self._scheduler:submit({
+		priority = "load",
+		budget = UPDATE_BUDGET,
+		key = self:_prunedKey(key),
+		write = true,
+		run = function()
+			return self._prunedStore:update(key, function(current: unknown)
+				local entries = {}
+				if type(current) == "table" and type((current :: any).entries) == "table" then
+					entries = copy((current :: any).entries) :: { unknown }
+				end
+				table.insert(entries, { at = now, version = version, values = values })
+				return { entries = entries }, { userIds = userIds }
+			end)
+		end,
+	})
+end
+
+function ProfileStore._prunedKey(self: ProfileStore, key: string): string
+	return `dataStore/{self.name}_pruned/{self.scope}/{key}`
 end
 
 -- Runs each migration from the stored version up, each as its own migration transaction on the
@@ -1102,6 +1245,22 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 		return {
 			ok = false,
 			message = `the profile was erased but its mailbox wasn't: {mailbox.error.message}`,
+		}
+	end
+
+	local archive = self._scheduler:submit({
+		priority = "save",
+		budget = "standardRemove",
+		key = self:_prunedKey(key),
+		write = true,
+		run = function()
+			return self._prunedStore:remove(key)
+		end,
+	})
+	if not archive.ok then
+		return {
+			ok = false,
+			message = `the profile was erased but its prune archive wasn't: {archive.error.message}`,
 		}
 	end
 	return { ok = true, message = nil }

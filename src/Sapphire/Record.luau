@@ -29,6 +29,10 @@ export type Meta = {
 	-- The session behind the last write and the revision it left. A write that failed may still
 	-- have landed, and this is how a retry recognizes its own earlier write
 	lastSession: LastSession?,
+	-- Left by stores with prune on: the prune.version and template shape of the last server
+	-- that wrote the record, unless a server with a higher version wrote it before. See Prune
+	templateVersion: number?,
+	templateShape: string?,
 }
 
 export type LastSession = {
