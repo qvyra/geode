@@ -235,26 +235,55 @@ return function(spec: Spec.Api)
 			end
 		end)
 
-		it("writes to a value of the same class the game made, and leaves it", function()
-			Polish._reset()
-			local universe = Universe.new()
-			local server = universe:server()
-			local PlayerData = make(server, { { path = "coins", name = "Coins" } })
-			server:inject({ method = "update", fault = { latency = 0.5 }, times = 1 })
-			local player = server:join(1)
-			local own = server.playerList:attach(player, { { name = "Coins", kind = "IntValue" } })
-			universe.clock:advance(1)
-			PlayerData:get(player):increment("coins", 7)
-			local values, order = shown(server, player)
-			expect(order).toEqual({ "Coins" })
-			expect((values :: { [string]: Any }).Coins).toBe(7)
-			server:leave(1)
-			universe.clock:advance(5)
-			local after, left = shown(server, player)
-			expect(left).toEqual({ "Coins" })
-			expect((after :: { [string]: Any }).Coins).toBe(7)
-			own:destroy()
-		end)
+		it(
+			"writes to a value of the same class the game made, says so once, and leaves it",
+			function()
+				Polish._reset()
+				local universe = Universe.new()
+				local server = universe:server()
+				local PlayerData, reported = make(server, { { path = "coins", name = "Coins" } })
+				server:inject({ method = "update", fault = { latency = 0.5 }, times = 2 })
+				local player = server:join(1)
+				local second = server:join(2)
+				local own =
+					server.playerList:attach(player, { { name = "Coins", kind = "IntValue" } })
+				local secondOwn =
+					server.playerList:attach(second, { { name = "Coins", kind = "IntValue" } })
+				universe.clock:advance(1)
+				PlayerData:get(player):increment("coins", 7)
+				local values, order = shown(server, player)
+				expect(order).toEqual({ "Coins" })
+				expect((values :: { [string]: Any }).Coins).toBe(7)
+				local adoptions = 0
+				for _, message in reported do
+					if
+						string.find(
+							message,
+							"uses the value of that name the game already made",
+							1,
+							true
+						)
+					then
+						adoptions += 1
+					end
+				end
+				expect(adoptions).toBe(1)
+
+				-- one way: what the game writes is never saved, and the next change overwrites it
+				own:set("Coins", 99)
+				expect(PlayerData:get(player):get("coins")).toBe(7)
+				PlayerData:get(player):increment("coins", 1)
+				expect((shown(server, player) :: { [string]: Any }).Coins).toBe(8)
+
+				server:leave(1)
+				universe.clock:advance(5)
+				local after, left = shown(server, player)
+				expect(left).toEqual({ "Coins" })
+				expect((after :: { [string]: Any }).Coins).toBe(8)
+				own:destroy()
+				secondOwn:destroy()
+			end
+		)
 
 		it("keeps a folder it made once the game put its own values in it", function()
 			Polish._reset()

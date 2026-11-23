@@ -1063,6 +1063,8 @@ declare namespace Geode {
 			 * their name. A value of the same class is written to instead. Neither is destroyed
 			 */
 			skipped?: { name: string; kind: LeaderstatKind; found: string }[];
+			/** Stats written to a value the game made, which stays when the profile is released */
+			adopted?: string[];
 		};
 	}
 

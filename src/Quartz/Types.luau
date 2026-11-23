@@ -341,6 +341,8 @@ export type LeaderstatValues = {
 	-- it. Values the game made stay
 	destroy: (self: LeaderstatValues) -> (),
 	skipped: { LeaderstatSkip }?,
+	-- names of the stats written to a value the game made
+	adopted: { string }?,
 }
 
 export type Leaderstats = {
