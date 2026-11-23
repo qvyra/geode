@@ -897,8 +897,8 @@ function ProfileStore._pruneOnLoad(
 		if not self._pruneMismatchReported then
 			self._pruneMismatchReported = true
 			self._report(
-				`profile {key} was last saved with another template under the same prune.version {prune.version}. `
-					.. "Nothing is pruned from it until the templates agree. Raise prune.version with every template change"
+				`profile {key} was saved with another template under the same prune.version {prune.version}. `
+					.. "Nothing is pruned from it until a server with a higher prune.version saves it. Raise prune.version with every template change"
 			)
 		end
 		return

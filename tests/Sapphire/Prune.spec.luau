@@ -271,6 +271,127 @@ return function(spec: Spec.Api)
 			end
 		)
 
+		it("keeps a newer server's version through an older server's session", function()
+			local universe = Universe.new()
+			local v4 = { coins = 0, log = {}, settings = { music = true }, legacy = 0 }
+			local v5 = { coins = 0, log = {}, settings = { music = true }, gems = 0 }
+			local newShape = Prune.shape(v5, {})
+			local newer = pruning(
+				universe:server({ jobId = "v5" }),
+				{ version = 5 },
+				{ template = v5 }
+			)
+			local first = load(universe, newer, "p1")
+			first:increment("gems", 10)
+			release(universe, first)
+
+			-- a server still on the old template takes the profile and saves twice
+			local older = pruning(
+				universe:server({ jobId = "v4" }),
+				{ version = 4 },
+				{ template = v4 }
+			)
+			local middle: Profile.Profile
+			local during = heard(function()
+				middle = load(universe, older, "p1")
+			end)
+			expect(#during).toBe(0)
+			expect(middle:get("gems")).toBe(10)
+			middle:increment("coins", 2)
+			middle:set("legacy", 7)
+			universe.clock:run(function()
+				return middle:save()
+			end)
+			expect(stored(universe, "p1").meta.templateVersion).toBe(5)
+			release(universe, middle)
+			local record = stored(universe, "p1")
+			expect(record.meta.templateVersion).toBe(5)
+			expect(record.meta.templateShape).toBe(newShape)
+			expect((record.data :: Any).gems).toBe(10)
+			expect((record.data :: Any).legacy).toBe(7)
+
+			-- back on the new template, the old key goes and everything else stays
+			local again = pruning(
+				universe:server({ jobId = "v5b" }),
+				{ version = 5 },
+				{ template = v5 }
+			)
+			local last: Profile.Profile
+			local messages = heard(function()
+				last = load(universe, again, "p1")
+			end)
+			expect(#messages).toBe(1)
+			expect(messages[1].paths).toEqual({ "legacy" })
+			expect(last:get("legacy")).toBeNil()
+			expect(last:get("gems")).toBe(10)
+			expect(last:get("coins")).toBe(2)
+			local kept = archive(universe, "p1")
+			local values: { Any } = { { path = { "legacy" }, value = 7 } }
+			expect(kept.entries[1].values).toEqual(values)
+			release(universe, last)
+			expect(stored(universe, "p1").meta.templateVersion).toBe(5)
+		end)
+
+		it(
+			"prunes nothing at a version two templates both claim, however loads alternate",
+			function()
+				local universe = Universe.new()
+				-- the new template added `gems` but kept version 1
+				local added = { coins = 0, log = {}, settings = { music = true }, gems = 0 }
+				local newer = pruning(
+					universe:server({ jobId = "new" }),
+					{ version = 1 },
+					{ template = added }
+				)
+				local older, reported = pruning(universe:server({ jobId = "old" }), { version = 1 })
+				local profile = load(universe, newer, "p1")
+				profile:increment("gems", 40)
+				release(universe, profile)
+				local order: { Any } = { older, older, newer, newer, older }
+				for _, store in order do
+					local held = load(universe, store, "p1")
+					expect(held:get("gems")).toBe(40)
+					release(universe, held)
+				end
+				expect((stored(universe, "p1").data :: Any).gems).toBe(40)
+				expect(#reported).toBe(1)
+				-- raising the version settles it
+				local fixed = pruning(
+					universe:server({ jobId = "fixed" }),
+					{ version = 2 },
+					{ template = added }
+				)
+				local settled = load(universe, fixed, "p1")
+				expect(settled:get("gems")).toBe(40)
+				release(universe, settled)
+				local record = stored(universe, "p1")
+				expect(record.meta.templateVersion).toBe(2)
+				expect(record.meta.templateShape).toBe(Prune.shape(added, {}))
+			end
+		)
+
+		it("never lowers a mark, and leaves one written by hand", function()
+			local mark = { version = 3, shape = "aaaaaaaa" }
+			local higher: Any = { templateVersion = 4, templateShape = "bbbbbbbb" }
+			Prune.mark(higher, mark)
+			expect(higher).toEqual({ templateVersion = 4, templateShape = "bbbbbbbb" })
+			local byHand: Any = { templateVersion = "3", templateShape = "bbbbbbbb" }
+			Prune.mark(byHand, mark)
+			expect(byHand).toEqual({ templateVersion = "3", templateShape = "bbbbbbbb" })
+			local lower: Any = { templateVersion = 2, templateShape = "bbbbbbbb" }
+			Prune.mark(lower, mark)
+			expect(lower).toEqual({ templateVersion = 3, templateShape = "aaaaaaaa" })
+			local none: Any = {}
+			Prune.mark(none, mark)
+			expect(none).toEqual({ templateVersion = 3, templateShape = "aaaaaaaa" })
+			local clash: Any = { templateVersion = 3, templateShape = "bbbbbbbb" }
+			Prune.mark(clash, mark)
+			expect(clash).toEqual({ templateVersion = 3, templateShape = "clash" })
+			expect(Prune.verdict(clash, mark)).toBe("mismatch")
+			Prune.mark(clash, { version = 4, shape = "aaaaaaaa" })
+			expect(clash).toEqual({ templateVersion = 4, templateShape = "aaaaaaaa" })
+		end)
+
 		it(
 			"removes nothing when the archive can't be written, and tries again next load",
 			function()
