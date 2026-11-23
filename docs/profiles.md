@@ -211,7 +211,45 @@ local Profiles = Geode.Profile.store({
 })
 ```
 
-Missing template fields are filled in on load, which other libraries call reconciling. Unknown fields are never removed without a migration.
+Missing template fields are filled in on load, which other libraries call reconciling. Unknown fields are never removed without a migration, unless the store prunes.
+
+## Removing keys the template dropped
+
+Reconciling only adds. A key the template no longer has stays in the data until a migration removes it, or until the store prunes. With `prune`, every load removes the keys the template's tables don't have any more. It runs after reconciling, as one system transaction with the note `prune`, so guards and listeners see it like any other change.
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+
+local PlayerData = Geode.players({
+	name = "PlayerData",
+	template = { coins = 0, inventory = {}, settings = { music = true } },
+	prune = {
+		version = 3,
+		keep = { "legacy", { "settings", "theme" } },
+	},
+})
+```
+
+- Only tables the template spells out with keys are pruned. A list, an empty table like `inventory = {}` and keys that aren't strings are left alone, whatever they hold.
+- `keep` lists paths that stay, with everything under them.
+- Before anything goes, the removed keys and their stored values are added to the profile's key in the `<name>_pruned` DataStore, one entry per prune. If that write fails, nothing is removed and the next load tries again. `store:erase` and `Geode.erase` clear the archive with the profile.
+- `version` is a whole number that goes up with every template change, `keep` included. Every write leaves it in the record's meta with a hash of the template's shape. A server never prunes a record that a server with a higher version wrote, so during a rolling deploy the older servers leave alone the keys a newer template added. A record written under the same version by a different template isn't pruned either, and the store reports it once: the version wasn't raised.
+- `dryRun = true` removes and archives nothing, and only reports what would go.
+- A load whose data fails the schema or a migration fails before pruning, and a profile that is already read only is never pruned. Studio with `studio = "real"` only ever does a dry run and leaves no version in the record, so a template still being worked on can't drop live data or hold live servers back.
+
+Every load that removes keys, or would on a dry run, sends a `pruned` telemetry message with `store`, `key`, `paths`, `version` and `dryRun`:
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+
+Geode.Vein.subscribe(function(message)
+	if message.type == "pruned" then
+		print(message.key, table.concat(message.paths, ", "), message.dryRun)
+	end
+end)
+```
 
 ## Mail for offline players
 

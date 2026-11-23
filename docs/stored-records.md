@@ -33,21 +33,46 @@ Each profile is one DataStore key holding a table with two fields: `data`, the p
 }
 ```
 
-| Field                | What it holds                                                                                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `data`               | The player's data in stored form. Values with a codec in the schema, like a `Vector3`, are stored as plain tables, and the schema decodes them on load |
-| `meta.format`        | The record layout, see below. Missing on records written by Geode 0.4.0 to 0.5.0                                                                       |
-| `meta.schemaVersion` | The schema version the data was saved with. A load runs the migrations from there                                                                      |
-| `meta.revision`      | Goes up with every change to the data and never moves backwards                                                                                        |
-| `meta.lease`         | The session lease of the server that has the profile loaded. Missing when nobody has it                                                                |
-| `meta.receipts`      | Ids of developer product purchases already granted, newest last                                                                                        |
-| `meta.mailboxCursor` | How far the profile has read its mailbox                                                                                                               |
-| `meta.createdAt`     | When the record was first written                                                                                                                      |
-| `meta.updatedAt`     | When the record was last written                                                                                                                       |
-| `meta.erasedAt`      | When the player's data was erased. The record then holds no `data`                                                                                     |
-| `meta.lastSession`   | The session behind the last write and the revision it left                                                                                             |
+| Field                  | What it holds                                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`                 | The player's data in stored form. Values with a codec in the schema, like a `Vector3`, are stored as plain tables, and the schema decodes them on load                    |
+| `meta.format`          | The record layout, see below. Missing on records written by Geode 0.4.0 to 0.5.0                                                                                          |
+| `meta.schemaVersion`   | The schema version the data was saved with. A load runs the migrations from there                                                                                         |
+| `meta.revision`        | Goes up with every change to the data and never moves backwards                                                                                                           |
+| `meta.lease`           | The session lease of the server that has the profile loaded. Missing when nobody has it                                                                                   |
+| `meta.receipts`        | Ids of developer product purchases already granted, newest last                                                                                                           |
+| `meta.mailboxCursor`   | How far the profile has read its mailbox                                                                                                                                  |
+| `meta.createdAt`       | When the record was first written                                                                                                                                         |
+| `meta.updatedAt`       | When the record was last written                                                                                                                                          |
+| `meta.erasedAt`        | When the player's data was erased. The record then holds no `data`                                                                                                        |
+| `meta.lastSession`     | The session behind the last write and the revision it left                                                                                                                |
+| `meta.templateVersion` | Written by stores with `prune` on: the `prune.version` of the last server that wrote the record, unless a server with a higher version wrote it before. Missing otherwise |
+| `meta.templateShape`   | A hash of the template that goes with `meta.templateVersion`                                                                                                              |
 
 Times are Unix seconds and usually carry a fraction. A lease counts as stale once `renewedAt` is older than the store's `leaseTimeout`, 300 seconds unless the game sets its own.
+
+A tool that edits a record leaves `meta.templateVersion` and `meta.templateShape` as they are.
+
+## Prune archives
+
+A store with `prune` on adds what it removes to a second DataStore, `<name>_pruned`, under the profile's key, before the removal. Each prune adds one entry, oldest first:
+
+```json
+{
+	"entries": [
+		{
+			"at": 1760600300.2,
+			"version": 3,
+			"values": [
+				{ "path": ["gems"], "value": 12 },
+				{ "path": ["settings", "theme"], "value": "dark" }
+			]
+		}
+	]
+}
+```
+
+`version` is the `prune.version` of the server that pruned, and each value is in stored form. The key carries the profile's user ids. Erasing the profile removes it.
 
 ## Shared store records
 
