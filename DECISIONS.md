@@ -723,3 +723,21 @@ Paths were `string | (string | number)[]` and every read was `unknown`, so a rob
 Rejected: typed dotted strings with template literal types, which the request ruled out and which can't tell a digit key from an index; keeping loose overloads next to the typed ones, which would let a typo through as `unknown`; and a separate family of typed interfaces, which would double every name in the typings.
 
 **PR:** #40
+
+## 57. Pruning keys the template dropped
+
+**Date:** 2026-11-23
+
+Reconciling only adds, so a key a game stops using stays in every profile until a migration removes it. `prune` on a profile store, and so on `Geode.players`, removes those keys on load.
+
+- **Opt-in, and archived first.** Nothing leaves the record before it's added to the profile's key in a `<name>_pruned` DataStore, so the rule that Geode never drops user data on its own still holds: the game asks for it and the values stay recoverable. When the archive write fails, nothing is removed and the next load tries again. The archive key carries the profile's user ids, and erasing a profile removes it on every profile store, whether or not it prunes now, since it may have before. That's one more RemoveAsync per erase.
+- **What counts.** Only tables the template spells out with string keys. Lists, empty template tables like `inventory = {}`, keys that aren't strings and anything under a value that isn't a table are containers the template doesn't describe, so what's in them stays. Kept paths stay with everything under them. Lists are left alone for the same reason Reconcile leaves them alone.
+- **One system transaction after reconciling**, with the note `prune`, so guards can reject it and the audit log, listeners and telemetry see it. A guard that rejects it leaves the archive entry behind, which is harmless.
+- **The rolling-deploy guard needs a version from the game.** `prune.version` is required, a whole number that goes up with every template change. The request named only `keep` and `dryRun`; the version was added because nothing in a template says which of two templates is newer. Every write from a pruning store leaves `meta.templateVersion` and `meta.templateShape`, a 32-bit FNV-1a hash of the template's fields and the kept paths, unless the record already holds a higher version. A server prunes a record only when its stored version is missing or not higher than its own, and at an equal version only when the shapes agree. The shape catches a deploy that forgot to raise the version: both sides hold back and the store reports it once. Records stay at `meta.format = 1`, since these are two optional meta fields that older Geode copies along untouched.
+- **Studio on live data only reports.** With `studio = "real"` in Studio, pruning is always a dry run and leaves no mark, so a template still being worked on can neither drop live keys nor push the version past the live servers'.
+- **Read only.** A profile that's already read only when its load finishes, because its session went during the load, isn't pruned. Data that fails the schema or a migration fails the load before this point.
+- **Telemetry.** A `pruned` message for every load that removes or would remove keys, with `store`, `key`, `paths`, `version` and `dryRun`, and a `prune` feature in the bridge's `hello`. No answer changes shape.
+
+Rejected: taking the version from `schemaVersion`, which would make every template change a schema bump and turn a rolling deploy into `newerData` load failures on the old servers; a hash alone, which can't tell an older template from a newer one; keeping the template's full path list in meta, which grows every record; keeping the archive inside the record, which keeps the size pruning is meant to free; and pruning inside lists by matching items against the template's first item, which is a guess.
+
+**PR:** #40
