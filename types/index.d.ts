@@ -869,6 +869,16 @@ declare namespace Geode {
 		onCommit(callback: (record: CommitRecord) => void): Connection;
 	}
 
+	/** Removes keys the template no longer has on load, after archiving them */
+	interface PruneOptions {
+		/** Paths that stay though the template doesn't have them, with everything under them */
+		keep?: Path[];
+		/** A whole number from 1 that goes up with every template change */
+		version: number;
+		/** Report what would go and remove nothing */
+		dryRun?: boolean;
+	}
+
 	interface ProfileStoreOptions<T extends object = object> {
 		name: string;
 		/**
@@ -907,6 +917,8 @@ declare namespace Geode {
 		handoff?: boolean;
 		mailbox?: boolean;
 		audit?: boolean;
+		/** Off by default. The removed keys go to a `<name>_pruned` DataStore first */
+		prune?: PruneOptions;
 		reportError?: (message: string) => void;
 	}
 
