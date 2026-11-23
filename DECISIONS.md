@@ -653,7 +653,7 @@ Profile stores had no `destroy`, so `destroy()` is new: it releases every profil
 
 Rejected: a hook that only gets the profile and writes through it, which would be a transaction per write and could leave half the values written; letting it yield with a time limit, which would hold BindToClose for slow code; running it again on every retry; and one hook per reason, when a single function with the reason covers each case with an `if`.
 
-**PR:** #40
+**PR:** #41
 
 ## 53. One Studio setting for every store, with `auto`
 
@@ -670,7 +670,7 @@ Only profile stores had a Studio mode, and `Geode.setup({ studio })` reached `Ge
 
 Rejected: services that pick their adapters on first use, which would keep store constructors from yielding but would also stall the first request of every store behind the check; checking with a write, which costs more and would leave a key behind; and a mode per kind of store in `Geode.setup`, when a store's own `studio` option already covers the exceptions.
 
-**PR:** #40
+**PR:** #41
 
 ## 54. Boards take a scope, and `Geode.setup` sets one for every store
 
@@ -685,7 +685,7 @@ Profile and shared stores took a `scope`, but `Geode.Ranked` boards didn't, so a
 
 Rejected: a separate name option, which would ask every game to spell the scope into each board by hand; escaping underscores in names, which changes the names of existing windowed boards; and `liveUniverses` with a list of live universes in `Geode.setup`, which wasn't asked for here. A game that wants it passes its own scope from the universe id.
 
-**PR:** #40
+**PR:** #41
 
 ## 55. Erasure reaches boards and opted-in shared stores
 
@@ -704,7 +704,7 @@ The `TODO(verify)` in `Sapphire/Registry.luau` asked whether versions older than
 
 Rejected: a `remove(key)` name for shared stores, which already have `remove(key, path)` for a path inside a value; deleting by writing the template, which keeps the key and its revision but isn't the RemoveAsync an erasure asks for; and erasing every shared store by default with the user id as the key, which would delete whatever happens to sit under a number.
 
-**PR:** #40
+**PR:** #41
 
 ## 56. Typed paths for stores, profiles, transactions and the client
 
@@ -722,7 +722,7 @@ Paths were `string | (string | number)[]` and every read was `unknown`, so a rob
 
 Rejected: typed dotted strings with template literal types, which the request ruled out and which can't tell a digit key from an index; keeping loose overloads next to the typed ones, which would let a typo through as `unknown`; and a separate family of typed interfaces, which would double every name in the typings.
 
-**PR:** #40
+**PR:** #41
 
 ## 57. Pruning keys the template dropped
 
@@ -740,7 +740,7 @@ Reconciling only adds, so a key a game stops using stays in every profile until 
 
 Rejected: taking the version from `schemaVersion`, which would make every template change a schema bump and turn a rolling deploy into `newerData` load failures on the old servers; a hash alone, which can't tell an older template from a newer one; keeping the template's full path list in meta, which grows every record; keeping the archive inside the record, which keeps the size pruning is meant to free; and pruning inside lists by matching items against the template's first item, which is a guess.
 
-**PR:** #40
+**PR:** #41
 
 ## 58. Leaderstats on Geode.players
 
@@ -756,7 +756,7 @@ Most games copy a few values into the player list by hand: make the folder once 
 
 Rejected: picking the kind from each value as it changes, which would replace Instances under the player list; a separate `Geode.leaderstats(PlayerData, ...)` call, which needs the same hooks and is one more name to learn; and typing `format` by the path's value, which a list of stats with different paths can't infer in TypeScript.
 
-**PR:** #40
+**PR:** #41
 
 ## 59. Every store defaults to `mock` in Studio
 
@@ -771,7 +771,7 @@ Entry 53 kept shared stores, boards, the MemoryStore helpers and matchmakers at 
 
 Rejected: keeping `real` as the default for everything but profile stores, which entry 53 chose so nothing moved, since a playtest that writes live data by default is the worse surprise; and `auto` as the default, which sends a DataStore read from every Studio session and moves a playtest onto real services as soon as API access is on.
 
-**PR:** #40
+**PR:** #41
 
 ## 60. A prune mark only moves up, and a clash holds every server back
 
@@ -785,7 +785,7 @@ Rejected: keeping `real` as the default for everything but profile stores, which
 
 Rejected: keeping the first shape, which lets the old servers go on pruning keys the new template added; keeping the latest, as before; and keeping every shape in meta, which grows with each template that clashes.
 
-**PR:** #40
+**PR:** #41
 
 ## 61. Leaderstats never destroy or replace what the game made
 
@@ -798,4 +798,4 @@ Rejected: keeping the first shape, which lets the old servers go on pruning keys
 
 Rejected: replacing the game's value with one of the right class; adding Geode's value under the same name next to it, which the player list would show twice; and skipping a value of the same class too, which leaves the stat showing a number nothing updates.
 
-**PR:** #40
+**PR:** #41
