@@ -40,6 +40,37 @@ What it handles:
 
 `onLoaded` also calls back for every profile that loaded before you connected, each in its own thread, so connecting late misses no one.
 
+### Leaderstats
+
+`leaderstats` puts values in each player's `leaderstats` folder, the one Roblox's player list reads, and keeps them in step with the data:
+
+```lua
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Geode = require(ReplicatedStorage.Packages.Geode)
+
+local PlayerData = Geode.players({
+	name = "PlayerData",
+	template = { coins = 0, stats = { kills = 0 }, rank = "Rookie" },
+	leaderstats = {
+		{ path = "coins", name = "Coins", order = 1 },
+		{ path = "stats.kills", name = "Kills", order = 2 },
+		{
+			path = "rank",
+			name = "Rank",
+			format = function(rank)
+				return string.upper(rank)
+			end,
+		},
+	},
+})
+```
+
+- The template's value at the path picks the kind: a whole number makes an IntValue, any other number a NumberValue and a string a StringValue. A stat with `format` is a StringValue showing what `format` returns, which is how a table or a boolean gets shown. Anything else fails when the game starts.
+- The values are made once the player's data has loaded, and change with every commit through `observe`. They're removed when the profile is released, whether the player left, the server shut down or the session was lost. A player who leaves while their data loads never gets any.
+- Stats with an `order` come first, lowest first, then the rest in the order listed. A folder the game already made is used as it is, and only Geode's values are taken out of it.
+- A value a stat can't show, like a string at a number stat, shows as 0 or empty text and is reported once per stat. An IntValue stat shows a value with a fraction rounded down; give it a `format` to show fractions.
+- Only the server makes them. Roblox copies the folder to clients like any other Instance under the player.
+
 ## Before the data loads
 
 `PlayerData:get(player)` works from the moment a player joins. Until their profile loads, reads return the template and writes are refused, so UI code can draw defaults right away and check `isLoaded` to tell them from real data.
