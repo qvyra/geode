@@ -1054,7 +1054,16 @@ declare namespace Geode {
 		attach(
 			player: unknown,
 			stats: { name: string; kind: LeaderstatKind }[],
-		): { set(name: string, value: number | string): void; destroy(): void };
+		): {
+			set(name: string, value: number | string): void;
+			/** Removes the values attach made, and a folder it made once nothing else is in it */
+			destroy(): void;
+			/**
+			 * Stats left out because the folder already holds something of another class by
+			 * their name. A value of the same class is written to instead. Neither is destroyed
+			 */
+			skipped?: { name: string; kind: LeaderstatKind; found: string }[];
+		};
 	}
 
 	interface PlayerDataOptions<T extends object = object> extends ProfileStoreOptions<T> {
@@ -1091,7 +1100,7 @@ declare namespace Geode {
 
 	interface SetupOptions {
 		services?: Services;
-		/** Every store's Studio mode. Profile stores default to `mock`, the rest to `real` */
+		/** Every store's Studio mode. Without one, every store uses `mock` in Studio */
 		studio?: StudioMode;
 		/** The scope profile stores, shared stores and boards use unless given their own */
 		scope?: string;
@@ -1108,7 +1117,7 @@ declare namespace Geode {
 		template: object;
 		services?: Services;
 		scope?: string;
-		/** Geode.setup's mode, or `real` */
+		/** Geode.setup's mode, or `mock` */
 		studio?: StudioMode;
 		scheduler?: Scheduler;
 		schema?: Schema;
@@ -1191,7 +1200,7 @@ declare namespace Geode {
 	interface EphemeralOptions {
 		services?: Services;
 		scheduler?: Scheduler;
-		/** Geode.setup's mode, or `real` */
+		/** Geode.setup's mode, or `mock` */
 		studio?: StudioMode;
 		schema?: Schema;
 	}
@@ -1239,7 +1248,7 @@ declare namespace Geode {
 	interface PremadeOptions {
 		services?: Services;
 		scheduler?: Scheduler;
-		/** Geode.setup's mode, or `real` */
+		/** Geode.setup's mode, or `mock` */
 		studio?: StudioMode;
 	}
 
@@ -1312,7 +1321,7 @@ declare namespace Geode {
 		onMatch?: (match: Match) => void;
 		services?: Services;
 		scheduler?: Scheduler;
-		/** Geode.setup's mode, or `real` */
+		/** Geode.setup's mode, or `mock` */
 		studio?: StudioMode;
 		reportError?: (message: string) => void;
 	}
@@ -1357,7 +1366,7 @@ declare namespace Geode {
 		cacheTtl?: number;
 		services?: Services;
 		scheduler?: Scheduler;
-		/** Geode.setup's mode, or `real` */
+		/** Geode.setup's mode, or `mock` */
 		studio?: StudioMode;
 		/** Geode.setup's scope, or `global` */
 		scope?: string;
