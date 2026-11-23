@@ -33,6 +33,10 @@ A last write as each session ends, one Studio setting for every store, scopes on
 - A shared store that holds a copy of a key whose stored value is gone reads it again past the DataStore cache, so a delete on another server whose message never arrived doesn't leave old data behind
 - Docs: values written as a session ends, where Studio keeps data, board scopes, erasure across stores and what Roblox keeps after it, deleting shared keys, typed paths in roblox-ts, pruning and the meta it leaves, and leaderstats
 
+### Fixed
+
+- `replicate` on `Geode.players` reaches players who were already on the server when it was called and whose data loaded without waiting, as in-memory Studio data does
+
 ## [0.6.2] - 2026-11-19
 
 Kicked players read a sentence meant for them, the typings fit roblox-ts games better, and the docs say what they left out. Nothing breaks.

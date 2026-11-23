@@ -159,8 +159,14 @@ function PlayerData.new(
 		} :: Fields,
 		PlayerData
 	)
+	return self
+end
 
-	local players = services.players
+-- Starts loading players, the ones already on the server too. Geode.players calls it once
+-- everything that listens to `loaded` is connected: a load that never yields, as in-memory
+-- Studio data, fires `loaded` before this returns
+function PlayerData._start(self: PlayerData)
+	local players = self._services.players
 	table.insert(
 		self._connections,
 		players:onJoin(function(userId: number, player: unknown)
@@ -174,11 +180,10 @@ function PlayerData.new(
 		end)
 	)
 	for _, entry in players:list() do
-		services.clock:spawn(function()
+		self._services.clock:spawn(function()
 			self:_join(entry.userId, entry.player)
 		end)
 	end
-	return self
 end
 
 -- Lifecycle
