@@ -650,6 +650,8 @@ declare namespace Geode {
 		remote(this: void, name: string): ServerRemote;
 		/** Where Studio tools reach a running game. Studio only */
 		readonly bridge: ToolingBridge;
+		/** Missing from services built by hand. Only the leaderstats option needs it */
+		readonly leaderstats?: LeaderstatsAdapter;
 	}
 
 	interface KeyInfo {
@@ -1035,8 +1037,33 @@ declare namespace Geode {
 
 	type Visibility = "private" | "owner" | "public";
 
+	/** One value in every player's leaderstats folder, kept in step with the data */
+	interface Leaderstat<T extends object = object> {
+		path: PathFor<T>;
+		name: string;
+		/** Lowest first. Stats without one come after, in the order listed */
+		order?: number;
+		/** The text to show. A stat with a format is a StringValue */
+		format?: (value: unknown) => string;
+	}
+
+	type LeaderstatKind = "IntValue" | "NumberValue" | "StringValue";
+
+	/** Makes the values Roblox's player list shows. Live services make real ones */
+	interface LeaderstatsAdapter {
+		attach(
+			player: unknown,
+			stats: { name: string; kind: LeaderstatKind }[],
+		): { set(name: string, value: number | string): void; destroy(): void };
+	}
+
 	interface PlayerDataOptions<T extends object = object> extends ProfileStoreOptions<T> {
 		products?: Record<number, (tx: Transaction<T>, info: ReceiptInfo) => void>;
+		/**
+		 * An IntValue, NumberValue or StringValue per stat, picked from the template's value at
+		 * the path, or a StringValue with `format`
+		 */
+		leaderstats?: Leaderstat<T>[];
 		replicate?: Record<string, Visibility>;
 		loadRetries?: number;
 		/** Geode sets ProcessReceipt itself, so any values do here; tests pass their own */
@@ -1448,6 +1475,16 @@ declare namespace Geode {
 	/** One mock server: the services a store takes, plus controls for tests */
 	interface MockServer extends Services {
 		readonly tooling: MockBridge;
+		readonly leaderstats: LeaderstatsAdapter;
+		/** The same leaderstats, read the way the player list would show them */
+		readonly playerList: LeaderstatsAdapter & {
+			/** Each value in the player's leaderstats folder, in order. Undefined without a folder */
+			read(
+				player: unknown,
+			): { name: string; kind: LeaderstatKind; value: number | string }[] | undefined;
+			/** How many players have a leaderstats folder */
+			count(): number;
+		};
 		/** The player must be on this server for messages to arrive */
 		client(userId: number): ClientServices;
 		inject(rule: FaultRule): void;
