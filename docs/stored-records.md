@@ -47,7 +47,7 @@ Each profile is one DataStore key holding a table with two fields: `data`, the p
 | `meta.erasedAt`        | When the player's data was erased. The record then holds no `data`                                                                                                        |
 | `meta.lastSession`     | The session behind the last write and the revision it left                                                                                                                |
 | `meta.templateVersion` | Written by stores with `prune` on: the `prune.version` of the last server that wrote the record, unless a server with a higher version wrote it before. Missing otherwise |
-| `meta.templateShape`   | A hash of the template that goes with `meta.templateVersion`                                                                                                              |
+| `meta.templateShape`   | A hash of the template that goes with `meta.templateVersion`, or `clash` once two templates wrote the same version                                                        |
 
 Times are Unix seconds and usually carry a fraction. A lease counts as stale once `renewedAt` is older than the store's `leaseTimeout`, 300 seconds unless the game sets its own.
 

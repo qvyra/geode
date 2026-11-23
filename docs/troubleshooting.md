@@ -6,7 +6,7 @@ sidebar_position: 6
 
 ## Data doesn't save between Studio playtests
 
-That's the default. In Studio, player data lives in memory so a playtest can't touch real data. To keep data between playtests, set the Studio mode to `"scope"` (real services, kept apart from live servers) or `"real"` (live data) with `Geode.setup` or the store's `studio` option, and turn on Studio access to API Services in the experience's settings. `"auto"` picks `"scope"` once that access is on and keeps data in memory until then. See [Profiles](profiles#where-studio-keeps-data).
+That's the default. In Studio, every store keeps its data in memory so a playtest can't touch real data. To keep data between playtests, set the Studio mode to `"scope"` (real services, kept apart from live servers) or `"real"` (live data) with `Geode.setup` or the store's `studio` option, and turn on Studio access to API Services in the experience's settings. `"auto"` picks `"scope"` once that access is on and keeps data in memory until then. See [Profiles](profiles#where-studio-keeps-data).
 
 ## Reads return the template and writes fail with `readOnly`
 
