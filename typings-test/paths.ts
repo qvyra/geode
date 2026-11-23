@@ -39,6 +39,16 @@ const PlayerData = Geode.players<Data>({
 			tx.increment(["coins"], 100);
 		},
 	},
+	leaderstats: [
+		{ path: ["coins"], name: "Coins" },
+		{ path: ["settings", "volume"], name: "Volume" },
+	],
+});
+Geode.players<Data>({
+	name: "BadStats",
+	template,
+	// @ts-expect-error a leaderstat's path is checked too
+	leaderstats: [{ path: ["gems"], name: "Gems" }],
 });
 
 const store = Geode.Profile.store<Data>({ name: "TypedStore", template });

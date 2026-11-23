@@ -172,6 +172,18 @@ Geode.Vein.subscribe((message) => {
 		print(message.key, message.paths, message.dryRun);
 	}
 });
+Geode.players({
+	name: "Ranked",
+	template: { coins: 0, kills: 0, rank: "Rookie" },
+	leaderstats: [
+		{ path: "coins", name: "Coins", order: 1 },
+		{ path: ["kills"], name: "Kills", format: (value) => `${tostring(value)} KOs` },
+		{ path: "rank", name: "Rank" },
+	],
+	services: server,
+});
+const shownStats = server.playerList.read(server.join(5));
+print(shownStats?.[0]?.value, server.playerList.count());
 const fresh = server.dataStore("Mail").get("player_1", { useCache: false });
 if (fresh.ok) {
 	print(fresh.value.value, fresh.value.info?.version);
