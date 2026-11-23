@@ -661,7 +661,7 @@ Rejected: a hook that only gets the profile and writes through it, which would b
 
 Only profile stores had a Studio mode, and `Geode.setup({ studio })` reached `Geode.players` stores only. A game that wanted Studio kept apart had to build its own services table for shared stores, boards, the MemoryStore helpers and matchmakers. Now the mode lives in one module, `Quartz/Studio`, and every store asks it: `Geode.setup`'s mode, unless the store passes its own `studio`. Lower layers can't read Polish, so `Geode.setup` hands the mode to Quartz instead of each store reading Polish defaults. `Geode.setup`'s services, scheduler and error reporting still reach `Geode.players` stores only.
 
-- **Defaults.** Profile stores stay at `mock`. Every other store stays at `real`, which is what it did before, so nothing changes in Studio until a game sets a mode. Changing them all to `mock` would quietly move existing games' shared stores and boards into memory.
+- **Defaults.** Profile stores stay at `mock`. Every other store stays at `real`, which is what it did before, so nothing changes in Studio until a game sets a mode. Changing them all to `mock` would quietly move existing games' shared stores and boards into memory. Entry 59 changed this before release.
 - **`mock`.** DataStore, MemoryStore and messaging come from one in-memory server per services table, on the real clock, shared by every store. Before, each profile store made its own. Players, purchases, shutdown, teleports, remotes and the bridge stay live; the mock budget stays too, since those requests never reach Roblox. Before, the clock-only copy kept the mock's remotes, teleports, JSON and ids.
 - **`scope`.** DataStore data goes under `studio_` plus the scope, as before, and now MemoryStore names and messaging topics get a `studio_` prefix too. Profile stores in this mode used to send release requests on the live topic and read the live handoff map. Studio data never matches live data, so a Studio session has nothing to say to live servers, and now it can't.
 - **`auto`.** In Studio, the first store reads one key (`probe` in `geode_studio_access`) once per services table, and stores made meanwhile wait for the answer. Success means `scope`. `noAccess`, the 403 Studio gets without API access, means `mock`. A place that was never published (place id 0) means `mock` without a request. Any other error also means `mock` and is reported, so a check that went wrong keeps data in memory instead of reaching live data. With access, it picks `scope`, not `real`, so turning access on never points a playtest at live data by itself. On live servers it does nothing. The read yields, in Studio only. TODO(verify): Roblox's error table words 403 as a write error, and doesn't say whether a GetAsync gets it too. Any other error still lands on `mock`, so a wrong guess can't reach live data.
@@ -733,7 +733,7 @@ Reconciling only adds, so a key a game stops using stays in every profile until 
 - **Opt-in, and archived first.** Nothing leaves the record before it's added to the profile's key in a `<name>_pruned` DataStore, so the rule that Geode never drops user data on its own still holds: the game asks for it and the values stay recoverable. When the archive write fails, nothing is removed and the next load tries again. The archive key carries the profile's user ids, and erasing a profile removes it on every profile store, whether or not it prunes now, since it may have before. That's one more RemoveAsync per erase.
 - **What counts.** Only tables the template spells out with string keys. Lists, empty template tables like `inventory = {}`, keys that aren't strings and anything under a value that isn't a table are containers the template doesn't describe, so what's in them stays. Kept paths stay with everything under them. Lists are left alone for the same reason Reconcile leaves them alone.
 - **One system transaction after reconciling**, with the note `prune`, so guards can reject it and the audit log, listeners and telemetry see it. A guard that rejects it leaves the archive entry behind, which is harmless.
-- **The rolling-deploy guard needs a version from the game.** `prune.version` is required, a whole number that goes up with every template change. The request named only `keep` and `dryRun`; the version was added because nothing in a template says which of two templates is newer. Every write from a pruning store leaves `meta.templateVersion` and `meta.templateShape`, a 32-bit FNV-1a hash of the template's fields and the kept paths, unless the record already holds a higher version. A server prunes a record only when its stored version is missing or not higher than its own, and at an equal version only when the shapes agree. The shape catches a deploy that forgot to raise the version: both sides hold back and the store reports it once. Records stay at `meta.format = 1`, since these are two optional meta fields that older Geode copies along untouched.
+- **The rolling-deploy guard needs a version from the game.** `prune.version` is required, a whole number that goes up with every template change. The request named only `keep` and `dryRun`; the version was added because nothing in a template says which of two templates is newer. Every write from a pruning store leaves `meta.templateVersion` and `meta.templateShape`, a 32-bit FNV-1a hash of the template's fields and the kept paths, unless the record already holds a higher version. A server prunes a record only when its stored version is missing or not higher than its own, and at an equal version only when the shapes agree. The shape catches a deploy that forgot to raise the version: both sides hold back and the store reports it once. Entry 60 closes a gap in this. Records stay at `meta.format = 1`, since these are two optional meta fields that older Geode copies along untouched.
 - **Studio on live data only reports.** With `studio = "real"` in Studio, pruning is always a dry run and leaves no mark, so a template still being worked on can neither drop live keys nor push the version past the live servers'.
 - **Read only.** A profile that's already read only when its load finishes, because its session went during the load, isn't pruned. Data that fails the schema or a migration fails the load before this point.
 - **Telemetry.** A `pruned` message for every load that removes or would remove keys, with `store`, `key`, `paths`, `version` and `dryRun`, and a `prune` feature in the bridge's `hello`. No answer changes shape.
@@ -755,5 +755,45 @@ Most games copy a few values into the player list by hand: make the folder once 
 - **Server only.** The folder is made on the server and reaches clients the way any Instance under the player does.
 
 Rejected: picking the kind from each value as it changes, which would replace Instances under the player list; a separate `Geode.leaderstats(PlayerData, ...)` call, which needs the same hooks and is one more name to learn; and typing `format` by the path's value, which a list of stats with different paths can't infer in TypeScript.
+
+**PR:** #40
+
+## 59. Every store defaults to `mock` in Studio
+
+**Date:** 2026-11-23
+
+Entry 53 kept shared stores, boards, the MemoryStore helpers and matchmakers at `real` in Studio, so nothing moved for existing games. That left a playtest writing live guild banks, board scores and MemoryStore keys unless the game set a mode. Now a store with no `studio` of its own, and none from `Geode.setup`, uses `mock` like profile stores, so a playtest reaches live data only when the game asks for it.
+
+- **One default, in one place.** `Quartz/Studio` holds it, and every store asks it for its mode: its own, else `Geode.setup`'s, else `mock`.
+- **Live servers don't change.** Outside Studio every mode uses the services the store was given.
+- **Breaking, in Studio only.** A game whose playtests relied on shared stores or boards reading live data now gets an empty in-memory copy. `studio = "real"` on the store, or `Geode.setup({ studio = "real" })`, brings back what it did before. The 0.7.0 breaking note says so.
+- No bridge, record or meta changes.
+
+Rejected: keeping `real` as the default for everything but profile stores, which entry 53 chose so nothing moved, since a playtest that writes live data by default is the worse surprise; and `auto` as the default, which sends a DataStore read from every Studio session and moves a playtest onto real services as soon as API access is on.
+
+**PR:** #40
+
+## 60. A prune mark only moves up, and a clash holds every server back
+
+**Date:** 2026-11-23
+
+- **Older servers can't lower the version.** Every write marks the meta it read in the same UpdateAsync, not the copy its session loaded, and leaves it alone when it holds a higher version. So a server on version 4 that loads a profile a version 5 server saved, changes it and saves it leaves version 5 and its shape in place, and the next load on version 5 prunes as before. A test runs that sequence.
+- **A clash sticks.** Entry 57 said a deploy that forgot to raise the version holds both sides back. It only did while loads alternated: each server wrote its own shape, so its next load saw that shape and pruned what the other template added. Now a write that finds another shape under its own version leaves `clash`, which no template hashes to, so every server at that version holds back until one with a higher version saves the record. The report is the same, once per store.
+- **A version written by hand stays.** The verdict already left such a record alone, and marking now leaves the value alone too.
+- `meta.format` stays `1`: `clash` is a new value of an optional field.
+
+Rejected: keeping the first shape, which lets the old servers go on pruning keys the new template added; keeping the latest, as before; and keeping every shape in meta, which grows with each template that clashes.
+
+**PR:** #40
+
+## 61. Leaderstats never destroy or replace what the game made
+
+**Date:** 2026-11-23
+
+- **Another class under a stat's name.** When the folder already holds something by a stat's name, of another class than the stat needs, that stat isn't shown, the store reports it once and the game's object stays as it is. The adapter lists those stats in `skipped`, an optional field, so adapters built by hand still fit.
+- **The same class.** A value of the class the stat needs is written to and left in place on release, so a game that already made `Coins` ends up with one `Coins`, not two. The request only named the other class; this is the reading picked.
+- **Releases remove only Geode's values.** A folder Geode made is destroyed only when nothing else is in it, so values the game put there later stay.
+
+Rejected: replacing the game's value with one of the right class; adding Geode's value under the same name next to it, which the player list would show twice; and skipping a value of the same class too, which leaves the stat showing a number nothing updates.
 
 **PR:** #40
