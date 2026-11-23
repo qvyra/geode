@@ -741,3 +741,19 @@ Reconciling only adds, so a key a game stops using stays in every profile until 
 Rejected: taking the version from `schemaVersion`, which would make every template change a schema bump and turn a rolling deploy into `newerData` load failures on the old servers; a hash alone, which can't tell an older template from a newer one; keeping the template's full path list in meta, which grows every record; keeping the archive inside the record, which keeps the size pruning is meant to free; and pruning inside lists by matching items against the template's first item, which is a guess.
 
 **PR:** #40
+
+## 58. Leaderstats on Geode.players
+
+**Date:** 2026-11-23
+
+Most games copy a few values into the player list by hand: make the folder once the data loads, update it on every change, clean up when the player leaves. `leaderstats = { { path, name, order?, format? } }` on `Geode.players` does that.
+
+- **A new adapter.** Making Instances in Polish would break the rule that only Quartz touches Roblox, so the values come through `services.leaderstats`. The live one makes the Folder and its value children, and the mock one, read back through `server.playerList`, is what the tests check. It's optional on `Services`, so services built by hand still type check, and `Geode.players` refuses the option without it.
+- **The template picks the kind.** A whole number makes an IntValue, any other number a NumberValue and a string a StringValue, and `format` makes a StringValue. Anything else, a path the template doesn't have included, fails in `Geode.players`, so a typo shows when the game starts. The kind never changes afterwards: a value that doesn't fit shows 0 or empty text and is reported once per stat, and a fraction on an IntValue stat is rounded down and reported, instead of swapping the Instance for another class.
+- **When they exist.** They're made on `loaded`, which PlayerData only fires for a player still on the server, and only for a profile that is still active, so a player who leaves while their data loads never gets any. They follow the data through `observe` and go on `released`, which also fires when a session is lost. A folder the game already made is used as it is, and only Geode's values are taken out of it.
+- **Order.** Stats with an `order` come first, lowest first, then the rest as listed, and their values are parented in that order. Roblox doesn't document how the player list orders its columns, so the real adapter has a `TODO(verify)` for a Studio check.
+- **Server only.** The folder is made on the server and reaches clients the way any Instance under the player does.
+
+Rejected: picking the kind from each value as it changes, which would replace Instances under the player list; a separate `Geode.leaderstats(PlayerData, ...)` call, which needs the same hooks and is one more name to learn; and typing `format` by the path's value, which a list of stats with different paths can't infer in TypeScript.
+
+**PR:** #40
