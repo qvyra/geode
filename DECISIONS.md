@@ -778,7 +778,8 @@ Rejected: keeping `real` as the default for everything but profile stores, which
 **Date:** 2026-11-23
 
 - **Older servers can't lower the version.** Every write marks the meta it read in the same UpdateAsync, not the copy its session loaded, and leaves it alone when it holds a higher version. So a server on version 4 that loads a profile a version 5 server saved, changes it and saves it leaves version 5 and its shape in place, and the next load on version 5 prunes as before. A test runs that sequence.
-- **A clash sticks.** Entry 57 said a deploy that forgot to raise the version holds both sides back. It only did while loads alternated: each server wrote its own shape, so its next load saw that shape and pruned what the other template added. Now a write that finds another shape under its own version leaves `clash`, which no template hashes to, so every server at that version holds back until one with a higher version saves the record. The report is the same, once per store.
+- **A clash sticks.** Entry 57 said a deploy that forgot to raise the version holds both sides back. It only did while loads alternated: each server wrote its own shape, so its next load saw that shape and pruned what the other template added. Now a write that finds another shape under its own version leaves `clash`, which no template hashes to, so every server at that version holds back until one with a higher version saves the record. That write replaces both fields like any other, so one clash can't turn pruning off for good, and a test prunes again after it.
+- **Reported on every load it holds back**, with the keys it kept, instead of once per store, so a clash that lasts keeps showing up in the logs. A clash that holds back nothing is reported too, since the next template change would be held back the same way.
 - **A version written by hand stays.** The verdict already left such a record alone, and marking now leaves the value alone too.
 - `meta.format` stays `1`: `clash` is a new value of an optional field.
 
@@ -791,7 +792,8 @@ Rejected: keeping the first shape, which lets the old servers go on pruning keys
 **Date:** 2026-11-23
 
 - **Another class under a stat's name.** When the folder already holds something by a stat's name, of another class than the stat needs, that stat isn't shown, the store reports it once and the game's object stays as it is. The adapter lists those stats in `skipped`, an optional field, so adapters built by hand still fit.
-- **The same class.** A value of the class the stat needs is written to and left in place on release, so a game that already made `Coins` ends up with one `Coins`, not two. The request only named the other class; this is the reading picked.
+- **The same class.** A value of the class the stat needs is written to and left in place on release, so a game that already made `Coins` ends up with one `Coins`, not two. The store reports it once per stat, since Geode now writes to an object it didn't make. The adapter lists those stats in `adopted`.
+- **One way.** Geode writes the value on every change to the data and never reads it back. A change the game's own code makes to it is never saved, and the next change to the data overwrites it. The docs say so.
 - **Releases remove only Geode's values.** A folder Geode made is destroyed only when nothing else is in it, so values the game put there later stay.
 
 Rejected: replacing the game's value with one of the right class; adding Geode's value under the same name next to it, which the player list would show twice; and skipping a value of the same class too, which leaves the stat showing a number nothing updates.
