@@ -8,7 +8,9 @@
 -- table, on the real clock. "scope" keeps the real services and keeps Studio apart: stores put
 -- their DataStore data under a studio_ scope, and MemoryStore names and messaging topics get a
 -- studio_ prefix, so a Studio session never talks to live servers. "real" uses live data.
--- "auto" checks API access once and picks "scope" with it, "mock" without
+-- "auto" checks API access once and picks "scope" with it, "mock" without. A store that isn't
+-- given a mode, with none from Geode.setup either, uses "mock", so a playtest only reaches live
+-- data when the game asks for it
 
 local Universe = require("./Mock/Universe")
 local Types = require("./Types")
@@ -20,6 +22,7 @@ export type Resolved = "mock" | "scope" | "real"
 local Studio = {}
 
 local MODES: { [string]: boolean } = { mock = true, scope = true, real = true, auto = true }
+local DEFAULT_MODE: Mode = "mock"
 
 -- A cheap read nothing ever writes
 local PROBE_STORE = "geode_studio_access"
@@ -87,8 +90,9 @@ function Studio.setDefaults(mode: Mode?, scope: string?)
 	state.scope = scope
 end
 
-function Studio.defaultMode(): Mode?
-	return state.mode
+-- The mode a store uses: its own, else Geode.setup's, else "mock"
+function Studio.mode(given: Mode?): Mode
+	return given or state.mode or DEFAULT_MODE
 end
 
 function Studio.defaultScope(): string?

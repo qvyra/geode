@@ -22,7 +22,7 @@ export type Options = {
 	cacheTtl: number?,
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
-	-- Where scores live in Studio. Geode.setup's mode, or "real". See Quartz/Studio
+	-- Where scores live in Studio. Geode.setup's mode, or "mock". See Quartz/Studio
 	studio: Studio.Mode?,
 	-- Keeps this board's scores apart from a board with the same name in another scope.
 	-- Geode.setup's scope, or "global"
@@ -118,7 +118,7 @@ local function new(name: string, options: Options?): Leaderboard
 	local scopeOption: string? = if options then options.scope else nil
 	Studio.check(studioOption)
 	Studio.checkScope(scopeOption)
-	local mode: Studio.Mode = studioOption or Studio.defaultMode() or "real"
+	local mode: Studio.Mode = Studio.mode(studioOption)
 	local services: Types.Services, studio: Studio.Resolved = Studio.resolve(
 		given,
 		mode,

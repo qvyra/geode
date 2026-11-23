@@ -212,8 +212,6 @@ local DEFAULTS = {
 	stealAfter = 15,
 	stealPolicy = "steal" :: StealPolicy,
 	onSessionLost = "kick" :: Profile.SessionLostPolicy,
-	-- unless Geode.setup set one for every store
-	studio = "mock" :: StudioMode,
 	closeTimeout = 25,
 	loadTimeout = 30,
 	receiptHistory = 50,
@@ -264,7 +262,7 @@ function ProfileStore.new(options: Options): ProfileStore
 	local givenServices = options.services or RealServices.live()
 	Studio.check(options.studio)
 	Studio.checkScope(options.scope)
-	local mode: Studio.Mode = options.studio or Studio.defaultMode() or DEFAULTS.studio
+	local mode: Studio.Mode = Studio.mode(options.studio)
 	local services: Types.Services, studio: Studio.Resolved =
 		Studio.resolve(givenServices, mode, report)
 	local scope = Studio.scope(options.scope, studio)

@@ -19,7 +19,7 @@ export type SetupOptions = {
 	-- services every store uses, live Roblox services by default
 	services: Types.Services?,
 	-- where data lives in Studio, for every store: profile and shared stores, boards, the
-	-- MemoryStore helpers and matchmakers. Profile stores default to "mock", the rest to "real"
+	-- MemoryStore helpers and matchmakers. Every store defaults to "mock"
 	studio: ProfileStore.StudioMode?,
 	-- the DataStore scope profile stores, shared stores and boards use unless given their own
 	scope: string?,

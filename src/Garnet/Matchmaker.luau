@@ -42,7 +42,7 @@ export type Options = {
 	onMatch: ((match: Match) -> ())?,
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
-	-- Where the queue lives in Studio. Geode.setup's mode, or "real". See Quartz/Studio
+	-- Where the queue lives in Studio. Geode.setup's mode, or "mock". See Quartz/Studio
 	studio: Studio.Mode?,
 	reportError: ((message: string) -> ())?,
 }
@@ -128,7 +128,7 @@ function Matchmaker.new(options: Options): Matchmaker
 	local report = options.reportError or function(message: string)
 		warn(message)
 	end
-	local studio: Studio.Mode = options.studio or Studio.defaultMode() or "real"
+	local studio: Studio.Mode = Studio.mode(options.studio)
 	local services = Studio.resolve(given, studio, report)
 	local scheduler = options.scheduler
 		or Scheduler.new({ clock = services.clock, budget = services.budget })
