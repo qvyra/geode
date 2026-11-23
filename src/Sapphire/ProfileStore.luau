@@ -178,6 +178,10 @@ type Fields = {
 	_config: Config,
 	_open: { [string]: Profile.Profile },
 	_loading: { [string]: boolean },
+	-- mail delivery of each profile open here, in stores with a mailbox
+	_mail: { [string]: MailState },
+	-- keys that heard of new mail while they loaded, looked at again once the load is done
+	_mailHeard: { [string]: boolean },
 	-- player of each open profile, so we can kick them when another server asks for it
 	_owners: { [string]: number },
 	_handoff: Handoff.Handoff,
@@ -221,6 +225,13 @@ local DEFAULTS = {
 
 -- same as Profile, UpdateAsync waits on the read and the write budget
 local UPDATE_BUDGET: { Types.BudgetType } = { "standardRead", "standardWrite" }
+
+-- The stores on each server by name and scope, see ProfileStore._siblings. Weak all the way, so a
+-- dropped mock server or store takes its entry with it
+local siblings: { [any]: { [string]: { [string]: { [any]: boolean } } } } = setmetatable(
+	{},
+	{ __mode = "k" }
+) :: any
 
 local RETRY_BASE = 1
 local RETRY_MAX = 5
@@ -363,6 +374,8 @@ function ProfileStore.new(options: Options): ProfileStore
 		_config = config,
 		_open = {},
 		_loading = {},
+		_mail = {},
+		_mailHeard = {},
 		_owners = {},
 		_handoff = Handoff.new(services, options.name, options.handoff ~= false, report),
 		_pendingRollbacks = {},
@@ -377,6 +390,10 @@ function ProfileStore.new(options: Options): ProfileStore
 	store._handoff:onRequest(function(key: string, _from: string, session: string?)
 		store:_releaseRequested(key, session)
 	end)
+	store._handoff:on("mail", function(message: Handoff.Message)
+		store:_mailArrived(message.key, nil)
+	end)
+	store:_joinSiblings()
 	store._handoff:on("rollback", function(message: Handoff.Message)
 		store:_rollbackRequested(message)
 	end)
@@ -435,6 +452,19 @@ end
 local function loadFailure(kind: LoadErrorKind, message: string): LoadResult
 	return { ok = false, error = { kind = kind, message = message } }
 end
+
+-- Mail delivery for a profile open here. Pings and sends on this server all go through it, so
+-- one read of the mailbox runs at a time
+type MailState = {
+	-- a read of the mailbox is under way
+	busy: boolean,
+	-- more mail was heard of during that read, so read once more after it
+	again: boolean,
+	-- why messages failed, by seq, until a trim archives them
+	failures: { [number]: string },
+	-- the mailbox holds nothing at or before this cursor any more
+	trimmed: number,
+}
 
 type Attempt = {
 	outcome: "acquired" | "held" | "corrupt",
@@ -598,6 +628,7 @@ function ProfileStore.load(self: ProfileStore, key: string, options: LoadOptions
 	self._loading[key] = true
 	local result = self:_load(key, options)
 	self._loading[key] = nil
+	self._mailHeard[key] = nil
 	return result
 end
 
@@ -755,6 +786,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 			if (self._open[key] :: unknown) == closed then
 				self._open[key] = nil
 				self._owners[key] = nil
+				self._mail[key] = nil
 			end
 		end,
 	})
@@ -800,10 +832,32 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	if pruneVerdict then
 		self:_pruneOnLoad(key, document, pruneVerdict, userIds)
 	end
+	local mailState: MailState? = nil
+	if self._mailbox then
+		local state: MailState =
+			{ busy = false, again = false, failures = {}, trimmed = profile:mailboxCursor() }
+		mailState = state
+		profile.saved:connect(function()
+			self:_trimMailbox(key, profile, state)
+		end)
+	end
 	if mailRead then
-		self:_deliverMail(key, profile, mailRead:await() :: Types.Result<Types.Read>)
+		self:_deliverMail(
+			key,
+			profile,
+			mailRead:await() :: Types.Result<Types.Read>,
+			mailState :: MailState
+		)
 	end
 	self._open[key] = profile
+	if mailState then
+		self._mail[key] = mailState
+	end
+	if self._mailHeard[key] then
+		-- mail landed after this load read the mailbox, look again now it's open
+		self._mailHeard[key] = nil
+		self:_mailArrived(key, nil)
+	end
 	if userId then
 		self._owners[key] = userId
 	end
@@ -1033,7 +1087,8 @@ function ProfileStore._deliverMail(
 	self: ProfileStore,
 	key: string,
 	profile: Profile.Profile,
-	read: Types.Result<Types.Read>
+	read: Types.Result<Types.Read>,
+	state: MailState
 )
 	local savedCursor = profile:mailboxCursor()
 	if not read.ok then
@@ -1048,17 +1103,8 @@ function ProfileStore._deliverMail(
 		return
 	end
 
-	local failures: { [number]: string } = {}
-	for _, message in Mailbox.pending(box, savedCursor) do
-		local result = profile:transact(function(tx)
-			Mailbox.apply(tx, message)
-		end, { source = "mailbox", note = `mail {message.seq}` })
-		if not result.ok then
-			failures[message.seq] = result.error.message
-			self._report(`mail {message.seq} for {key} couldn't be applied: {result.error.message}`)
-		end
-		profile:_advanceMailbox(message.seq)
-	end
+	self:_applyMail(key, profile, Mailbox.pending(box, savedCursor), state)
+	local failures = state.failures
 
 	local alreadyApplied = #box.items - #Mailbox.pending(box, savedCursor)
 	if next(failures) == nil and alreadyApplied == 0 then
@@ -1081,13 +1127,190 @@ function ProfileStore._deliverMail(
 	})
 end
 
+-- Applies messages past the profile's cursor in order, one mailbox transaction each. Only one
+-- read runs per profile at a time, and each message is still checked against the cursor right
+-- before it applies, so whichever path brought it, it applies once. A profile that is no longer
+-- active keeps the rest for its next load
+function ProfileStore._applyMail(
+	self: ProfileStore,
+	key: string,
+	profile: Profile.Profile,
+	messages: { Mailbox.Message },
+	state: MailState
+)
+	for _, message in messages do
+		if message.seq <= profile:mailboxCursor() then
+			continue
+		end
+		if profile:state() ~= "active" then
+			return
+		end
+		local result = profile:transact(function(tx)
+			Mailbox.apply(tx, message)
+		end, { source = "mailbox", note = `mail {message.seq}` })
+		if not result.ok then
+			if result.error.kind == "readOnly" then
+				return
+			end
+			state.failures[message.seq] = result.error.message
+			self._report(`mail {message.seq} for {key} couldn't be applied: {result.error.message}`)
+		end
+		profile:_advanceMailbox(message.seq)
+	end
+end
+
+-- New mail for `key` was sent from this server or heard of in a ping. `message` is set when this
+-- server sent it. A profile open here takes it now: as it is when it's the next one in line,
+-- from a read of the mailbox otherwise. A ping is only a hint, the mailbox is what applies
+function ProfileStore._mailArrived(self: ProfileStore, key: string, message: Mailbox.Message?)
+	local profile = self._open[key]
+	if not profile then
+		if self._loading[key] then
+			-- the load may have read the mailbox before this mail landed
+			self._mailHeard[key] = true
+		end
+		return
+	end
+	local state = self._mail[key]
+	if state == nil then
+		return
+	end
+	if state.busy then
+		state.again = true
+		return
+	end
+	if message and message.seq == profile:mailboxCursor() + 1 then
+		self:_applyMail(key, profile, { message }, state)
+		return
+	end
+	state.busy = true
+	self._services.clock:spawn(function()
+		repeat
+			state.again = false
+			local read = self._scheduler:submit({
+				priority = "background",
+				budget = "standardRead",
+				key = self:_mailboxKey(key),
+				run = function()
+					-- past the cache, which may still hold the box from before this mail
+					return self._mailboxStore:get(key, { useCache = false })
+				end,
+			})
+			if (self._open[key] :: any) ~= profile then
+				break
+			end
+			if not read.ok then
+				self._report(
+					`couldn't read the mailbox of {key} for new mail, it will be delivered on a later load: {read.error.message}`
+				)
+				break
+			end
+			local box = Mailbox.read(read.value.value)
+			if box == nil then
+				self._report(`the mailbox of {key} is malformed and was left untouched`)
+				break
+			end
+			self:_applyMail(key, profile, Mailbox.pending(box, profile:mailboxCursor()), state)
+		until not state.again
+		state.busy = false
+	end)
+end
+
+-- After a save lands, drops the mail it saved as applied and archives the failures among it.
+-- Only a saved cursor may trim: mail applied in memory still has to apply again if this server
+-- dies before saving
+function ProfileStore._trimMailbox(
+	self: ProfileStore,
+	key: string,
+	profile: Profile.Profile,
+	state: MailState
+)
+	local saved = profile:_savedMailbox()
+	if saved <= state.trimmed then
+		return
+	end
+	local before = state.trimmed
+	state.trimmed = saved
+	local trimming: { [number]: string } = {}
+	for seq, reason in state.failures do
+		if seq <= saved then
+			trimming[seq] = reason
+			state.failures[seq] = nil
+		end
+	end
+	self._services.clock:spawn(function()
+		local result = self._scheduler:submit({
+			priority = "background",
+			budget = UPDATE_BUDGET,
+			key = self:_mailboxKey(key),
+			write = true,
+			run = function()
+				return self._mailboxStore:update(key, function(current: unknown)
+					local latest = Mailbox.read(current)
+					if latest == nil then
+						return nil
+					end
+					return Mailbox.prune(latest, saved, trimming)
+				end)
+			end,
+		})
+		if not result.ok then
+			-- the next save tries again. Load trims what's left in any case
+			state.trimmed = math.min(state.trimmed, before)
+			for seq, reason in trimming do
+				state.failures[seq] = reason
+			end
+		end
+	end)
+end
+
+-- Every store on this server with the same DataStore name and scope, this one included. Mail
+-- sent through one of them reaches a profile another has open
+function ProfileStore._siblings(self: ProfileStore): { any }
+	local list = {}
+	local byScope = (siblings[self._services] or {})[self.name]
+	for store in (byScope and byScope[self.scope]) or {} do
+		table.insert(list, store)
+	end
+	return list
+end
+
+function ProfileStore._joinSiblings(self: ProfileStore)
+	local byName = siblings[self._services]
+	if byName == nil then
+		byName = {}
+		siblings[self._services] = byName
+	end
+	local byScope = byName[self.name]
+	if byScope == nil then
+		byScope = {}
+		byName[self.name] = byScope
+	end
+	local set = byScope[self.scope]
+	if set == nil then
+		set = setmetatable({}, { __mode = "k" }) :: any
+		byScope[self.scope] = set
+	end
+	set[self] = true
+end
+
+function ProfileStore._leaveSiblings(self: ProfileStore)
+	local byScope = (siblings[self._services] or {})[self.name]
+	local set = byScope and byScope[self.scope]
+	if set then
+		set[self] = nil
+	end
+end
+
 function ProfileStore._mailboxKey(self: ProfileStore, key: string): string
 	return `dataStore/{self.name}_mailbox/{self.scope}/{key}`
 end
 
 --[=[
-	Queues an op for a profile, wherever its player is. It's applied as a mailbox transaction the
-	next time the profile loads. Only stores made with `mailbox = true` take mail. Yields
+	Queues an op for a profile, wherever its player is, and applies it as a mailbox transaction
+	exactly once. A profile open on this server takes it before `mail` returns, one open on
+	another server within moments when handoff is on there, and otherwise it applies on the next
+	load. Only stores made with `mailbox = true` take mail. Yields
 
 	@param key string
 	@param op string -- a built-in op other than update, or a custom op this store enables
@@ -1132,6 +1355,7 @@ function ProfileStore.mail(
 
 	local id = self._services.guid()
 	local seq = 0
+	local sentAt = 0
 	local duplicate = false
 	local result = self._scheduler:submit({
 		priority = "save",
@@ -1152,7 +1376,8 @@ function ProfileStore.mail(
 					return nil
 				end
 				seq = box.nextSeq
-				return Mailbox.push(box, op, list, self._services.clock:now(), id)
+				sentAt = self._services.clock:now()
+				return Mailbox.push(box, op, list, sentAt, id)
 			end)
 		end,
 	})
@@ -1164,6 +1389,20 @@ function ProfileStore.mail(
 			ok = false,
 			error = { kind = "invalidValue", message = `the mailbox of {key} is malformed` },
 		}
+	end
+
+	-- A profile open on this server takes the mail now. Otherwise any server holding it hears
+	-- of it, and a lost ping only means the mail waits for the next load
+	local message: Mailbox.Message = { seq = seq, id = id, op = op, args = list, sentAt = sentAt }
+	local here = false
+	for _, store in self:_siblings() do
+		if store._open[key] or store._loading[key] then
+			here = true
+			store:_mailArrived(key, message)
+		end
+	end
+	if not here then
+		self._handoff:send("mail", key, { seq = seq })
 	end
 	return { ok = true, value = seq }
 end
@@ -2271,6 +2510,7 @@ end
 ]=]
 function ProfileStore.destroy(self: ProfileStore): number
 	self._destroyed = true
+	self:_leaveSiblings()
 	local finished = self:releaseAll("destroy")
 	self._handoff:stop()
 	return finished

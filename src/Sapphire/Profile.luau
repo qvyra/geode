@@ -89,6 +89,8 @@ type Fields = {
 	_savedRevision: number,
 	_receipts: { string },
 	_mailboxCursor: number,
+	-- the cursor the last save that landed wrote, so the store knows what mail it may trim
+	_savedMailboxCursor: number,
 	-- bumped on receipt or mailbox cursor changes so isSaved sees unsaved metadata
 	_metaVersion: number,
 	_savedMetaVersion: number,
@@ -126,6 +128,7 @@ function Profile.new(document: Document.Document, backend: Backend): Profile
 		_savedRevision = document:revision(),
 		_receipts = table.clone(backend.receipts),
 		_mailboxCursor = backend.mailboxCursor,
+		_savedMailboxCursor = backend.mailboxCursor,
 		_metaVersion = 0,
 		_savedMetaVersion = 0,
 		_lastSize = nil,
@@ -346,6 +349,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 	local lostReason: string? = nil
 	local savedRevision: number? = nil
 	local savedMetaVersion: number? = nil
+	local savedCursor: number? = nil
 	local oversize: number? = nil
 
 	local result = backend.scheduler:submit({
@@ -356,7 +360,8 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 		size = self._lastSize,
 		run = function()
 			return backend.dataStore:update(backend.key, function(current: unknown)
-				lostReason, savedRevision, savedMetaVersion, oversize = nil, nil, nil, nil
+				lostReason, savedRevision, savedMetaVersion, savedCursor, oversize =
+					nil, nil, nil, nil, nil
 				if not Record.isRecord(current) then
 					lostReason = "the stored record is missing or corrupt"
 					return nil
@@ -402,6 +407,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 					record = candidate
 					savedRevision = revision
 					savedMetaVersion = metaVersion
+					savedCursor = candidate.meta.mailboxCursor
 					if report.level == "soft" then
 						backend.report(
 							`profile {backend.key} is {report.size} bytes, close to the size limit`
@@ -432,6 +438,9 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 	if lostReason then
 		self:_lose(lostReason)
 		return failure("lost", lostReason)
+	end
+	if savedCursor then
+		self._savedMailboxCursor = math.max(self._savedMailboxCursor, savedCursor)
 	end
 	if savedRevision then
 		self._savedRevision = math.max(self._savedRevision, savedRevision)
@@ -511,6 +520,11 @@ end
 ]=]
 function Profile.mailboxCursor(self: Profile): number
 	return self._mailboxCursor
+end
+
+-- The cursor the last save that landed wrote. Mail at or before it is applied for good
+function Profile._savedMailbox(self: Profile): number
+	return self._savedMailboxCursor
 end
 
 function Profile._advanceMailbox(self: Profile, seq: number)
