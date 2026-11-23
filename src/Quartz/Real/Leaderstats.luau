@@ -24,11 +24,13 @@ function RealLeaderstats.new(): Types.Leaderstats
 			local values: { [string]: Instance } = {}
 			local mine: { Instance } = {}
 			local skipped: { Types.LeaderstatSkip } = {}
+			local adopted: { string } = {}
 			for _, stat in stats do
 				local existing = if made then nil else folder:FindFirstChild(stat.name)
 				if existing and existing.ClassName == stat.kind then
 					-- the game's own value, written to but never destroyed
 					values[stat.name] = existing
+					table.insert(adopted, stat.name)
 				elseif existing then
 					table.insert(
 						skipped,
@@ -48,6 +50,7 @@ function RealLeaderstats.new(): Types.Leaderstats
 			folder.Parent = owner
 			return {
 				skipped = skipped,
+				adopted = adopted,
 				set = function(
 					_values: Types.LeaderstatValues,
 					name: string,

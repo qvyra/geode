@@ -57,6 +57,7 @@ function MockLeaderstats.attach(
 	local writes: { MockValue } = {}
 	local mine: { MockValue } = {}
 	local skipped: { Types.LeaderstatSkip } = {}
+	local adopted: { string } = {}
 	for _, stat in stats do
 		local existing: MockValue? = nil
 		for _, entry in held.values do
@@ -67,6 +68,7 @@ function MockLeaderstats.attach(
 		end
 		if existing and existing.kind == stat.kind then
 			table.insert(writes, existing)
+			table.insert(adopted, stat.name)
 		elseif existing then
 			local found: string = existing.kind
 			table.insert(skipped, { name = stat.name, kind = stat.kind, found = found })
@@ -80,6 +82,7 @@ function MockLeaderstats.attach(
 	end
 	return {
 		skipped = skipped,
+		adopted = adopted,
 		set = function(_values: Types.LeaderstatValues, name: string, value: number | string)
 			for _, entry in writes do
 				if entry.name == name then

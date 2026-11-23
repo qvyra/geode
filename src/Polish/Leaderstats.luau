@@ -155,6 +155,7 @@ function Leaderstats.attach(
 		{}
 	-- a name the game's own folder already uses is reported once, not once per player
 	local clashReported: { [string]: boolean } = {}
+	local adoptReported: { [string]: boolean } = {}
 
 	loaded:connect(function(player: any, profile: any)
 		-- a profile that's already on its way out gets none
@@ -170,6 +171,15 @@ function Leaderstats.attach(
 				clashReported[skip.name] = true
 				report(
 					`leaderstat {skip.name} isn't shown: the leaderstats folder already holds a {skip.found} named {skip.name}, and this stat needs a {skip.kind}. The game's value is left alone`
+				)
+			end
+		end
+		local adopted: { string } = values.adopted or {}
+		for _, name in adopted do
+			if not adoptReported[name] then
+				adoptReported[name] = true
+				report(
+					`leaderstat {name} uses the value of that name the game already made in leaderstats. Geode writes it on every change to the data, and changes the game makes to it are never saved and are overwritten on the next one`
 				)
 			end
 		end
