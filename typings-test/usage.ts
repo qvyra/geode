@@ -160,6 +160,18 @@ universe.clock.run(() => {
 		print(finished);
 	}
 });
+const pruneOptions: Geode.PruneOptions = { version: 2, keep: ["legacy", ["settings", "theme"]] };
+Geode.players({ name: "Pruned", template: { coins: 0 }, prune: pruneOptions });
+Geode.Profile.store({
+	name: "DryRun",
+	template: { coins: 0 },
+	prune: { version: 1, dryRun: true },
+});
+Geode.Vein.subscribe((message) => {
+	if (message.type === "pruned") {
+		print(message.key, message.paths, message.dryRun);
+	}
+});
 const fresh = server.dataStore("Mail").get("player_1", { useCache: false });
 if (fresh.ok) {
 	print(fresh.value.value, fresh.value.info?.version);
