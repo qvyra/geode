@@ -149,6 +149,9 @@ local function declared(template: unknown, path: Path.Path, into: { string })
 end
 
 -- 32-bit FNV-1a. The multiply by 16777619 is split into 2^24 + 403 so it stays exact in doubles
+-- The shape left when two templates wrote the same version. Shapes are eight hex digits
+local CLASH = "clash"
+
 local function hash(text: string): string
 	local value = 2166136261
 	for index = 1, #text do
@@ -225,11 +228,23 @@ function Prune.verdict(meta: Record.Meta, mark: Mark): Verdict
 	return "prune"
 end
 
--- Leaves `mark` in `meta`, unless a server with a higher version wrote it. That one's mark stays,
--- so servers behind it keep leaving the record alone
+-- Leaves `mark` in `meta`. It's called on every write with the stored meta, so a version only
+-- ever goes up: a server behind the one that wrote it leaves its mark alone and keeps holding
+-- back. A version written by hand is left alone too, as the verdict leaves the record. Two
+-- templates under one version leave CLASH as the shape, which no template hashes to, so no
+-- server prunes at that version again. Otherwise each would see its own shape after its own
+-- write, and the next load on it would prune what the other template added
 function Prune.mark(meta: Record.Meta, mark: Mark)
 	local version: unknown = meta.templateVersion
-	if type(version) == "number" and version > mark.version then
+	if version ~= nil and (type(version) ~= "number" or version > mark.version) then
+		return
+	end
+	if
+		version == mark.version
+		and meta.templateShape ~= nil
+		and meta.templateShape ~= mark.shape
+	then
+		meta.templateShape = CLASH
 		return
 	end
 	meta.templateVersion = mark.version
