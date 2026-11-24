@@ -284,9 +284,13 @@ Geode.Vein.subscribe(function(message)
 end)
 ```
 
-## Mail for offline players
+## Mail
 
-`store:mail` queues an op for a profile wherever its player is. It applies, exactly once, the next time the profile loads.
+`store:mail` queues an op for a profile wherever its player is, and it applies exactly once, as a mailbox transaction:
+
+- When the profile is open on this server, in this store or another one with the same name, it applies before `mail` returns.
+- When it's open on another server, it applies there within moments. The mail is stored first, then a ping on the store's handoff topic tells the holder to read its mailbox. Both servers need `handoff`, which is on unless a store turns it off.
+- Otherwise, and whenever the ping is lost, it applies the next time the profile loads.
 
 Mail is off unless the store is made with `mailbox = true`, so a store that never gets mail never reads a mailbox. Set it everywhere the store is made, on the servers that send mail too: a store without it refuses to send. A store that has it reads the mailbox while it takes the lease, so the load doesn't wait for one more request.
 
@@ -298,6 +302,8 @@ local PlayerData = Geode.players({ name = "PlayerData", template = { coins = 0 }
 
 PlayerData.store:mail(PlayerData.store:keyForUser(1001), "increment", "coins", 50)
 ```
+
+The profile's mailbox cursor is what makes it exactly once. A message applies only past the cursor, and the cursor is saved in the same write as the data the message changed. A ping only says when to look: one that comes twice changes nothing, and mail that arrives while the profile is being released, or in the middle of a hop, applies once, on the server that loads it next. Mail applies in the order it was stored, so a holder that hears of new mail while earlier mail hasn't reached it reads the mailbox and applies both. Applied mail leaves the mailbox once a save has carried the cursor. Until then, a server that dies before saving leaves both the change and the cursor unsaved, and the next load applies the mail again.
 
 ## How sessions stay safe
 
