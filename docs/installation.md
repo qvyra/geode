@@ -10,7 +10,7 @@ Add Geode to the `[dependencies]` of your `wally.toml` and run `wally install`:
 
 ```toml
 [dependencies]
-Geode = "qvyra/geode@0.7.0"
+Geode = "qvyra/geode@0.8.0"
 ```
 
 Wally puts it in `Packages`. The examples in these docs expect that folder in ReplicatedStorage, so clients can reach it too:

@@ -1,4 +1,4 @@
 --!strict
 
 -- shared by Geode.version and the Studio bridge
-return "0.7.0"
+return "0.8.0"
