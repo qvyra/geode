@@ -189,6 +189,13 @@
 			"release": "v0.6.1",
 			"sourceTrees": ["1c0a3221774d8f93266705d413deee65c2cb0384"],
 			"note": "Same load, save, release and hop code as 0.6.0. 0.6.1 only adds checks on op names and descriptions."
+		},
+		{
+			"id": "0.8.0",
+			"line": "mailbox-opt-in",
+			"note": "Added by the import on the line of the build before it.",
+			"release": "v0.8.0",
+			"sourceTrees": ["c8d2a57fc479f0ae1d6a02fe7c17b088a87664bd"]
 		}
 	],
 	"subjects": [
