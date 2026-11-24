@@ -819,4 +819,4 @@ Rejected: replacing the game's value with one of the right class; adding Geode's
 
 Rejected: putting the op in the ping and applying it from there, which would make MessagingService, which can drop or repeat messages, part of exactly once; trimming as soon as mail applies, which loses it when the server dies before saving; a topic of its own for mail, which costs every store a second subscription; and polling the mailbox, as above.
 
-**PR:** #41
+**PR:** #42
