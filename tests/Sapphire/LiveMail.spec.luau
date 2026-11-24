@@ -3,7 +3,10 @@
 -- Mail to a profile open somewhere: the mailbox write comes first, then a ping on the handoff
 -- topic, and the holder applies it. The saved cursor makes it exactly once, pings are hints
 
+local Bus = require("../../src/Vein/Bus")
+local Facet = require("../../src/Facet")
 local Fixture = require("../Quartz/Contracts/Fixture")
+local Guards = require("../../src/Obsidian/Guards")
 local Helpers = require("./Helpers")
 local Mailbox = require("../../src/Sapphire/Mailbox")
 local Profile = require("../../src/Sapphire/Profile")
@@ -101,6 +104,104 @@ local function settled(universe: Universe.Universe, holder: Profile.Profile?): n
 	local coins = profile:get("coins") :: number
 	release(universe, profile)
 	return coins
+end
+
+-- What guards, reactions, commit telemetry and the audit log saw of two mails to p1, applied
+-- either as the profile loads or while it's open on another server
+local function delivered(live: boolean): { [string]: Any }
+	local universe = Universe.new({ messagingLatency = LATENCY })
+	local judged: { Any } = {}
+	local broken: { Any } = {}
+	local commits: { Any } = {}
+	local options: { [string]: Any } = {
+		mailbox = true,
+		handoff = true,
+		audit = true,
+		stealAfter = 15,
+		leaseTimeout = 120,
+		template = { coins = 0, log = {}, doubled = 0 },
+		guards = {
+			Guards.custom(function(_diff, _state, ctx): boolean
+				table.insert(judged, { source = ctx.source.kind, ops = table.clone(ctx.ops) })
+				return true
+			end),
+			Guards.range("coins", { max = 100 }, { action = "flag" }),
+			-- refuses every change it sees, and it sees none of mail's or what mail sets off
+			Guards.custom(function(diff): boolean
+				return #diff == 0
+			end, { skipSources = { "mailbox", "reaction" } } :: Any),
+		},
+		reactions = {
+			Facet.react({ "coins" }, function(tx)
+				tx:set("doubled", (tx:get("coins") :: number) * 2)
+			end, { writes = { "doubled" } }),
+		},
+	}
+	local holder = store(universe:server({ jobId = "A" }), options)
+	holder.guardBroken:connect(function(violation: Any)
+		table.insert(broken, {
+			guard = violation.guard,
+			kind = violation.kind,
+			path = violation.path,
+			action = violation.action,
+			source = violation.source.kind,
+			ops = violation.ops,
+			before = violation.before,
+			after = violation.after,
+		})
+	end)
+	local connection = Bus.subscribe(function(message: Any)
+		if message.type == "profileCommitted" then
+			table.insert(commits, {
+				source = message.source,
+				note = message.note,
+				ops = message.ops,
+				paths = message.paths,
+			})
+		end
+	end)
+	local sender = store(universe:server({ jobId = "B" }), options)
+	local profile: Profile.Profile
+	if live then
+		profile = load(universe, holder, "p1")
+	end
+	send(universe, sender, "increment", "coins", 500)
+	send(universe, sender, "append", "log", "hello")
+	if live then
+		universe.clock:advance(1)
+	else
+		profile = load(universe, holder, "p1")
+	end
+	universe.clock:run(function()
+		return profile:save()
+	end)
+	universe.clock:advance(1)
+	connection:disconnect()
+	local batches = unwrap(universe.clock:run(function()
+		return holder:auditLog("p1")
+	end))
+	local audit = {}
+	for _, batch in batches do
+		for _, entry in batch.entries do
+			table.insert(audit, {
+				source = entry.source,
+				note = entry.note,
+				ops = entry.ops,
+				paths = entry.paths,
+			})
+		end
+	end
+	return {
+		data = {
+			coins = profile:get("coins"),
+			doubled = profile:get("doubled"),
+			log = profile:get("log"),
+		},
+		judged = judged,
+		broken = broken,
+		commits = commits,
+		audit = audit,
+	}
 end
 
 return function(spec: Spec.Api)
@@ -311,6 +412,29 @@ return function(spec: Spec.Api)
 			expect(#box.failed).toBe(1)
 			expect(box.failed[1].seq).toBe(1)
 		end)
+	end)
+
+	describe("mail applied while the profile is open", function()
+		it(
+			"goes through guards, reactions, telemetry and the audit log as it does at load",
+			function()
+				local atLoad = delivered(false)
+				local live = delivered(true)
+				expect(live).toEqual(atLoad)
+				expect(atLoad.data).toEqual({ coins = 500, doubled = 1000, log = { "hello" } })
+				expect(#atLoad.commits).toBe(2)
+				expect(atLoad.commits[1].source).toBe("mailbox")
+				expect(atLoad.commits[1].note).toBe("mail 1")
+				expect(atLoad.commits[2].note).toBe("mail 2")
+				expect(atLoad.audit).toEqual(atLoad.commits)
+				expect(#atLoad.broken).toBe(1)
+				expect(atLoad.broken[1].source).toBe("mailbox")
+				expect(atLoad.broken[1].action).toBe("flag")
+				for _, seen in atLoad.judged do
+					expect(seen.source).toBe("mailbox")
+				end
+			end
+		)
 	end)
 
 	describe("mail to a profile open on the same server", function()
