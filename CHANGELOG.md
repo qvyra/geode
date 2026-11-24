@@ -14,7 +14,8 @@ Mail reaches a profile that is already open, here or on another server, and stil
 - Exactly once still comes from the saved mailbox cursor. A ping is only a hint: one that's lost leaves the mail for the next load, one that comes twice changes nothing, and mail that arrives during a release or a hop applies once, on the server that loads the profile next. Mail applies in the order it was stored
 - Applied mail leaves the mailbox once a save has carried the cursor, instead of on the next load. A server that dies before saving leaves it for the next load to apply again
 - Mail to a profile that isn't open on the sending server costs one MessagingService publish. A store with `handoff = false` sends and hears no pings, and its mail waits for loads as before
-- Docs: how mail reaches a loaded profile, and the ProfileStore and comparison tables to match
+- Mail that applies in the middle of a session is the same `mailbox` transaction as mail applied on load, with the note `mail <seq>`: guards, reactions, commit telemetry and the audit log see it the same way
+- Docs: how mail reaches a loaded profile, what it goes through, why lost pings wait for the next load, and the ProfileStore and comparison tables to match
 
 ## [0.7.0] - 2026-11-23
 
