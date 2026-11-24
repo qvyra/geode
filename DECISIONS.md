@@ -799,3 +799,23 @@ Rejected: keeping the first shape, which lets the old servers go on pruning keys
 Rejected: replacing the game's value with one of the right class; adding Geode's value under the same name next to it, which the player list would show twice; and skipping a value of the same class too, which leaves the stat showing a number nothing updates.
 
 **PR:** #41
+
+## 62. Mail reaches a profile that is open
+
+**Date:** 2026-11-24
+
+`store:mail` waited for the profile's next load, so mail to a player in the middle of a session sat in the mailbox until they left. Now it reaches a loaded profile.
+
+- **The mailbox write first, then a hint.** `mail` stores the message as before. Then a store on this server that has the profile open takes it, any store object with the same name and scope included. Otherwise a `mail` message goes out on the store's handoff topic, the one hops already use. A failed write sends nothing and `mail` fails as before. Mail to a profile that isn't open here costs one publish, whether or not another server holds it.
+- **The holder reads the mailbox, it doesn't trust the ping.** The ping carries the key and the seq. The holder reads the mailbox past the DataStore cache, which could still hold the box from before the mail, and applies everything past its cursor, in order. One read per profile runs at a time, and mail heard of during it gets one more read after it. A ping for a key still loading is remembered and read once the load is done, since the load's own mailbox read may have come before the mail.
+- **Exactly once still comes from the saved cursor**, `meta.mailboxCursor`, written in the same UpdateAsync as the data the mail changed. The request asked for exactly once from stored ids: the message ids already keep a send whose first try landed from being queued twice, and the seq against the saved cursor is what decides whether a message applied, so no list of applied ids was added to the record. Every apply also checks the cursor right before it runs, so a repeated ping or a race with the load's own delivery can't apply a message twice.
+- **Trimming waits for a save.** Applied mail leaves the mailbox only after a save that carried the cursor lands, never when it's applied. A server that dies in between leaves a cursor that never moved, and the next load applies the mail again onto data that never had it. Failed messages are archived in the same trim.
+- **Same server, no ping.** The next message in line, the cursor plus one, applies directly before `mail` returns. A gap, like earlier mail whose ping was lost, means a read first, so the order holds.
+- **Profiles on their way out.** A profile that isn't active, because it's being released, was released or lost its session, applies nothing more and leaves the rest for its next load. A message a read only profile refused doesn't count as failed.
+- **A lost ping costs time, not mail.** The mail applies on the next load. A holder doesn't read its mailbox on a timer, which would cost a GetAsync per profile per interval in every store with `mailbox = true`. Flagged for review in case a game wants that as an option.
+- **The hop path doesn't change.** A load reads the mailbox as before. The one addition is the read after a load that heard a ping while it loaded, and it runs after the load is done. A store with `handoff = false` neither sends nor hears pings, so its mail waits for loads as before.
+- No bridge, record or meta changes, and `meta.format` stays `1`.
+
+Rejected: putting the op in the ping and applying it from there, which would make MessagingService, which can drop or repeat messages, part of exactly once; trimming as soon as mail applies, which loses it when the server dies before saving; a topic of its own for mail, which costs every store a second subscription; and polling the mailbox, as above.
+
+**PR:** #41
