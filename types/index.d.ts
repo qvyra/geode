@@ -992,7 +992,9 @@ declare namespace Geode {
 		destroy(): number;
 		keyForUser(userId: number): string;
 		/**
-		 * Queues an op for the profile's next load. Fails with `invalidValue` unless the store was
+		 * Queues an op for the profile and applies it exactly once: before this returns when the
+		 * profile is open on this server, within moments when it's open on another server with
+		 * handoff on, otherwise on its next load. Fails with `invalidValue` unless the store was
 		 * made with `mailbox = true`, and when the op can't be mailed or its arguments can't be
 		 * stored. The value is the mail's sequence number
 		 */
