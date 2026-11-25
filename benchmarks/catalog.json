@@ -193,7 +193,7 @@
 		{
 			"id": "0.6.2",
 			"line": "mailbox-opt-in",
-			"note": "Added by the import on the line of the build before it.",
+			"note": "Loads, saves, releases and hops work as in 0.6.1, with the same requests in this run. 0.6.2 changes the kick message, an error message, the typings and the docs.",
 			"release": "v0.6.2",
 			"sourceTrees": ["01126d3aa44337c0d71067148742053004d92874"]
 		}
