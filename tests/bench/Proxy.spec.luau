@@ -1,7 +1,9 @@
 --!strict
 
+local Geode = require("../../src")
 local Proxy = require("./Proxy")
 local Spec = require("../_lib/Spec")
+local Universe = require("../../src/Quartz/Mock/Universe")
 
 -- Just enough of DataStoreService for the proxy: stores remember the name and scope they were
 -- opened with and answer from a table
@@ -159,6 +161,32 @@ return function(spec: Spec.Api)
 			store:GetAsync("a")
 			expect(#Proxy.since(proxy, 2, "a")).toBe(1)
 			expect(#Proxy.since(proxy, 0)).toBe(3)
+		end)
+
+		-- Geode 0.7.0 and 0.8.0 couldn't set up in the bench: their stores open `<name>_pruned`,
+		-- which the proxy refused
+		it("lets a Geode profile store open every DataStore it asks for", function()
+			local allowed = "GeodeStudioCheck_Bench_Geode"
+			local aliases = Proxy.geodeAliases(allowed)
+			for _, mailbox in { false, true } do
+				local server = Universe.new():server()
+				local opened: { string } = {}
+				local counted = table.clone(server)
+				counted.dataStore = function(name: string, scope: string?): any
+					table.insert(opened, name)
+					return server.dataStore(name, scope)
+				end
+				Geode.Profile.store({
+					name = allowed,
+					template = { coins = 0 },
+					services = counted :: any,
+					mailbox = mailbox,
+				})
+				expect(#opened > 0).toBe(true)
+				for _, name in opened do
+					expect(name == allowed or aliases[name] ~= nil).toBe(true)
+				end
+			end
 		end)
 	end)
 end

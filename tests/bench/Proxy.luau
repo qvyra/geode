@@ -162,6 +162,16 @@ function Proxy.new(options: Options): Proxy
 	return proxy
 end
 
+-- The DataStores a Geode profile store opens next to its own, each moved under a scope of the
+-- allowed name. A store opens them when it's made, before it knows whether it will use them: the
+-- prune archive only takes writes when `prune` is on, so the bench never writes to it
+function Proxy.geodeAliases(allowed: string): { [string]: Alias }
+	return {
+		[`{allowed}_mailbox`] = { scope = "mailbox" },
+		[`{allowed}_pruned`] = { scope = "pruned" },
+	}
+end
+
 -- ProfileStore and ProfileService take DataStoreService when they're first required. The runner
 -- points that line at `active`, and the bench sets the proxy before requiring them
 local active: Proxy? = nil
