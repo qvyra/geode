@@ -8,6 +8,7 @@ local RealBridge = require("./Bridge")
 local RealClock = require("./Clock")
 local RealDataStore = require("./DataStore")
 local RealHashMap = require("./HashMap")
+local RealLeaderstats = require("./Leaderstats")
 local RealMessaging = require("./Messaging")
 local RealOrderedDataStore = require("./OrderedDataStore")
 local RealQueue = require("./Queue")
@@ -184,6 +185,7 @@ function RealServices.fromRoblox(roblox: Roblox): Types.Services
 		messaging = asAdapter(RealMessaging.new(roblox.messagingService)),
 		teleport = asAdapter(RealTeleport.new(roblox.teleportService, roblox.api)),
 		bridge = RealBridge.new(roblox.serverStorage, roblox.runService),
+		leaderstats = RealLeaderstats.new(),
 		remote = function(name: string): Types.ServerRemote
 			return memo(`remote\0{name}`, function()
 				return RealRemotes.server(roblox.replicatedStorage, roblox.playersService, name)

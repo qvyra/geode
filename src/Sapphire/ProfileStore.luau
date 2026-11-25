@@ -14,7 +14,9 @@ local GuardEvent = require("../Vein/GuardEvent")
 local VeinBridge = require("../Vein/Bridge")
 local VeinRegistry = require("../Vein/Registry")
 local Mailbox = require("./Mailbox")
+local Path = require("../Matrix/Path")
 local Profile = require("./Profile")
+local Prune = require("./Prune")
 local Reconcile = require("./Reconcile")
 local Record = require("./Record")
 local Registry = require("./Registry")
@@ -24,15 +26,20 @@ local Schema = require("../Obsidian/Schema")
 local Signal = require("../Quartz/Signal")
 local Size = require("../Obsidian/Size")
 local Storable = require("../Obsidian/Storable")
+local Studio = require("../Quartz/Studio")
 local Transaction = require("../Matrix/Transaction")
+local Tree = require("../Matrix/Tree")
 local Types = require("../Quartz/Types")
-local Universe = require("../Quartz/Mock/Universe")
 local Validate = require("../Obsidian/Validate")
 
 export type StealPolicy = "steal" | "wait" | "fail"
 
 -- "mock" keeps Studio data in memory, "scope" uses a separate studio scope, "real" uses live data
-export type StudioMode = "mock" | "scope" | "real"
+-- and "auto" picks "scope" or "mock" by whether Studio has API access. See Quartz/Studio
+export type StudioMode = Studio.Mode
+
+-- See Options.prune and Sapphire/Prune
+export type PruneOptions = Prune.Options
 
 export type Options = {
 	name: string,
@@ -61,6 +68,10 @@ export type Options = {
 	stealAfter: number?,
 	stealPolicy: StealPolicy?,
 	onSessionLost: Profile.SessionLostPolicy?,
+	-- One system transaction just before the final save, on every release while the session is
+	-- still this server's. It must not yield. An error or a rejection is reported and the
+	-- release goes on
+	beforeRelease: Profile.BeforeRelease?,
 	studio: StudioMode?,
 	sizeBudget: Size.Budget?,
 	-- Seconds BindToClose waits for releases. Roblox allows about 30
@@ -78,6 +89,10 @@ export type Options = {
 	-- Keep a commit history in a `<name>_audit` DataStore: who changed which paths and why, one
 	-- key per save. Off by default
 	audit: boolean?,
+	-- Remove keys the template no longer has, on load, after reconciling. What goes is archived
+	-- in a `<name>_pruned` DataStore first. `version` goes up with every template change, so a
+	-- server never prunes a record a newer template wrote. Off by default
+	prune: PruneOptions?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -94,6 +109,7 @@ export type LoadErrorKind =
 	| "alreadyLoaded"
 	| "newerData"
 	| "migrationFailed"
+	| "destroyed"
 
 export type Inspection = {
 	data: unknown,
@@ -151,11 +167,21 @@ type Fields = {
 	_schema: Schema.Schema?,
 	_guards: { Guards.Guard },
 	_kickMessage: string?,
+	_beforeRelease: Profile.BeforeRelease?,
+	_prune: Prune.Config?,
+	_pruneMark: Prune.Mark?,
+	_prunedStore: Types.DataStore,
+	-- a template that changed under the same prune.version is reported once per store
+	_destroyed: boolean,
 	_facets: Facet.FacetSet,
 	_ops: { string }?,
 	_config: Config,
 	_open: { [string]: Profile.Profile },
 	_loading: { [string]: boolean },
+	-- mail delivery of each profile open here, in stores with a mailbox
+	_mail: { [string]: MailState },
+	-- keys that heard of new mail while they loaded, looked at again once the load is done
+	_mailHeard: { [string]: boolean },
 	-- player of each open profile, so we can kick them when another server asks for it
 	_owners: { [string]: number },
 	_handoff: Handoff.Handoff,
@@ -189,7 +215,6 @@ local DEFAULTS = {
 	stealAfter = 15,
 	stealPolicy = "steal" :: StealPolicy,
 	onSessionLost = "kick" :: Profile.SessionLostPolicy,
-	studio = "mock" :: StudioMode,
 	closeTimeout = 25,
 	loadTimeout = 30,
 	receiptHistory = 50,
@@ -200,6 +225,13 @@ local DEFAULTS = {
 
 -- same as Profile, UpdateAsync waits on the read and the write budget
 local UPDATE_BUDGET: { Types.BudgetType } = { "standardRead", "standardWrite" }
+
+-- The stores on each server by name and scope, see ProfileStore._siblings. Weak all the way, so a
+-- dropped mock server or store takes its entry with it
+local siblings: { [any]: { [string]: { [string]: { [any]: boolean } } } } = setmetatable(
+	{},
+	{ __mode = "k" }
+) :: any
 
 local RETRY_BASE = 1
 local RETRY_MAX = 5
@@ -213,31 +245,6 @@ local function copy(value: unknown): unknown
 		result[key] = copy(child)
 	end
 	return result
-end
-
-local function studioServices(
-	services: Types.Services,
-	mode: StudioMode,
-	scope: string?
-): (Types.Services, string)
-	local resolvedScope = scope or "global"
-	if not services.lifecycle:isStudio() or mode == "real" then
-		return services, resolvedScope
-	end
-	if mode == "scope" then
-		return services, `studio_{resolvedScope}`
-	end
-	-- in-memory universe running on the real clock
-	local universe = Universe.new({ clock = services.clock :: any })
-	local mock =
-		universe:server({ jobId = services.jobId, placeId = services.placeId, studio = true })
-	-- only the data lives in memory. Players, purchases and shutdown stay real
-	local mixed = table.clone(mock) :: Types.Services
-	mixed.players = services.players
-	mixed.marketplace = services.marketplace
-	mixed.lifecycle = services.lifecycle
-	mixed.bridge = services.bridge
-	return mixed, resolvedScope
 end
 
 --[=[
@@ -263,8 +270,12 @@ function ProfileStore.new(options: Options): ProfileStore
 	end
 
 	local givenServices = options.services or RealServices.live()
-	local services, scope =
-		studioServices(givenServices, options.studio or DEFAULTS.studio, options.scope)
+	Studio.check(options.studio)
+	Studio.checkScope(options.scope)
+	local mode: Studio.Mode = Studio.mode(options.studio)
+	local services: Types.Services, studio: Studio.Resolved =
+		Studio.resolve(givenServices, mode, report)
+	local scope = Studio.scope(options.scope, studio)
 
 	if options.schema then
 		local check = Validate.validate(options.schema, options.template, { root = "template" })
@@ -279,6 +290,11 @@ function ProfileStore.new(options: Options): ProfileStore
 		table.insert(guards, 1, Guards.schema(options.schema))
 	end
 	Guards.checkKickMessage(options.kickMessage)
+	assert(
+		options.beforeRelease == nil or type(options.beforeRelease) == "function",
+		"beforeRelease must be a function"
+	)
+	local prune = if options.prune then Prune.config(options.prune) else nil
 
 	local facets = Facet.set({
 		bundles = options.bundles,
@@ -300,8 +316,7 @@ function ProfileStore.new(options: Options): ProfileStore
 		loadTimeout = options.loadTimeout or DEFAULTS.loadTimeout,
 		schemaVersion = options.schemaVersion or 1,
 		receiptHistory = options.receiptHistory or DEFAULTS.receiptHistory,
-		liveFromStudio = (options.studio or DEFAULTS.studio) == "real"
-			and givenServices.lifecycle:isStudio(),
+		liveFromStudio = studio == "real" and givenServices.lifecycle:isStudio(),
 	}
 	assert(config.autosaveInterval > 0, "autosaveInterval must be positive")
 	assert(
@@ -346,11 +361,21 @@ function ProfileStore.new(options: Options): ProfileStore
 		_schema = options.schema,
 		_guards = guards,
 		_kickMessage = options.kickMessage,
+		_beforeRelease = options.beforeRelease,
+		_prune = prune,
+		_pruneMark = if prune
+			then { version = prune.version, shape = Prune.shape(options.template, prune.keep) }
+			else nil,
+		-- made for every store, so an erase also clears the archive of a store that once pruned
+		_prunedStore = services.dataStore(`{options.name}_pruned`, scope),
+		_destroyed = false,
 		_facets = facets,
 		_ops = options.ops,
 		_config = config,
 		_open = {},
 		_loading = {},
+		_mail = {},
+		_mailHeard = {},
 		_owners = {},
 		_handoff = Handoff.new(services, options.name, options.handoff ~= false, report),
 		_pendingRollbacks = {},
@@ -365,6 +390,10 @@ function ProfileStore.new(options: Options): ProfileStore
 	store._handoff:onRequest(function(key: string, _from: string, session: string?)
 		store:_releaseRequested(key, session)
 	end)
+	store._handoff:on("mail", function(message: Handoff.Message)
+		store:_mailArrived(message.key, nil)
+	end)
+	store:_joinSiblings()
 	store._handoff:on("rollback", function(message: Handoff.Message)
 		store:_rollbackRequested(message)
 	end)
@@ -387,7 +416,8 @@ function ProfileStore.new(options: Options): ProfileStore
 			return store:inspect(key)
 		end,
 		services = givenServices,
-		studio = (options.studio or DEFAULTS.studio) :: string,
+		-- the mode in use, so "auto" shows what it picked
+		studio = studio :: string,
 		ops = function(): unknown
 			return Tooling.ops(store._ops)
 		end,
@@ -406,7 +436,7 @@ function ProfileStore.new(options: Options): ProfileStore
 	})
 	VeinBridge.ensure(givenServices)
 	-- The registry holds stores loosely typed, see Registry.Erasable
-	Registry.add(store :: any, givenServices)
+	Registry.add(store :: any, givenServices, "profile")
 	if options.bindToClose ~= false then
 		services.lifecycle:bindToClose(function()
 			store:releaseAll()
@@ -423,11 +453,26 @@ local function loadFailure(kind: LoadErrorKind, message: string): LoadResult
 	return { ok = false, error = { kind = kind, message = message } }
 end
 
+-- Mail delivery for a profile open here. Pings and sends on this server all go through it, so
+-- one read of the mailbox runs at a time
+type MailState = {
+	-- a read of the mailbox is under way
+	busy: boolean,
+	-- more mail was heard of during that read, so read once more after it
+	again: boolean,
+	-- why messages failed, by seq, until a trim archives them
+	failures: { [number]: string },
+	-- the mailbox holds nothing at or before this cursor any more
+	trimmed: number,
+}
+
 type Attempt = {
 	outcome: "acquired" | "held" | "corrupt",
 	record: Record.Record?,
 	holder: Record.Lease?,
 	erasedAt: number?,
+	-- whether the record may be pruned, judged from its meta before this load marked it
+	prune: Prune.Verdict?,
 }
 
 -- One try at taking the lease. Free, stale and already held leases are taken. A live holder is
@@ -474,6 +519,15 @@ function ProfileStore._tryAcquire(
 				if state == "held" and not force then
 					attempt.holder = record.meta.lease
 					return nil
+				end
+				local mark = self._pruneMark
+				if mark then
+					attempt.prune = Prune.verdict(record.meta, mark)
+					-- Studio on live data never marks, or its template could stop live servers
+					-- from pruning
+					if not config.liveFromStudio then
+						Prune.mark(record.meta, mark)
+					end
 				end
 				record.meta.lease = {
 					jobId = owner.jobId,
@@ -565,12 +619,16 @@ end
 	@return LoadResult
 ]=]
 function ProfileStore.load(self: ProfileStore, key: string, options: LoadOptions?): LoadResult
+	if self._destroyed then
+		return loadFailure("destroyed", `the profile store {self.name} was destroyed`)
+	end
 	if self._open[key] or self._loading[key] then
 		return loadFailure("alreadyLoaded", `profile {key} is already loaded on this server`)
 	end
 	self._loading[key] = true
 	local result = self:_load(key, options)
 	self._loading[key] = nil
+	self._mailHeard[key] = nil
 	return result
 end
 
@@ -591,6 +649,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 	local tries = 0
 	local record: Record.Record
 	local erasedAt: number? = nil
+	local pruneVerdict: Prune.Verdict? = nil
 	local mailRead: Future.Future? = nil
 	-- set when a read past the cache found the lease still held, so the next turn skips the
 	-- UpdateAsync that would only find the same
@@ -631,6 +690,7 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		if attempt.outcome == "acquired" then
 			record = attempt.record :: Record.Record
 			erasedAt = attempt.erasedAt
+			pruneVerdict = attempt.prune
 			break
 		end
 
@@ -719,11 +779,14 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 		sizeBudget = config.sizeBudget,
 		autosaveInterval = config.autosaveInterval,
 		onSessionLost = config.onSessionLost,
+		beforeRelease = self._beforeRelease,
+		templateMark = if config.liveFromStudio then nil else self._pruneMark,
 		report = self._report,
 		onClosed = function(closed: unknown)
 			if (self._open[key] :: unknown) == closed then
 				self._open[key] = nil
 				self._owners[key] = nil
+				self._mail[key] = nil
 			end
 		end,
 	})
@@ -766,10 +829,35 @@ function ProfileStore._load(self: ProfileStore, key: string, options: LoadOption
 			self._handoff:announce(key, profile:revision(), owner.session)
 		end)
 	end)
+	if pruneVerdict then
+		self:_pruneOnLoad(key, document, pruneVerdict, userIds)
+	end
+	local mailState: MailState? = nil
+	if self._mailbox then
+		local state: MailState =
+			{ busy = false, again = false, failures = {}, trimmed = profile:mailboxCursor() }
+		mailState = state
+		profile.saved:connect(function()
+			self:_trimMailbox(key, profile, state)
+		end)
+	end
 	if mailRead then
-		self:_deliverMail(key, profile, mailRead:await() :: Types.Result<Types.Read>)
+		self:_deliverMail(
+			key,
+			profile,
+			mailRead:await() :: Types.Result<Types.Read>,
+			mailState :: MailState
+		)
 	end
 	self._open[key] = profile
+	if mailState then
+		self._mail[key] = mailState
+	end
+	if self._mailHeard[key] then
+		-- mail landed after this load read the mailbox, look again now it's open
+		self._mailHeard[key] = nil
+		self:_mailArrived(key, nil)
+	end
 	if userId then
 		self._owners[key] = userId
 	end
@@ -798,10 +886,12 @@ function ProfileStore._releaseRequested(self: ProfileStore, key: string, session
 	local services = self._services
 	local userId = self._owners[key]
 	services.clock:spawn(function()
+		-- the closing values first, while the player is still here, then the kick and the save
+		profile:_beforeRelease("handoff")
 		if userId and services.players:isPresent(userId) then
 			services.players:kick(userId, "Your data was opened on another server. Please rejoin.")
 		end
-		profile:release()
+		profile:release("handoff")
 	end)
 end
 
@@ -840,6 +930,112 @@ function ProfileStore._decodeStored(
 		data = decoded
 	end
 	return Reconcile.fill(data, self._template), nil, nil
+end
+
+-- Removes the keys the template dropped, see Options.prune. The archive write comes first, and
+-- when it fails nothing is removed
+function ProfileStore._pruneOnLoad(
+	self: ProfileStore,
+	key: string,
+	document: Document.Document,
+	verdict: Prune.Verdict,
+	userIds: { number }
+)
+	local prune = self._prune :: Prune.Config
+	if verdict == "newer" then
+		return
+	end
+	if verdict == "mismatch" then
+		-- every load it holds back, so a clash that lasts keeps showing up
+		local held = {}
+		for _, path in Prune.find(document:snapshot(), self._template, prune.keep) do
+			table.insert(held, Path.format(path))
+		end
+		local named = if #held > 0 then ` It kept {table.concat(held, ", ")}.` else ""
+		self._report(
+			`profile {key} was saved with another template under the same prune.version {prune.version}, so nothing was pruned from it.{named} `
+				.. "Nothing is pruned from it until a server with a higher prune.version saves it. Raise prune.version with every template change"
+		)
+		return
+	end
+	if document:isReadOnly() then
+		return
+	end
+	local found = Prune.find(document:snapshot(), self._template, prune.keep)
+	if #found == 0 then
+		return
+	end
+	-- Studio on live data only ever reports what would go
+	local dryRun = prune.dryRun or self._config.liveFromStudio
+	if not dryRun then
+		local snapshot = document:snapshot()
+		local stored = if self._schema then Validate.encode(self._schema, snapshot) else snapshot
+		local values = {}
+		for _, path in found do
+			table.insert(values, { path = path, value = Tree.get(stored, path) })
+		end
+		local archived = self:_archivePruned(key, values, userIds)
+		if not archived.ok then
+			self._report(
+				`couldn't archive the keys prune would remove from profile {key}, so nothing was removed: {archived.error.message}`
+			)
+			return
+		end
+		local removed = document:transact(function(tx)
+			for _, path in found do
+				tx:remove(path)
+			end
+		end, { source = "system", note = "prune" })
+		if not removed.ok then
+			self._report(
+				`prune didn't remove the keys the template dropped from profile {key}: {removed.error.message}`
+			)
+			return
+		end
+	end
+	local paths = {}
+	for _, path in found do
+		table.insert(paths, Path.format(path))
+	end
+	Bus.publish("pruned", {
+		store = self.name,
+		key = key,
+		paths = paths,
+		version = prune.version,
+		dryRun = dryRun,
+	}, self._services.clock:now())
+end
+
+-- Adds one entry to the profile's prune archive: when, under which version, and each removed
+-- path with its stored value
+function ProfileStore._archivePruned(
+	self: ProfileStore,
+	key: string,
+	values: { { path: Path.Path, value: unknown } },
+	userIds: { number }
+): Types.Result<unknown>
+	local now = self._services.clock:now()
+	local version = (self._prune :: Prune.Config).version
+	return self._scheduler:submit({
+		priority = "load",
+		budget = UPDATE_BUDGET,
+		key = self:_prunedKey(key),
+		write = true,
+		run = function()
+			return self._prunedStore:update(key, function(current: unknown)
+				local entries = {}
+				if type(current) == "table" and type((current :: any).entries) == "table" then
+					entries = copy((current :: any).entries) :: { unknown }
+				end
+				table.insert(entries, { at = now, version = version, values = values })
+				return { entries = entries }, { userIds = userIds }
+			end)
+		end,
+	})
+end
+
+function ProfileStore._prunedKey(self: ProfileStore, key: string): string
+	return `dataStore/{self.name}_pruned/{self.scope}/{key}`
 end
 
 -- Runs each migration from the stored version up, each as its own migration transaction on the
@@ -891,7 +1087,8 @@ function ProfileStore._deliverMail(
 	self: ProfileStore,
 	key: string,
 	profile: Profile.Profile,
-	read: Types.Result<Types.Read>
+	read: Types.Result<Types.Read>,
+	state: MailState
 )
 	local savedCursor = profile:mailboxCursor()
 	if not read.ok then
@@ -906,17 +1103,8 @@ function ProfileStore._deliverMail(
 		return
 	end
 
-	local failures: { [number]: string } = {}
-	for _, message in Mailbox.pending(box, savedCursor) do
-		local result = profile:transact(function(tx)
-			Mailbox.apply(tx, message)
-		end, { source = "mailbox", note = `mail {message.seq}` })
-		if not result.ok then
-			failures[message.seq] = result.error.message
-			self._report(`mail {message.seq} for {key} couldn't be applied: {result.error.message}`)
-		end
-		profile:_advanceMailbox(message.seq)
-	end
+	self:_applyMail(key, profile, Mailbox.pending(box, savedCursor), state)
+	local failures = state.failures
 
 	local alreadyApplied = #box.items - #Mailbox.pending(box, savedCursor)
 	if next(failures) == nil and alreadyApplied == 0 then
@@ -939,13 +1127,190 @@ function ProfileStore._deliverMail(
 	})
 end
 
+-- Applies messages past the profile's cursor in order, one mailbox transaction each. Only one
+-- read runs per profile at a time, and each message is still checked against the cursor right
+-- before it applies, so whichever path brought it, it applies once. A profile that is no longer
+-- active keeps the rest for its next load
+function ProfileStore._applyMail(
+	self: ProfileStore,
+	key: string,
+	profile: Profile.Profile,
+	messages: { Mailbox.Message },
+	state: MailState
+)
+	for _, message in messages do
+		if message.seq <= profile:mailboxCursor() then
+			continue
+		end
+		if profile:state() ~= "active" then
+			return
+		end
+		local result = profile:transact(function(tx)
+			Mailbox.apply(tx, message)
+		end, { source = "mailbox", note = `mail {message.seq}` })
+		if not result.ok then
+			if result.error.kind == "readOnly" then
+				return
+			end
+			state.failures[message.seq] = result.error.message
+			self._report(`mail {message.seq} for {key} couldn't be applied: {result.error.message}`)
+		end
+		profile:_advanceMailbox(message.seq)
+	end
+end
+
+-- New mail for `key` was sent from this server or heard of in a ping. `message` is set when this
+-- server sent it. A profile open here takes it now: as it is when it's the next one in line,
+-- from a read of the mailbox otherwise. A ping is only a hint, the mailbox is what applies
+function ProfileStore._mailArrived(self: ProfileStore, key: string, message: Mailbox.Message?)
+	local profile = self._open[key]
+	if not profile then
+		if self._loading[key] then
+			-- the load may have read the mailbox before this mail landed
+			self._mailHeard[key] = true
+		end
+		return
+	end
+	local state = self._mail[key]
+	if state == nil then
+		return
+	end
+	if state.busy then
+		state.again = true
+		return
+	end
+	if message and message.seq == profile:mailboxCursor() + 1 then
+		self:_applyMail(key, profile, { message }, state)
+		return
+	end
+	state.busy = true
+	self._services.clock:spawn(function()
+		repeat
+			state.again = false
+			local read = self._scheduler:submit({
+				priority = "background",
+				budget = "standardRead",
+				key = self:_mailboxKey(key),
+				run = function()
+					-- past the cache, which may still hold the box from before this mail
+					return self._mailboxStore:get(key, { useCache = false })
+				end,
+			})
+			if (self._open[key] :: any) ~= profile then
+				break
+			end
+			if not read.ok then
+				self._report(
+					`couldn't read the mailbox of {key} for new mail, it will be delivered on a later load: {read.error.message}`
+				)
+				break
+			end
+			local box = Mailbox.read(read.value.value)
+			if box == nil then
+				self._report(`the mailbox of {key} is malformed and was left untouched`)
+				break
+			end
+			self:_applyMail(key, profile, Mailbox.pending(box, profile:mailboxCursor()), state)
+		until not state.again
+		state.busy = false
+	end)
+end
+
+-- After a save lands, drops the mail it saved as applied and archives the failures among it.
+-- Only a saved cursor may trim: mail applied in memory still has to apply again if this server
+-- dies before saving
+function ProfileStore._trimMailbox(
+	self: ProfileStore,
+	key: string,
+	profile: Profile.Profile,
+	state: MailState
+)
+	local saved = profile:_savedMailbox()
+	if saved <= state.trimmed then
+		return
+	end
+	local before = state.trimmed
+	state.trimmed = saved
+	local trimming: { [number]: string } = {}
+	for seq, reason in state.failures do
+		if seq <= saved then
+			trimming[seq] = reason
+			state.failures[seq] = nil
+		end
+	end
+	self._services.clock:spawn(function()
+		local result = self._scheduler:submit({
+			priority = "background",
+			budget = UPDATE_BUDGET,
+			key = self:_mailboxKey(key),
+			write = true,
+			run = function()
+				return self._mailboxStore:update(key, function(current: unknown)
+					local latest = Mailbox.read(current)
+					if latest == nil then
+						return nil
+					end
+					return Mailbox.prune(latest, saved, trimming)
+				end)
+			end,
+		})
+		if not result.ok then
+			-- the next save tries again. Load trims what's left in any case
+			state.trimmed = math.min(state.trimmed, before)
+			for seq, reason in trimming do
+				state.failures[seq] = reason
+			end
+		end
+	end)
+end
+
+-- Every store on this server with the same DataStore name and scope, this one included. Mail
+-- sent through one of them reaches a profile another has open
+function ProfileStore._siblings(self: ProfileStore): { any }
+	local list = {}
+	local byScope = (siblings[self._services] or {})[self.name]
+	for store in (byScope and byScope[self.scope]) or {} do
+		table.insert(list, store)
+	end
+	return list
+end
+
+function ProfileStore._joinSiblings(self: ProfileStore)
+	local byName = siblings[self._services]
+	if byName == nil then
+		byName = {}
+		siblings[self._services] = byName
+	end
+	local byScope = byName[self.name]
+	if byScope == nil then
+		byScope = {}
+		byName[self.name] = byScope
+	end
+	local set = byScope[self.scope]
+	if set == nil then
+		set = setmetatable({}, { __mode = "k" }) :: any
+		byScope[self.scope] = set
+	end
+	set[self] = true
+end
+
+function ProfileStore._leaveSiblings(self: ProfileStore)
+	local byScope = (siblings[self._services] or {})[self.name]
+	local set = byScope and byScope[self.scope]
+	if set then
+		set[self] = nil
+	end
+end
+
 function ProfileStore._mailboxKey(self: ProfileStore, key: string): string
 	return `dataStore/{self.name}_mailbox/{self.scope}/{key}`
 end
 
 --[=[
-	Queues an op for a profile, wherever its player is. It's applied as a mailbox transaction the
-	next time the profile loads. Only stores made with `mailbox = true` take mail. Yields
+	Queues an op for a profile, wherever its player is, and applies it as a mailbox transaction
+	exactly once. A profile open on this server takes it before `mail` returns, one open on
+	another server within moments when handoff is on there, and otherwise it applies on the next
+	load. Only stores made with `mailbox = true` take mail. Yields
 
 	@param key string
 	@param op string -- a built-in op other than update, or a custom op this store enables
@@ -990,6 +1355,7 @@ function ProfileStore.mail(
 
 	local id = self._services.guid()
 	local seq = 0
+	local sentAt = 0
 	local duplicate = false
 	local result = self._scheduler:submit({
 		priority = "save",
@@ -1010,7 +1376,8 @@ function ProfileStore.mail(
 					return nil
 				end
 				seq = box.nextSeq
-				return Mailbox.push(box, op, list, self._services.clock:now(), id)
+				sentAt = self._services.clock:now()
+				return Mailbox.push(box, op, list, sentAt, id)
 			end)
 		end,
 	})
@@ -1022,6 +1389,20 @@ function ProfileStore.mail(
 			ok = false,
 			error = { kind = "invalidValue", message = `the mailbox of {key} is malformed` },
 		}
+	end
+
+	-- A profile open on this server takes the mail now. Otherwise any server holding it hears
+	-- of it, and a lost ping only means the mail waits for the next load
+	local message: Mailbox.Message = { seq = seq, id = id, op = op, args = list, sentAt = sentAt }
+	local here = false
+	for _, store in self:_siblings() do
+		if store._open[key] or store._loading[key] then
+			here = true
+			store:_mailArrived(key, message)
+		end
+	end
+	if not here then
+		self._handoff:send("mail", key, { seq = seq })
 	end
 	return { ok = true, value = seq }
 end
@@ -1104,6 +1485,22 @@ function ProfileStore.erase(self: ProfileStore, key: string): { ok: boolean, mes
 			message = `the profile was erased but its mailbox wasn't: {mailbox.error.message}`,
 		}
 	end
+
+	local archive = self._scheduler:submit({
+		priority = "save",
+		budget = "standardRemove",
+		key = self:_prunedKey(key),
+		write = true,
+		run = function()
+			return self._prunedStore:remove(key)
+		end,
+	})
+	if not archive.ok then
+		return {
+			ok = false,
+			message = `the profile was erased but its prune archive wasn't: {archive.error.message}`,
+		}
+	end
 	return { ok = true, message = nil }
 end
 
@@ -1158,6 +1555,15 @@ export type AuditBatch = {
 }
 
 -- When the stored record was erased, in seconds, or 0
+-- For Geode.erase
+function ProfileStore._eraseUser(
+	self: ProfileStore,
+	userId: number
+): { ok: boolean, message: string?, skipped: boolean? }
+	local result = self:erase(self:keyForUser(userId))
+	return { ok = result.ok, message = result.message }
+end
+
 function ProfileStore._erasedAt(self: ProfileStore, key: string): Types.Result<number>
 	local read = self._scheduler:submit({
 		priority = "read",
@@ -1364,6 +1770,8 @@ function ProfileStore.rollback(
 		return rollbackFailure(loaded.error.message)
 	end
 	local ok, message = applyRollback(loaded.profile, version.value, versionId, note)
+	-- a tool's load isn't a play session, so the game's closing values stay out of it
+	loaded.profile:_skipBeforeRelease()
 	local released = loaded.profile:release()
 	if ok and not released.ok then
 		return rollbackFailure(released.error.message)
@@ -1610,6 +2018,7 @@ function ProfileStore._toolEdit(
 	-- Load, edit and release run back to back, and the release runs whatever the edit did, so a
 	-- refused edit never leaves this server holding the lease
 	local result = self:_editHere(key, op, list, note)
+	loaded.profile:_skipBeforeRelease()
 	local released = loaded.profile:release()
 	if not released.ok then
 		if result.ok then
@@ -2043,9 +2452,10 @@ end
 	Releases every open profile at once, at release priority, and waits until they finish or the
 	close timeout passes. Yields. Bound to BindToClose unless the store was told otherwise
 
+	@param reason ReleaseReason? -- what beforeRelease hears, "shutdown" by default
 	@return number -- how many releases finished in time
 ]=]
-function ProfileStore.releaseAll(self: ProfileStore): number
+function ProfileStore.releaseAll(self: ProfileStore, reason: Profile.ReleaseReason?): number
 	local clock = self._services.clock
 	local pending = 0
 	local finished = 0
@@ -2060,7 +2470,7 @@ function ProfileStore.releaseAll(self: ProfileStore): number
 		local profile = self._open[key]
 		pending += 1
 		clock:spawn(function()
-			local result = profile:release()
+			local result = profile:release(reason or "shutdown")
 			if result.ok then
 				finished += 1
 			end
@@ -2087,6 +2497,22 @@ function ProfileStore.releaseAll(self: ProfileStore): number
 			self._report(`{pending} profile release(s) didn't finish within the close timeout`)
 		end
 	end
+	return finished
+end
+
+--[=[
+	Releases every open profile, with "destroy" as beforeRelease's reason, then stops listening
+	for other servers' requests and refuses loads from then on. Yields until the releases finish
+	or the close timeout passes
+
+	@within ProfileStore
+	@return number -- how many releases finished in time
+]=]
+function ProfileStore.destroy(self: ProfileStore): number
+	self._destroyed = true
+	self:_leaveSiblings()
+	local finished = self:releaseAll("destroy")
+	self._handoff:stop()
 	return finished
 end
 

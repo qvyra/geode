@@ -38,6 +38,8 @@ Bridge.FEATURES = table.freeze({
 	"dryRun",
 	-- profileCommitted telemetry, one message per profile commit
 	"commits",
+	-- pruned telemetry, one message per load that removes or would remove keys
+	"prune",
 })
 
 type Opened = {

@@ -4,6 +4,53 @@ All notable changes to Geode are recorded here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-24
+
+Mail reaches a profile that is already open, here or on another server, and still applies exactly once. The API doesn't change, but mail can now apply in the middle of a session.
+
+### Changed
+
+- `store:mail` reaches a loaded profile. The mail is stored first, as before. A profile open on this server, in this store or another with the same name, takes it before `mail` returns. Otherwise a ping on the store's handoff topic tells the server holding it to read its mailbox past the cache and apply what's new, within moments. A profile that isn't open anywhere gets its mail on the next load, as before
+- Exactly once still comes from the saved mailbox cursor. A ping is only a hint: one that's lost leaves the mail for the next load, one that comes twice changes nothing, and mail that arrives during a release or a hop applies once, on the server that loads the profile next. Mail applies in the order it was stored
+- Applied mail leaves the mailbox once a save has carried the cursor, instead of on the next load. A server that dies before saving leaves it for the next load to apply again
+- Mail to a profile that isn't open on the sending server costs one MessagingService publish. A store with `handoff = false` sends and hears no pings, and its mail waits for loads as before
+- Mail that applies in the middle of a session is the same `mailbox` transaction as mail applied on load, with the note `mail <seq>`: guards, reactions, commit telemetry and the audit log see it the same way
+- Docs: how mail reaches a loaded profile, what it goes through, why lost pings wait for the next load, and the ProfileStore and comparison tables to match
+
+## [0.7.0] - 2026-11-23
+
+A last write as each session ends, one Studio setting for every store, scopes on boards, erasure that reaches every kind of store, typed paths for roblox-ts, pruning of keys the template dropped, and leaderstats.
+
+**Breaking, in Studio only:** every store now defaults to `mock` when neither it nor `Geode.setup` sets a mode. Shared stores, boards, the MemoryStore helpers, premades and matchmakers used to default to `real`, so a playtest no longer reads or writes their live data unless the game sets `studio = "real"` or `"scope"`. `Geode.setup({ studio })` now reaches every store made after it, not just `Geode.players`: profile stores, shared stores, boards, the MemoryStore helpers and matchmakers follow its mode unless they pass their own `studio`. In the `scope` mode, MemoryStore names and messaging topics now get a `studio_` prefix as well, so a playtest never talks to live servers. Live servers behave as before.
+
+### Added
+
+- `beforeRelease` on profile stores and `Geode.players`: one system transaction just before the final save, on every release while the session is still this server's. It hears why: `leave`, `shutdown`, `handoff`, `release` or `destroy`. It must not yield, it goes through the pipeline and guards, and an error or a rejection is reported while the release goes on. It never runs once the session is lost, and edits and rollbacks from development tools skip it
+- `profile:release(reason)` and `store:releaseAll(reason)` take the reason the hook hears. `store:destroy()` releases every profile, stops listening for handoffs and refuses later loads with the load error `destroyed`
+- `studio = "auto"`: in Studio, one read decides. With API access the stores use `scope`, without it, or in a place that was never published, `mock`. A read that fails some other way picks `mock` and is reported. On live servers it does nothing
+- Every store takes `studio`: shared stores, boards, the MemoryStore helpers, premades and matchmakers, as profile stores did. The bridge's `profiles` answer names the mode in use, never `auto`
+- `scope` on `Geode.Ranked` boards, with `board.scope`, and `Geode.setup({ scope })` as the default for profile stores, shared stores and boards that aren't given one
+- `board:remove(userId)` takes a player off a board: an all-time board, or the current window and every window still kept
+- `sharedStore:delete(key)`, and `keyForUser` on shared stores so `Geode.erase` reaches the key of each player
+- `Geode.erase(userId)` erases the player on every profile store, every board and every shared store with `keyForUser`, and lists each one in its report's `stores`. Failures carry the store's `kind`
+- Typed paths in the typings. Give `Geode.players`, `Geode.Profile.store` or `Geode.Client.start` the data's type and every path and value is checked against it: list paths only, reads frozen and typed by the path, `increment` only on numbers, `append` and `insert` only on lists. Without a type, everything stays as loose as before
+- `prune = { version, keep, dryRun }` on profile stores and `Geode.players`: keys the template no longer has are removed on load, after reconciling, as one system transaction. They're archived first in a `<name>_pruned` DataStore, and when that write fails nothing is removed. Lists, empty template tables and kept paths are left alone. `version` goes up with every template change, and a server never prunes a record that a newer template wrote, nor lowers its version, so rolling deploys are safe. Two templates under one version stop pruning at that version on every server, reported on every load it holds back, until the version is raised. Studio on live data only ever does a dry run. Each load that prunes sends `pruned` telemetry, and the bridge's `hello` lists `prune`
+- `leaderstats = { { path, name, order, format } }` on `Geode.players`: an IntValue, NumberValue or StringValue per stat in each player's `leaderstats` folder, picked from the template's value, kept in step through `observe` and removed when the profile is released. A player who leaves while their data loads never gets any. The game's own objects are never destroyed or replaced: a value it made under a stat's name is used when the class matches, and otherwise that stat is skipped. Both are reported once. Values only go from the data to the player list, so what the game writes to them is never saved
+- Services have an optional `leaderstats` adapter. Mock servers have one, and `server.playerList` reads back what it shows. Its `attach` lists the stats it left out in `skipped` and the game's values it writes to in `adopted`
+- Record meta gains `templateVersion` and `templateShape`, written only by stores that prune. The shape is `clash` once two templates wrote the same version. `meta.format` stays `1`
+
+### Changed
+
+- The `mock` Studio mode keeps one in-memory server per services table, on the real clock, shared by every store. Before, each profile store made its own
+- `store:erase` and `Geode.erase` also remove the profile's prune archive, one more request per erase
+- A shared store that holds a copy of a key whose stored value is gone reads it again past the DataStore cache, so a delete on another server whose message never arrived doesn't leave old data behind
+- Docs: values written as a session ends, where Studio keeps data, board scopes, erasure across stores and what Roblox keeps after it, deleting shared keys, typed paths in roblox-ts, pruning and the meta it leaves, and leaderstats
+
+### Fixed
+
+- `replicate` on `Geode.players` reaches players who were already on the server when it was called and whose data loaded without waiting, as in-memory Studio data does
+- In Studio without API access, a DataStore read fails with a 502 that says so. It now counts as no access instead of an internal error, so it isn't retried and `studio = "auto"` picks `mock` without a report
+
 ## [0.6.2] - 2026-11-19
 
 Kicked players read a sentence meant for them, the typings fit roblox-ts games better, and the docs say what they left out. Nothing breaks.
@@ -131,7 +178,9 @@ The first public release.
 - Hand-written typings for the whole API in `types/`, ahead of a roblox-ts package
 - An API reference generated from the doc comments, and guides for every part of Geode
 
-[Unreleased]: https://github.com/qvyra/geode/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/qvyra/geode/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/qvyra/geode/releases/tag/v0.8.0
+[0.7.0]: https://github.com/qvyra/geode/releases/tag/v0.7.0
 [0.6.2]: https://github.com/qvyra/geode/releases/tag/v0.6.2
 [0.6.1]: https://github.com/qvyra/geode/releases/tag/v0.6.1
 [0.6.0]: https://github.com/qvyra/geode/releases/tag/v0.6.0

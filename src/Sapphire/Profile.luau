@@ -6,6 +6,7 @@
 -- data of the server that took it
 
 local Document = require("../Matrix/Document")
+local Prune = require("./Prune")
 local Record = require("./Record")
 local Scheduler = require("../Quartz/Scheduler")
 local Signal = require("../Quartz/Signal")
@@ -19,6 +20,22 @@ type PathLike = string | { string | number }
 
 -- `any` because the Profile type is defined further down
 export type SessionLostPolicy = "kick" | "none" | (profile: any, reason: string) -> ()
+
+-- Why a profile is being released, as beforeRelease hears it: the player left, the server is
+-- shutting down, another server asked for the profile, game code called release, or the store
+-- was destroyed
+export type ReleaseReason = "leave" | "shutdown" | "handoff" | "release" | "destroy"
+
+-- The last transaction before the final save. `any` for the profile, as above
+export type BeforeRelease = (tx: Transaction.Transaction, profile: any, reason: ReleaseReason) -> ()
+
+local RELEASE_REASONS: { [string]: boolean } = {
+	leave = true,
+	shutdown = true,
+	handoff = true,
+	release = true,
+	destroy = true,
+}
 
 -- Everything a profile needs from its store. Plain data, so Profile doesn't have to
 -- require the store module
@@ -44,6 +61,9 @@ export type Backend = {
 	sizeBudget: Size.Budget,
 	autosaveInterval: number,
 	onSessionLost: SessionLostPolicy,
+	beforeRelease: BeforeRelease?,
+	-- left in meta on every save when the store prunes
+	templateMark: Prune.Mark?,
 	report: (message: string) -> (),
 	onClosed: (profile: any) -> (),
 }
@@ -69,6 +89,8 @@ type Fields = {
 	_savedRevision: number,
 	_receipts: { string },
 	_mailboxCursor: number,
+	-- the cursor the last save that landed wrote, so the store knows what mail it may trim
+	_savedMailboxCursor: number,
 	-- bumped on receipt or mailbox cursor changes so isSaved sees unsaved metadata
 	_metaVersion: number,
 	_savedMetaVersion: number,
@@ -76,6 +98,9 @@ type Fields = {
 	_lastSize: number?,
 	_autosaveToken: number,
 	_releasing: { thread }?,
+	-- beforeRelease runs once per profile, so a release that failed and is tried again doesn't
+	-- write the same closing values twice
+	_beforeReleaseDone: boolean,
 }
 
 local Profile = {}
@@ -103,11 +128,13 @@ function Profile.new(document: Document.Document, backend: Backend): Profile
 		_savedRevision = document:revision(),
 		_receipts = table.clone(backend.receipts),
 		_mailboxCursor = backend.mailboxCursor,
+		_savedMailboxCursor = backend.mailboxCursor,
 		_metaVersion = 0,
 		_savedMetaVersion = 0,
 		_lastSize = nil,
 		_autosaveToken = 0,
 		_releasing = nil,
+		_beforeReleaseDone = backend.beforeRelease == nil,
 	}
 	local profile = setmetatable(self, Profile)
 	profile:_scheduleAutosave()
@@ -322,6 +349,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 	local lostReason: string? = nil
 	local savedRevision: number? = nil
 	local savedMetaVersion: number? = nil
+	local savedCursor: number? = nil
 	local oversize: number? = nil
 
 	local result = backend.scheduler:submit({
@@ -332,7 +360,8 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 		size = self._lastSize,
 		run = function()
 			return backend.dataStore:update(backend.key, function(current: unknown)
-				lostReason, savedRevision, savedMetaVersion, oversize = nil, nil, nil, nil
+				lostReason, savedRevision, savedMetaVersion, savedCursor, oversize =
+					nil, nil, nil, nil, nil
 				if not Record.isRecord(current) then
 					lostReason = "the stored record is missing or corrupt"
 					return nil
@@ -378,6 +407,7 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 					record = candidate
 					savedRevision = revision
 					savedMetaVersion = metaVersion
+					savedCursor = candidate.meta.mailboxCursor
 					if report.level == "soft" then
 						backend.report(
 							`profile {backend.key} is {report.size} bytes, close to the size limit`
@@ -389,6 +419,9 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 				record.meta.updatedAt = now
 				record.meta.lastSession =
 					{ session = backend.owner.session, revision = record.meta.revision }
+				if backend.templateMark then
+					Prune.mark(record.meta, backend.templateMark)
+				end
 				local lease = record.meta.lease :: Record.Lease
 				lease.renewedAt = now
 				if releasing and oversize == nil then
@@ -405,6 +438,9 @@ function Profile._write(self: Profile, releasing: boolean): SaveResult
 	if lostReason then
 		self:_lose(lostReason)
 		return failure("lost", lostReason)
+	end
+	if savedCursor then
+		self._savedMailboxCursor = math.max(self._savedMailboxCursor, savedCursor)
 	end
 	if savedRevision then
 		self._savedRevision = math.max(self._savedRevision, savedRevision)
@@ -486,6 +522,11 @@ function Profile.mailboxCursor(self: Profile): number
 	return self._mailboxCursor
 end
 
+-- The cursor the last save that landed wrote. Mail at or before it is applied for good
+function Profile._savedMailbox(self: Profile): number
+	return self._savedMailboxCursor
+end
+
 function Profile._advanceMailbox(self: Profile, seq: number)
 	if seq > self._mailboxCursor then
 		self._mailboxCursor = seq
@@ -510,12 +551,57 @@ function Profile._erased(self: Profile)
 	self:_lose("the profile was erased")
 end
 
+-- Runs the store's beforeRelease as one system transaction, once per profile and only while the
+-- profile can still be written. The callback runs in its own coroutine: a yield closes it and
+-- fails the transaction, and an error or a guard's rejection is reported. Neither stops the
+-- release
+function Profile._beforeRelease(self: Profile, reason: ReleaseReason)
+	if self._beforeReleaseDone or self._state ~= "active" then
+		return
+	end
+	self._beforeReleaseDone = true
+	local hook = self._backend.beforeRelease :: BeforeRelease
+	local result = self._document:transact(function(tx)
+		local thread = coroutine.create(hook)
+		local ok, err = coroutine.resume(thread, tx, self, reason)
+		if coroutine.status(thread) ~= "dead" then
+			coroutine.close(thread)
+			error(
+				"beforeRelease yielded. It has to finish without yielding, so it can't hold up a release",
+				0
+			)
+		end
+		if not ok then
+			error(err, 0)
+		end
+	end, { source = "system", note = `beforeRelease ({reason})` })
+	if not result.ok then
+		self._backend.report(
+			`beforeRelease didn't write profile {self.key} ({reason}), releasing anyway: {result.error.message}`
+		)
+	end
+end
+
+-- For loads that aren't a play session, like a tool's edit of an offline profile
+function Profile._skipBeforeRelease(self: Profile)
+	self._beforeReleaseDone = true
+end
+
 --[=[
 	Saves a last time and gives up the lease. The profile is read only from the moment the release
 	starts, so nothing written after the final snapshot can be silently dropped. If the write
 	fails, the profile goes back to active and keeps its data
+
+	The store's `beforeRelease` runs first, once, unless the session was already lost. `reason`
+	is what it hears, "release" by default
+
+	@within Profile
+	@param reason ReleaseReason?
+	@return SaveResult
 ]=]
-function Profile.release(self: Profile): SaveResult
+function Profile.release(self: Profile, reason: ReleaseReason?): SaveResult
+	assert(reason == nil or RELEASE_REASONS[reason], `unknown release reason {reason}`)
+	self:_beforeRelease(reason or "release")
 	if self._state == "released" then
 		return { ok = true }
 	end

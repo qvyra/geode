@@ -636,3 +636,187 @@ Rejected: pinning the repo's only TypeScript to 5.5.3, which would hold ESLint's
 `tx:op("set", ...)` failed with "no op named set is registered", which reads as if `set` were missing rather than called the wrong way. Built-ins are methods on the transaction (`tx:set`, `tx:increment` and the rest) and never go through `tx:op`, so the error now says so and shows the call to make. The kind stays `unknownOp`, so code that matches on the kind behaves as before; only the message changed. Rejected: running the built-in from `tx:op`, which would give built-ins two spellings, and records and guards would see a custom op call where a built-in ran.
 
 **PR:** #39
+
+## 52. `beforeRelease` writes one transaction before every release
+
+**Date:** 2026-11-20
+
+Games write values as a session ends: the logout time, the last spawn, playtime not counted yet. Before this they had to wrap the leave, kick and BindToClose services so their write landed before Geode's release. A profile store, and so `Geode.players`, now takes `beforeRelease(tx, profile, reason)`. It runs as one system transaction just before the final save, while the profile can still be written, and the reason is one of `leave`, `shutdown`, `handoff` (another server asked for the profile), `release` (game code called `profile:release()`) and `destroy`. The arguments put `tx` first like migrations and receipt handlers, then the profile and the reason in the order the request named them.
+
+- It runs from `Profile.release`, so every path goes through it, and the paths pass their reason in: `Geode.players` on leave, `releaseAll` on shutdown, the release another server asks for, `destroy`. The handoff path runs it before the kick, so the player is still in the game while it runs.
+- It runs once per profile. A release whose save failed and is tried again doesn't write the same values twice. It never runs once the session is lost, since the profile can't be written then.
+- It must not yield: a shutdown gives every release `closeTimeout` seconds, and a hook waiting on something would use them up. Profile transactions had no yield check; only shared store writes did. The hook runs in its own coroutine inside the transaction, and a yield closes that coroutine and fails the transaction, so the rest never runs later. Reactions and guards inside a profile transaction are still unchecked, as before.
+- It goes through the pipeline like any write, so reactions, bundles and guards judge it. A yield, an error or a rejection is reported through `reportError`, and the release goes on with the data as it was. Nothing it does can keep a release from happening.
+- The short loads a development tool makes to edit or roll back a profile nobody holds skip it: those aren't play sessions, and the game's closing values would land in a support edit.
+
+Profile stores had no `destroy`, so `destroy()` is new: it releases every profile with the reason `destroy`, stops listening on the handoff topic and makes later loads fail with the new load error kind `destroyed`. `PlayerData:destroy()` keeps doing only what it did, stopping joins and leaves.
+
+Rejected: a hook that only gets the profile and writes through it, which would be a transaction per write and could leave half the values written; letting it yield with a time limit, which would hold BindToClose for slow code; running it again on every retry; and one hook per reason, when a single function with the reason covers each case with an `if`.
+
+**PR:** #41
+
+## 53. One Studio setting for every store, with `auto`
+
+**Date:** 2026-11-21
+
+Only profile stores had a Studio mode, and `Geode.setup({ studio })` reached `Geode.players` stores only. A game that wanted Studio kept apart had to build its own services table for shared stores, boards, the MemoryStore helpers and matchmakers. Now the mode lives in one module, `Quartz/Studio`, and every store asks it: `Geode.setup`'s mode, unless the store passes its own `studio`. Lower layers can't read Polish, so `Geode.setup` hands the mode to Quartz instead of each store reading Polish defaults. `Geode.setup`'s services, scheduler and error reporting still reach `Geode.players` stores only.
+
+- **Defaults.** Profile stores stay at `mock`. Every other store stays at `real`, which is what it did before, so nothing changes in Studio until a game sets a mode. Changing them all to `mock` would quietly move existing games' shared stores and boards into memory. Entry 59 changed this before release.
+- **`mock`.** DataStore, MemoryStore and messaging come from one in-memory server per services table, on the real clock, shared by every store. Before, each profile store made its own. Players, purchases, shutdown, teleports, remotes and the bridge stay live; the mock budget stays too, since those requests never reach Roblox. Before, the clock-only copy kept the mock's remotes, teleports, JSON and ids.
+- **`scope`.** DataStore data goes under `studio_` plus the scope, as before, and now MemoryStore names and messaging topics get a `studio_` prefix too. Profile stores in this mode used to send release requests on the live topic and read the live handoff map. Studio data never matches live data, so a Studio session has nothing to say to live servers, and now it can't.
+- **`auto`.** In Studio, the first store reads one key (`probe` in `geode_studio_access`) once per services table, and stores made meanwhile wait for the answer. Success means `scope`. `noAccess`, the 403 Studio gets without API access, means `mock`. A place that was never published (place id 0) means `mock` without a request. Any other error also means `mock` and is reported, so a check that went wrong keeps data in memory instead of reaching live data. With access, it picks `scope`, not `real`, so turning access on never points a playtest at live data by itself. On live servers it does nothing. The read yields, in Studio only. Tested in Studio: without access, a GetAsync fails with a 502 whose message says "Studio access to APIs is not allowed" (error code 7), not the 403 Roblox's error table lists for writes. That 502 counts as `noAccess`, so it isn't retried either.
+- **What the bridge reports.** The `profiles` answer's `studio` field names the mode in use, `mock`, `scope` or `real`, never `auto`. No answer changed shape.
+- Services a Studio mode built pass through untouched, so a matchmaker's own mutex shares the matchmaker's memory server instead of getting a second one.
+
+Rejected: services that pick their adapters on first use, which would keep store constructors from yielding but would also stall the first request of every store behind the check; checking with a write, which costs more and would leave a key behind; and a mode per kind of store in `Geode.setup`, when a store's own `studio` option already covers the exceptions.
+
+**PR:** #41
+
+## 54. Boards take a scope, and `Geode.setup` sets one for every store
+
+**Date:** 2026-11-21
+
+Profile and shared stores took a `scope`, but `Geode.Ranked` boards didn't, so a test universe or a new season could keep its saved data apart everywhere except on its boards. Boards now take `scope`, and `Geode.setup({ scope })` is the default for profile stores, shared stores and boards that aren't given one. Without either, every store stays in `global`, as before.
+
+- An all-time board passes the scope to its OrderedDataStore, which has scopes of its own.
+- A windowed board's MemoryStore sorted maps have no scope, so it goes into the map name: `geode_rank<length>_<scope>_<name>_<window number>`. The length in front keeps every pair of board name and scope apart: joined with plain underscores, the board `2_Daily` in scope `s` and the board `Daily` in scope `s_2` would share a map. `global` keeps the old names, `geode_rank_<name>_<window number>`, so existing windows keep their scores through the update.
+- In Studio's `scope` mode the board's DataStore scope gets the `studio_` prefix like every other store, and its map names get it from the services.
+- The MemoryStore helpers and matchmakers take no scope. Nothing they hold outlives a session, so no saved data mixes.
+
+Rejected: a separate name option, which would ask every game to spell the scope into each board by hand; escaping underscores in names, which changes the names of existing windowed boards; and `liveUniverses` with a list of live universes in `Geode.setup`, which wasn't asked for here. A game that wants it passes its own scope from the universe id.
+
+**PR:** #41
+
+## 55. Erasure reaches boards and opted-in shared stores
+
+**Date:** 2026-11-22
+
+`Geode.erase` reached profile stores only. Boards had no way to remove a player and shared stores had no delete, so a game answering an erasure request removed board keys and shared keys by hand through raw adapters.
+
+- `board:remove(userId)` runs RemoveAsync on the all-time board's key, the user id as a string. A windowed board removes the player from the current window and from every earlier window that can still hold items: the ones whose close plus the grace is still ahead, which is when `submit` sets their items to expire. Cached top lists are dropped either way.
+- `sharedStore:delete(key)` runs RemoveAsync, puts this server's cached copy back to the template so observers hear it, and broadcasts on the invalidation topic without a revision. A key written after a delete starts over at revision 1, which is below what other servers hold, and a message without a revision already makes them drop any copy.
+- That made a gap visible. A server that missed the message would read nothing where it held revision 7, take it for a stale read and keep serving the deleted value. When a read finds nothing where this server held a value, it now reads once more past Roblox's cache and believes that answer, and a server's own write is believed as well, so a lower revision after a delete gets in. Those are the only cases where a lower revision replaces a higher one.
+- Shared stores opt in with `keyForUser(userId) -> key?`. Geode can't know which keys belong to a player, and a guild key holding many players must not be deleted for one of them, so a store without it is left alone. Returning nil means the store holds nothing for that player. An error from it is a failure for that store.
+- The report keeps `erased` and `failures` as they were, each failure now with its `kind`, and adds `stores` with one entry per store that held something: name, kind (`profile`, `shared` or `board`), whether it worked and the message. A failing store doesn't stop the others.
+- Boards register for erasure when made and stay registered after `destroy`, like profile stores, since their saved scores outlive the object.
+
+The `TODO(verify)` in `Sapphire/Registry.luau` asked whether versions older than 30 days stop being readable and whether they can be dropped sooner. Roblox's versioning page says "Versioned backups expire 30 days after a new write overwrites them. The latest version never expires", and the DataStore reference marks RemoveVersionAsync deprecated without naming a replacement. That answers both from the docs: they expire, and there's no supported way to drop them sooner. The comment and the docs now quote that instead of guessing.
+
+Rejected: a `remove(key)` name for shared stores, which already have `remove(key, path)` for a path inside a value; deleting by writing the template, which keeps the key and its revision but isn't the RemoveAsync an erasure asks for; and erasing every shared store by default with the user id as the key, which would delete whatever happens to sit under a number.
+
+**PR:** #41
+
+## 56. Typed paths for stores, profiles, transactions and the client
+
+**Date:** 2026-11-22
+
+Paths were `string | (string | number)[]` and every read was `unknown`, so a roblox-ts game built its own typed wrappers over each read, op and transaction. The typings now take the data's type: `Geode.players<T>`, `Geode.Profile.store<T>`, `ProfileStore<T>`, `Profile<T>`, `PlayerData<T>`, `PlayerProfile<T>`, `Transaction<T>` and `Geode.Client.start<T>`. With a type, `get`, `observe`, the ops and `transact` check the path against `T` and take or return the type at that path. Typings only, no Luau change.
+
+- **Opt-in, so existing code compiles unchanged.** `T` defaults to `object`, which keeps the loose `Path` and `unknown` everywhere. `template` is `NoInfer<T>`, so a template alone never turns typing on: inferring `T` from it would have made every existing string path a type error.
+- **List form only.** A typed store takes paths as lists, ported from the kit's `PathOf`, `ValueAt` and `PathTo` but on tuples instead of dotted strings. A record keyed by string takes a `string` segment, and a list item takes a 1-based `number` index, since Geode addresses list items by index where the kit ended paths at lists. Lists sidestep the digit rule that makes `"friends.1001"` an index.
+- **Missing values.** A record's entry or a list's item may not be there, so reading one, or anything under it, includes `undefined`. Optional fields keep theirs. A client atom also reads `undefined` until the data arrives and for paths the server doesn't send.
+- **Reads are frozen.** `get` and `observe` hand out `Frozen<V>`, readonly all the way down, matching the frozen tables Geode returns. Writes take the plain type.
+- **Ops only take paths that fit.** `increment` and `decrement` take paths to numbers, `append` and `insert` paths to lists with items of the list's type, `merge` a partial of the table at the path.
+- **Depth.** Spelling out every path is a union that grows with the template, so it stops at eight segments, the kit's six plus room for list indices. Past that any tail is accepted, and `ValueAt` still works out the exact type, so a deep path still checks its value. `typings-test/paths.ts` covers a ten-level template and a 64-key one with nested records, and TypeScript 5.5.3 checks it in about half a second.
+- `products` handlers on `Geode.players<T>` get `Transaction<T>`. Migrations stay untyped, since they run on older shapes of the data, and so do guards and facets.
+
+Rejected: typed dotted strings with template literal types, which the request ruled out and which can't tell a digit key from an index; keeping loose overloads next to the typed ones, which would let a typo through as `unknown`; and a separate family of typed interfaces, which would double every name in the typings.
+
+**PR:** #41
+
+## 57. Pruning keys the template dropped
+
+**Date:** 2026-11-23
+
+Reconciling only adds, so a key a game stops using stays in every profile until a migration removes it. `prune` on a profile store, and so on `Geode.players`, removes those keys on load.
+
+- **Opt-in, and archived first.** Nothing leaves the record before it's added to the profile's key in a `<name>_pruned` DataStore, so the rule that Geode never drops user data on its own still holds: the game asks for it and the values stay recoverable. When the archive write fails, nothing is removed and the next load tries again. The archive key carries the profile's user ids, and erasing a profile removes it on every profile store, whether or not it prunes now, since it may have before. That's one more RemoveAsync per erase.
+- **What counts.** Only tables the template spells out with string keys. Lists, empty template tables like `inventory = {}`, keys that aren't strings and anything under a value that isn't a table are containers the template doesn't describe, so what's in them stays. Kept paths stay with everything under them. Lists are left alone for the same reason Reconcile leaves them alone.
+- **One system transaction after reconciling**, with the note `prune`, so guards can reject it and the audit log, listeners and telemetry see it. A guard that rejects it leaves the archive entry behind, which is harmless.
+- **The rolling-deploy guard needs a version from the game.** `prune.version` is required, a whole number that goes up with every template change. The request named only `keep` and `dryRun`; the version was added because nothing in a template says which of two templates is newer. Every write from a pruning store leaves `meta.templateVersion` and `meta.templateShape`, a 32-bit FNV-1a hash of the template's fields and the kept paths, unless the record already holds a higher version. A server prunes a record only when its stored version is missing or not higher than its own, and at an equal version only when the shapes agree. The shape catches a deploy that forgot to raise the version: both sides hold back and the store reports it once. Entry 60 closes a gap in this. Records stay at `meta.format = 1`, since these are two optional meta fields that older Geode copies along untouched.
+- **Studio on live data only reports.** With `studio = "real"` in Studio, pruning is always a dry run and leaves no mark, so a template still being worked on can neither drop live keys nor push the version past the live servers'.
+- **Read only.** A profile that's already read only when its load finishes, because its session went during the load, isn't pruned. Data that fails the schema or a migration fails the load before this point.
+- **Telemetry.** A `pruned` message for every load that removes or would remove keys, with `store`, `key`, `paths`, `version` and `dryRun`, and a `prune` feature in the bridge's `hello`. No answer changes shape.
+
+Rejected: taking the version from `schemaVersion`, which would make every template change a schema bump and turn a rolling deploy into `newerData` load failures on the old servers; a hash alone, which can't tell an older template from a newer one; keeping the template's full path list in meta, which grows every record; keeping the archive inside the record, which keeps the size pruning is meant to free; and pruning inside lists by matching items against the template's first item, which is a guess.
+
+**PR:** #41
+
+## 58. Leaderstats on Geode.players
+
+**Date:** 2026-11-23
+
+Most games copy a few values into the player list by hand: make the folder once the data loads, update it on every change, clean up when the player leaves. `leaderstats = { { path, name, order?, format? } }` on `Geode.players` does that.
+
+- **A new adapter.** Making Instances in Polish would break the rule that only Quartz touches Roblox, so the values come through `services.leaderstats`. The live one makes the Folder and its value children, and the mock one, read back through `server.playerList`, is what the tests check. It's optional on `Services`, so services built by hand still type check, and `Geode.players` refuses the option without it.
+- **The template picks the kind.** A whole number makes an IntValue, any other number a NumberValue and a string a StringValue, and `format` makes a StringValue. Anything else, a path the template doesn't have included, fails in `Geode.players`, so a typo shows when the game starts. The kind never changes afterwards: a value that doesn't fit shows 0 or empty text and is reported once per stat, and a fraction on an IntValue stat is rounded down and reported, instead of swapping the Instance for another class.
+- **When they exist.** They're made on `loaded`, which PlayerData only fires for a player still on the server, and only for a profile that is still active, so a player who leaves while their data loads never gets any. They follow the data through `observe` and go on `released`, which also fires when a session is lost. A folder the game already made is used as it is, and only Geode's values are taken out of it.
+- **Order.** Stats with an `order` come first, lowest first, then the rest as listed, and their values are parented in that order. Roblox doesn't document how the player list orders its columns, so the real adapter has a `TODO(verify)` for a Studio check.
+- **Server only.** The folder is made on the server and reaches clients the way any Instance under the player does.
+
+Rejected: picking the kind from each value as it changes, which would replace Instances under the player list; a separate `Geode.leaderstats(PlayerData, ...)` call, which needs the same hooks and is one more name to learn; and typing `format` by the path's value, which a list of stats with different paths can't infer in TypeScript.
+
+**PR:** #41
+
+## 59. Every store defaults to `mock` in Studio
+
+**Date:** 2026-11-23
+
+Entry 53 kept shared stores, boards, the MemoryStore helpers and matchmakers at `real` in Studio, so nothing moved for existing games. That left a playtest writing live guild banks, board scores and MemoryStore keys unless the game set a mode. Now a store with no `studio` of its own, and none from `Geode.setup`, uses `mock` like profile stores, so a playtest reaches live data only when the game asks for it.
+
+- **One default, in one place.** `Quartz/Studio` holds it, and every store asks it for its mode: its own, else `Geode.setup`'s, else `mock`.
+- **Live servers don't change.** Outside Studio every mode uses the services the store was given.
+- **Breaking, in Studio only.** A game whose playtests relied on shared stores or boards reading live data now gets an empty in-memory copy. `studio = "real"` on the store, or `Geode.setup({ studio = "real" })`, brings back what it did before. The 0.7.0 breaking note says so.
+- No bridge, record or meta changes.
+
+Rejected: keeping `real` as the default for everything but profile stores, which entry 53 chose so nothing moved, since a playtest that writes live data by default is the worse surprise; and `auto` as the default, which sends a DataStore read from every Studio session and moves a playtest onto real services as soon as API access is on.
+
+**PR:** #41
+
+## 60. A prune mark only moves up, and a clash holds every server back
+
+**Date:** 2026-11-23
+
+- **Older servers can't lower the version.** Every write marks the meta it read in the same UpdateAsync, not the copy its session loaded, and leaves it alone when it holds a higher version. So a server on version 4 that loads a profile a version 5 server saved, changes it and saves it leaves version 5 and its shape in place, and the next load on version 5 prunes as before. A test runs that sequence.
+- **A clash sticks.** Entry 57 said a deploy that forgot to raise the version holds both sides back. It only did while loads alternated: each server wrote its own shape, so its next load saw that shape and pruned what the other template added. Now a write that finds another shape under its own version leaves `clash`, which no template hashes to, so every server at that version holds back until one with a higher version saves the record. That write replaces both fields like any other, so one clash can't turn pruning off for good, and a test prunes again after it.
+- **Reported on every load it holds back**, with the keys it kept, instead of once per store, so a clash that lasts keeps showing up in the logs. A clash that holds back nothing is reported too, since the next template change would be held back the same way.
+- **A version written by hand stays.** The verdict already left such a record alone, and marking now leaves the value alone too.
+- `meta.format` stays `1`: `clash` is a new value of an optional field.
+
+Rejected: keeping the first shape, which lets the old servers go on pruning keys the new template added; keeping the latest, as before; and keeping every shape in meta, which grows with each template that clashes.
+
+**PR:** #41
+
+## 61. Leaderstats never destroy or replace what the game made
+
+**Date:** 2026-11-23
+
+- **Another class under a stat's name.** When the folder already holds something by a stat's name, of another class than the stat needs, that stat isn't shown, the store reports it once and the game's object stays as it is. The adapter lists those stats in `skipped`, an optional field, so adapters built by hand still fit.
+- **The same class.** A value of the class the stat needs is written to and left in place on release, so a game that already made `Coins` ends up with one `Coins`, not two. The store reports it once per stat, since Geode now writes to an object it didn't make. The adapter lists those stats in `adopted`.
+- **One way.** Geode writes the value on every change to the data and never reads it back. A change the game's own code makes to it is never saved, and the next change to the data overwrites it. The docs say so.
+- **Releases remove only Geode's values.** A folder Geode made is destroyed only when nothing else is in it, so values the game put there later stay.
+
+Rejected: replacing the game's value with one of the right class; adding Geode's value under the same name next to it, which the player list would show twice; and skipping a value of the same class too, which leaves the stat showing a number nothing updates.
+
+**PR:** #41
+
+## 62. Mail reaches a profile that is open
+
+**Date:** 2026-11-24
+
+`store:mail` waited for the profile's next load, so mail to a player in the middle of a session sat in the mailbox until they left. Now it reaches a loaded profile.
+
+- **The mailbox write first, then a hint.** `mail` stores the message as before. Then a store on this server that has the profile open takes it, any store object with the same name and scope included. Otherwise a `mail` message goes out on the store's handoff topic, the one hops already use. A failed write sends nothing and `mail` fails as before. Mail to a profile that isn't open here costs one publish, whether or not another server holds it.
+- **The holder reads the mailbox, it doesn't trust the ping.** The ping carries the key and the seq. The holder reads the mailbox past the DataStore cache, which could still hold the box from before the mail, and applies everything past its cursor, in order. One read per profile runs at a time, and mail heard of during it gets one more read after it. A ping for a key still loading is remembered and read once the load is done, since the load's own mailbox read may have come before the mail.
+- **Exactly once still comes from the saved cursor**, `meta.mailboxCursor`, written in the same UpdateAsync as the data the mail changed. The request asked for exactly once from stored ids: the message ids already keep a send whose first try landed from being queued twice, and the seq against the saved cursor is what decides whether a message applied, so no list of applied ids was added to the record. Every apply also checks the cursor right before it runs, so a repeated ping or a race with the load's own delivery can't apply a message twice.
+- **Trimming waits for a save.** Applied mail leaves the mailbox only after a save that carried the cursor lands, never when it's applied. A server that dies in between leaves a cursor that never moved, and the next load applies the mail again onto data that never had it. Failed messages are archived in the same trim.
+- **Same server, no ping.** The next message in line, the cursor plus one, applies directly before `mail` returns. A gap, like earlier mail whose ping was lost, means a read first, so the order holds.
+- **Profiles on their way out.** A profile that isn't active, because it's being released, was released or lost its session, applies nothing more and leaves the rest for its next load. A message a read only profile refused doesn't count as failed.
+- **A lost ping costs time, not mail.** The mail applies on the next load. A holder doesn't read its mailbox on a timer, which would cost a GetAsync per profile per interval in every store with `mailbox = true`. To add one later: a store option with the interval, and a loop that calls the same read a ping starts for each open profile, on the background budget. The one-read-at-a-time rule and the cursor check already make a timed read safe next to pings.
+- **The same transaction wherever it applies.** Mail applied mid-session goes through the same function as mail applied at load: source `mailbox`, note `mail <seq>`, through the profile's guards, reactions, commit telemetry and audit log, which are all attached before the load delivers mail. A test sends the same two mails both ways and compares what each of those saw.
+- **The hop path doesn't change.** A load reads the mailbox as before. The one addition is the read after a load that heard a ping while it loaded, and it runs after the load is done. A store with `handoff = false` neither sends nor hears pings, so its mail waits for loads as before.
+- No bridge, record or meta changes, and `meta.format` stays `1`.
+
+Rejected: putting the op in the ping and applying it from there, which would make MessagingService, which can drop or repeat messages, part of exactly once; trimming as soon as mail applies, which loses it when the server dies before saving; a topic of its own for mail, which costs every store a second subscription; and polling the mailbox, as above.
+
+**PR:** #42

@@ -317,6 +317,42 @@ export type Marketplace = {
 	setProcessReceipt: (self: Marketplace, callback: (info: unknown) -> unknown) -> (),
 }
 
+--// leaderstats
+
+export type LeaderstatKind = "IntValue" | "NumberValue" | "StringValue"
+
+export type LeaderstatSpec = {
+	name: string,
+	kind: LeaderstatKind,
+}
+
+-- A stat attach left out because the folder already holds something else by its name
+export type LeaderstatSkip = {
+	name: string,
+	kind: LeaderstatKind,
+	-- the class of what the folder holds
+	found: string,
+}
+
+-- The values one attach put in a player's leaderstats folder
+export type LeaderstatValues = {
+	set: (self: LeaderstatValues, name: string, value: number | string) -> (),
+	-- removes the values attach made, and the folder when attach made it and nothing else is in
+	-- it. Values the game made stay
+	destroy: (self: LeaderstatValues) -> (),
+	skipped: { LeaderstatSkip }?,
+	-- names of the stats written to a value the game made
+	adopted: { string }?,
+}
+
+export type Leaderstats = {
+	-- One value per stat in the player's leaderstats folder, added in the order given. The
+	-- folder is made when the player has none. A value the game already made under a stat's name
+	-- is used when its class matches and skipped when it doesn't. Either way it's never
+	-- destroyed or replaced
+	attach: (self: Leaderstats, player: unknown, stats: { LeaderstatSpec }) -> LeaderstatValues,
+}
+
 --// lifecycle
 
 export type Lifecycle = {
@@ -397,6 +433,8 @@ export type Services = {
 	-- created on first use, a game that never replicates has no remotes
 	remote: (name: string) -> ServerRemote,
 	bridge: ToolingBridge,
+	-- missing from services built by hand. Only the leaderstats option of Geode.players needs it
+	leaderstats: Leaderstats?,
 }
 
 return nil

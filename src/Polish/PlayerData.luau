@@ -7,6 +7,7 @@
 local Document = require("../Matrix/Document")
 local Facet = require("../Facet/Facet")
 local Guards = require("../Obsidian/Guards")
+local Leaderstats = require("./Leaderstats")
 local Profile = require("../Sapphire/Profile")
 local ProfileStore = require("../Sapphire/ProfileStore")
 local Receipts = require("../Sapphire/Receipts")
@@ -49,6 +50,8 @@ export type Options = {
 	stealAfter: number?,
 	stealPolicy: ProfileStore.StealPolicy?,
 	onSessionLost: Profile.SessionLostPolicy?,
+	-- one system transaction before the final save, see ProfileStore
+	beforeRelease: Profile.BeforeRelease?,
 	studio: ProfileStore.StudioMode?,
 	sizeBudget: Size.Budget?,
 	-- Seconds BindToClose waits for releases. Roblox gives about 30
@@ -62,9 +65,14 @@ export type Options = {
 	handoff: boolean?,
 	-- apply mail sent with `store:mail` on load. Off by default
 	mailbox: boolean?,
+	-- remove keys the template dropped, archiving them first. Off by default, see ProfileStore
+	prune: ProfileStore.PruneOptions?,
 	reportError: ((message: string) -> ())?,
 
 	products: { [number]: Receipts.Handler }?,
+	-- A value per stat in each player's leaderstats folder, kept in step with the data. An
+	-- IntValue, NumberValue or StringValue by the template's value, a StringValue with format
+	leaderstats: { Leaderstats.Stat }?,
 	-- Which paths reach which clients: "private", "owner" or "public", checked when the
 	-- store is made. Plain strings because Luau won't match a literal map against a union
 	-- valued map
@@ -151,8 +159,14 @@ function PlayerData.new(
 		} :: Fields,
 		PlayerData
 	)
+	return self
+end
 
-	local players = services.players
+-- Starts loading players, the ones already on the server too. Geode.players calls it once
+-- everything that listens to `loaded` is connected: a load that never yields, as in-memory
+-- Studio data, fires `loaded` before this returns
+function PlayerData._start(self: PlayerData)
+	local players = self._services.players
 	table.insert(
 		self._connections,
 		players:onJoin(function(userId: number, player: unknown)
@@ -166,11 +180,10 @@ function PlayerData.new(
 		end)
 	)
 	for _, entry in players:list() do
-		services.clock:spawn(function()
+		self._services.clock:spawn(function()
 			self:_join(entry.userId, entry.player)
 		end)
 	end
-	return self
 end
 
 -- Lifecycle
@@ -282,7 +295,7 @@ function PlayerData._release(self: PlayerData, entry: Entry, profile: Profile.Pr
 	-- the profile open here and the player can't load it on this server again
 	while true do
 		attempt += 1
-		local result = profile:release()
+		local result = profile:release("leave")
 		if result.ok or result.error.kind == "lost" or profile:state() ~= "active" then
 			return
 		end

@@ -3,6 +3,7 @@
 -- The beginner layer. `Geode.players` gives player data with the lifecycle handled and
 -- `Geode.setup` sets the defaults it starts from. Both stick to the public API below
 
+local Leaderstats = require("@self/Leaderstats")
 local PlayerData = require("@self/PlayerData")
 local Prism = require("./Prism")
 local Replicator = require("./Prism/Replicator")
@@ -10,14 +11,18 @@ local ProfileStore = require("./Sapphire/ProfileStore")
 local Receipts = require("./Sapphire/Receipts")
 local RealServices = require("./Quartz/Real/Services")
 local Scheduler = require("./Quartz/Scheduler")
+local Studio = require("./Quartz/Studio")
 local Types = require("./Quartz/Types")
 local Vein = require("./Vein")
 
 export type SetupOptions = {
 	-- services every store uses, live Roblox services by default
 	services: Types.Services?,
-	-- where data lives in Studio (see ProfileStore), "mock" by default
+	-- where data lives in Studio, for every store: profile and shared stores, boards, the
+	-- MemoryStore helpers and matchmakers. Every store defaults to "mock"
 	studio: ProfileStore.StudioMode?,
+	-- the DataStore scope profile stores, shared stores and boards use unless given their own
+	scope: string?,
 	reportError: ((message: string) -> ())?,
 	-- Let Studio development tools read the running game. On by default, Studio only
 	studioBridge: boolean?,
@@ -26,7 +31,6 @@ export type SetupOptions = {
 type Defaults = {
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
-	studio: ProfileStore.StudioMode?,
 	reportError: ((message: string) -> ())?,
 }
 
@@ -47,24 +51,26 @@ local function report(message: string)
 end
 
 --[=[
-	Sets the defaults that every `Geode.players` store made after this call starts from: the
-	services, one shared scheduler, error reporting and the Studio mode. Options passed to a
-	store still win. Call it once, before any store is made
+	Sets defaults for the stores made after this call. The Studio mode reaches every store and the
+	scope reaches profile stores, shared stores and boards. The services, one shared scheduler and
+	error reporting reach `Geode.players` stores. Options passed to a store still win. Call it
+	once, before any store is made
 
 	@within Geode
 	@param options SetupOptions
 
 	```lua
-	Geode.setup({ studio = "scope" })
+	Geode.setup({ studio = "auto" })
 	```
 ]=]
 function Polish.setup(options: SetupOptions)
-	if storesMade > 0 and not warnedLateSetup then
+	if (storesMade > 0 or Studio.wasUsed()) and not warnedLateSetup then
 		warnedLateSetup = true
 		report(
 			"Geode.setup was called after a store was made. Stores that already exist keep their old defaults"
 		)
 	end
+	Studio.setDefaults(options.studio, options.scope)
 	Vein.setBridgeEnabled(options.studioBridge ~= false)
 	local services = options.services
 	defaults = {
@@ -72,7 +78,6 @@ function Polish.setup(options: SetupOptions)
 		scheduler = if services
 			then Scheduler.new({ clock = services.clock, budget = services.budget })
 			else nil,
-		studio = options.studio,
 		reportError = options.reportError,
 	}
 end
@@ -108,6 +113,12 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 		Replicator.parseVisibility(options.replicate)
 	end
 	local services = options.services or defaults.services or RealServices.live()
+	local stats = if options.leaderstats
+		then Leaderstats.parse(options.leaderstats, options.template)
+		else nil
+	if stats then
+		assert(services.leaderstats, "these services can't make leaderstats")
+	end
 
 	-- everything the profile store understands passes through untouched. Options is an
 	-- intersection type, which Luau won't cast to a plain table directly
@@ -116,11 +127,11 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 	storeOptions.replicate = nil
 	storeOptions.loadRetries = nil
 	storeOptions.decisions = nil
+	storeOptions.leaderstats = nil
 	storeOptions.services = services
 	storeOptions.reportError = reportError
 	storeOptions.scheduler = options.scheduler
 		or (if services == defaults.services then defaults.scheduler else nil)
-	storeOptions.studio = options.studio or defaults.studio
 	local store = ProfileStore.new(storeOptions :: any)
 	storesMade += 1
 
@@ -128,6 +139,16 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 		loadRetries = options.loadRetries,
 		report = reportError or report,
 	})
+
+	if stats then
+		Leaderstats.attach(
+			playerData.loaded,
+			playerData.released,
+			services.leaderstats :: Types.Leaderstats,
+			stats,
+			reportError or report
+		)
+	end
 
 	local replicate = options.replicate
 	if replicate then
@@ -157,12 +178,14 @@ function Polish.players(options: PlayerData.Options): PlayerData.PlayerData
 			return process(info :: Receipts.ReceiptInfo)
 		end)
 	end
+	playerData:_start()
 	return playerData
 end
 
 -- reset module state, tests only
 function Polish._reset()
 	defaults = {}
+	Studio._reset()
 	storesMade = 0
 	warnedLateSetup = false
 	receiptsSet = false

@@ -43,6 +43,19 @@ return function(spec: Spec.Api)
 			expect(Errors.classify("502: API rejected request").kind).toBe("internal")
 		end)
 
+		it("doesn't retry a read Studio makes without API access", function()
+			local err = Errors.classify(
+				"502: API Services rejected request with error. Error code: 7 Reason: Studio access to APIs is not allowed."
+			)
+			expect(err.kind).toBe("noAccess")
+			expect(err.code).toBe(502)
+			expect(
+				Errors.classify(
+					"403: Cannot write to DataStore from studio if API access is not enabled."
+				).kind
+			).toBe("noAccess")
+		end)
+
 		it("matches throttles reported by name", function()
 			expect(Errors.classify("KeyThrottled: too many requests to this key").kind).toBe(
 				"throttled"

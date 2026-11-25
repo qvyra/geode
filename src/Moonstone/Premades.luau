@@ -8,11 +8,14 @@ local RealServices = require("../Quartz/Real/Services")
 local VeinBridge = require("../Vein/Bridge")
 local Registry = require("../Vein/Registry")
 local Scheduler = require("../Quartz/Scheduler")
+local Studio = require("../Quartz/Studio")
 local Types = require("../Quartz/Types")
 
 export type Options = {
 	services: Types.Services?,
 	scheduler: Scheduler.Scheduler?,
+	-- Where the data lives in Studio. Geode.setup's mode, or "mock". See Quartz/Studio
+	studio: Studio.Mode?,
 }
 
 -- 45 days, the MS item maximum
@@ -47,8 +50,14 @@ local function perMinute(m: Meter): number
 end
 
 local function resolve(options: Options?): (Types.Services, Scheduler.Scheduler)
-	local services = options and options.services or RealServices.live()
-	VeinBridge.ensure(services)
+	local given = options and options.services or RealServices.live()
+	VeinBridge.ensure(given)
+	local studio: Studio.Mode? = if options then options.studio else nil
+	Studio.check(studio)
+	local mode: Studio.Mode = Studio.mode(studio)
+	local services = Studio.resolve(given, mode, function(message: string)
+		warn(message)
+	end)
 	local scheduler = options and options.scheduler
 		or Scheduler.new({ clock = services.clock, budget = services.budget })
 	return services, scheduler

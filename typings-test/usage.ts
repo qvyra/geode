@@ -53,6 +53,28 @@ const [decoded, value] = Geode.schema.decode(schema, {});
 print(decoded, value);
 
 const daily = Geode.Ranked.windowed("Daily", { window: "daily", mode: "max" });
+
+Geode.setup({ studio: "auto" });
+const studioMode: Geode.StudioMode = "auto";
+Geode.Shared.store({ name: "Clans", template: { bank: 0 }, studio: studioMode });
+const wins = Geode.Ranked.allTime("Wins", { studio: "mock", scope: "season2" });
+print(wins.scope);
+const off: Geode.Result<undefined> = wins.remove(1001);
+const homes = Geode.Shared.store({
+	name: "Homes",
+	template: { rooms: 1 },
+	keyForUser: (userId) => `home_${tostring(userId)}`,
+});
+const deleted = homes.delete("home_1001");
+const report = Geode.erase(1001);
+for (const entry of report.stores) {
+	const kind: Geode.ErasableKind = entry.kind;
+	print(entry.store, kind, entry.ok, entry.message, off.ok, deleted.ok);
+}
+Geode.setup({ studio: "auto", scope: "test" });
+Geode.Ephemeral.hashMap("Cache", { studio: "scope" });
+Geode.Counter.new("Visits", { studio: "real" });
+Geode.Matchmaker.new({ name: "duel", placeId: 1, matchSize: 2, studio: "mock" });
 const top = daily.top(10);
 if (top.ok) {
 	for (const entry of top.value) {
@@ -113,6 +135,55 @@ universe.clock.run(() => {
 		loaded.profile.release();
 	}
 });
+
+const closing: Geode.BeforeRelease = (tx, profile, reason) => {
+	tx.set("lastSeen", os.time());
+	tx.set("closedBy", reason);
+	print(profile.key);
+};
+const sessionStore = Geode.Profile.store({
+	name: "Sessions",
+	template: { lastSeen: 0, closedBy: "" },
+	services: server,
+	beforeRelease: closing,
+});
+universe.clock.run(() => {
+	const loaded = sessionStore.load("player_1");
+	if (loaded.ok) {
+		const reason: Geode.ReleaseReason = "release";
+		loaded.profile.release(reason);
+	}
+	sessionStore.releaseAll("shutdown");
+	const finished: number = sessionStore.destroy();
+	const refused = sessionStore.load("player_2");
+	if (!refused.ok && refused.error.kind === "destroyed") {
+		print(finished);
+	}
+});
+const pruneOptions: Geode.PruneOptions = { version: 2, keep: ["legacy", ["settings", "theme"]] };
+Geode.players({ name: "Pruned", template: { coins: 0 }, prune: pruneOptions });
+Geode.Profile.store({
+	name: "DryRun",
+	template: { coins: 0 },
+	prune: { version: 1, dryRun: true },
+});
+Geode.Vein.subscribe((message) => {
+	if (message.type === "pruned") {
+		print(message.key, message.paths, message.dryRun);
+	}
+});
+Geode.players({
+	name: "Ranked",
+	template: { coins: 0, kills: 0, rank: "Rookie" },
+	leaderstats: [
+		{ path: "coins", name: "Coins", order: 1 },
+		{ path: ["kills"], name: "Kills", format: (value) => `${tostring(value)} KOs` },
+		{ path: "rank", name: "Rank" },
+	],
+	services: server,
+});
+const shownStats = server.playerList.read(server.join(5));
+print(shownStats?.[0]?.value, server.playerList.count());
 const fresh = server.dataStore("Mail").get("player_1", { useCache: false });
 if (fresh.ok) {
 	print(fresh.value.value, fresh.value.info?.version);

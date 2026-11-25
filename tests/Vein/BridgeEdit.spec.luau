@@ -236,6 +236,33 @@ return function(spec: Spec.Api)
 			expect(stored.meta.lease).toBeNil()
 		end)
 
+		it("leaves the store's beforeRelease out of an edit of a profile nobody holds", function()
+			fresh()
+			local universe = Universe.new()
+			local server = universe:server({ studio = true })
+			local heard = 0
+			Helpers.store(server, {
+				studio = "real",
+				beforeRelease = function(tx)
+					heard += 1
+					tx:set("closedBy", "game")
+				end,
+			})
+			local answer = request(universe, server, {
+				kind = "apply",
+				store = Helpers.STORE,
+				key = "free",
+				op = "increment",
+				args = list("coins", 3),
+				note = "gift",
+			})
+			expect(answer.ok).toBe(true)
+			expect(heard).toBe(0)
+			local stored = Helpers.stored(universe, "free") :: Any
+			expect(stored.data.coins).toBe(3)
+			expect(stored.data.closedBy).toBeNil()
+		end)
+
 		it("releases a profile nobody holds even when a guard refuses the edit", function()
 			fresh()
 			local universe = Universe.new()

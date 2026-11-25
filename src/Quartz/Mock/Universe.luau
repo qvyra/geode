@@ -9,6 +9,7 @@ local Json = require("../Json")
 local MockClock = require("./Clock")
 local MockDataStore = require("./DataStore")
 local MockHashMap = require("./HashMap")
+local MockLeaderstats = require("./Leaderstats")
 local MockMessaging = require("./Messaging")
 local MockOrderedDataStore = require("./OrderedDataStore")
 local MockQueue = require("./Queue")
@@ -61,6 +62,9 @@ export type MockServer = {
 	bridge: Types.ToolingBridge,
 	-- same bridge plus test controls (request, messages, attributes)
 	tooling: MockBridge.MockBridge,
+	leaderstats: Types.Leaderstats,
+	-- the same leaderstats plus test reads, as the player list would show them
+	playerList: MockLeaderstats.MockLeaderstats,
 
 	-- the player must be on this server for messages to arrive
 	client: (self: MockServer, userId: number) -> Types.ClientServices,
@@ -161,6 +165,7 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 	end)
 	local studio: boolean = if options and options.studio then true else false
 	local bridge = MockBridge.new(studio)
+	local playerList = MockLeaderstats.new()
 
 	local cache: { [string]: unknown } = {}
 	local function memo<T>(id: string, make: () -> T): T
@@ -224,6 +229,8 @@ function Universe.server(self: Universe, options: ServerOptions?): MockServer
 		teleport = asAdapter(MockTeleport.new(context)),
 		bridge = asAdapter(bridge),
 		tooling = bridge,
+		leaderstats = asAdapter(playerList),
+		playerList = playerList,
 		remote = function(name: string): Types.ServerRemote
 			return memo(`remote\0{name}`, function()
 				return remotes:server(name)

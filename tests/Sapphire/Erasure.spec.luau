@@ -2,12 +2,14 @@
 
 local Fixture = require("../Quartz/Contracts/Fixture")
 local Helpers = require("./Helpers")
+local Leaderboard = require("../../src/Topaz/Leaderboard")
 local Mailbox = require("../../src/Sapphire/Mailbox")
 local Profile = require("../../src/Sapphire/Profile")
 local ProfileStore = require("../../src/Sapphire/ProfileStore")
 local Record = require("../../src/Sapphire/Record")
 local Registry = require("../../src/Sapphire/Registry")
 local Schema = require("../../src/Obsidian/Schema")
+local SharedStore = require("../../src/Opal/SharedStore")
 local Spec = require("../_lib/Spec")
 local Universe = require("../../src/Quartz/Mock/Universe")
 
@@ -205,6 +207,102 @@ return function(spec: Spec.Api)
 			expect(report.erased).toBe(2)
 			expect(#report.failures).toBe(0)
 			expect((Helpers.stored(universe, "player_12") :: Record.Record).data).toBeNil()
+		end)
+
+		it("reaches boards and the shared stores that said where a player's key is", function()
+			local universe = Universe.new()
+			local server = universe:server()
+			local live: any = server
+			local profiles = Helpers.store(server)
+			local wins = Leaderboard.allTime("Wins", { services = live })
+			local daily = Leaderboard.windowed("Daily", { services = live, window = "daily" })
+			local function shared(name: string, keyForUser: any): SharedStore.SharedStore
+				return SharedStore.new({
+					name = name,
+					template = { value = 0 },
+					services = live,
+					keyForUser = keyForUser,
+					reportError = function() end,
+				} :: any)
+			end
+			local homes = shared("Homes", function(userId: number)
+				return `home_{userId}`
+			end)
+			local nobody = shared("Clans", function()
+				return nil
+			end)
+			local unlisted = shared("Guilds", nil)
+			release(universe, load(universe, profiles, "12"))
+			universe.clock:run(function()
+				assert(wins:submit(12, 5).ok, "submit failed")
+				assert(daily:submit(12, 5).ok, "submit failed")
+				assert(homes:set("home_12", "value", 3).ok, "write failed")
+				assert(unlisted:set("guild_12", "value", 3).ok, "write failed")
+				assert(nobody:set("clan_1", "value", 3).ok, "write failed")
+			end)
+
+			local report = universe.clock:run(function()
+				return Registry.erase(12, server)
+			end)
+			expect(report.erased).toBe(4)
+			expect(#report.failures).toBe(0)
+			local kinds = {}
+			for _, entry in report.stores do
+				expect(entry.ok).toBe(true)
+				table.insert(kinds, `{entry.kind} {entry.store}`)
+			end
+			expect(kinds).toEqual({
+				`profile {Helpers.STORE}`,
+				"board Wins",
+				"board Daily",
+				"shared Homes",
+			})
+			universe.clock:run(function()
+				expect(wins:get(12)).toEqual({ ok = true, value = nil })
+				expect(daily:get(12)).toEqual({ ok = true, value = nil })
+				expect(homes:get("home_12", "value")).toEqual({ ok = true, value = 0 })
+				expect(unlisted:get("guild_12", "value")).toEqual({ ok = true, value = 3 })
+				expect(nobody:get("clan_1", "value")).toEqual({ ok = true, value = 3 })
+			end)
+		end)
+
+		it("reports a store that fails and still erases the rest", function()
+			local universe = Universe.new()
+			local server = universe:server()
+			local live: any = server
+			local wins = Leaderboard.allTime("Wins", { services = live })
+			local broken = SharedStore.new({
+				name = "Broken",
+				template = { value = 0 },
+				services = live,
+				keyForUser = function(): string
+					error("no key here")
+				end,
+				reportError = function() end,
+			} :: any)
+			local profiles = Helpers.store(server)
+			release(universe, load(universe, profiles, "12"))
+			universe.clock:run(function()
+				assert(wins:submit(12, 5).ok, "submit failed")
+			end)
+			server:inject({
+				service = "orderedDataStore",
+				method = "remove",
+				fault = { code = 105 },
+			})
+
+			local report = universe.clock:run(function()
+				return Registry.erase(12, server)
+			end)
+			expect(report.erased).toBe(1)
+			expect(#report.failures).toBe(2)
+			expect(report.failures[1].kind).toBe("board")
+			expect(report.failures[2].kind).toBe("shared")
+			expect(string.find(report.failures[2].message, "no key here", 1, true) ~= nil).toBe(
+				true
+			)
+			expect(broken.name).toBe("Broken")
+			expect((Helpers.stored(universe, "12") :: Record.Record).data).toBeNil()
 		end)
 	end)
 end
